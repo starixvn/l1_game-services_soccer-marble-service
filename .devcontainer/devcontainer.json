@@ -1,0 +1,8 @@
+{
+    "customizations": {
+        "vscode": {
+            "extensions": ["esbenp.prettier-vscode", "redhat.vscode-yaml", "TabbyML.vscode-tabby"]
+        }
+    },
+    "image": "hub.lumigame.com/base/node:20.9.0-alpine-24h1.1"
+}
