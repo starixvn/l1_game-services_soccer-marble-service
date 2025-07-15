@@ -73,5 +73,5 @@ export default {
     proxyServer: {
         enabled: false,
         url: "",
-    },
+    }
 };

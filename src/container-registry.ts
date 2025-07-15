@@ -16,6 +16,9 @@ import { HistoryQuery } from "./query-apis";
 import PlaceBetConsumer from "./consumers/place-bet-consumer";
 import GameStatusPublisher from "./publishers/game-status-publisher";
 import CacheConsumer from "./consumers/cache-consumer";
+import { EventProcessConsumer } from "./consumers/event-process-consumer";
+import { OddFeedConsumer } from "./consumers/odd-feed-consumer";
+import { SchedulerConsumer } from "./consumers/scheduler-consumer";
 
 export default class ContainerRegistry extends Table.TableContainerRegistry {
     register(appConfigs: any, definition: any, gameData: any): AwilixContainer<any> {
@@ -59,6 +62,9 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
             settleGameRoundConsumer: asClass(SettleGameRoundConsumer).singleton().proxy(),
             placeBetConsumer: asClass(PlaceBetConsumer).singleton(),
             cacheConsumer: asClass(CacheConsumer).singleton().proxy(),
+            eventProcessConsumer: asClass(EventProcessConsumer).singleton().proxy(),
+            oddFeedConsumer: asClass(OddFeedConsumer).singleton().proxy(),
+            schedulerConsumer: asClass(SchedulerConsumer).singleton().proxy(),
         });
     }
 
