@@ -7,7 +7,7 @@ export class SchedulerConsumer {
     ): void {
         const now = new Date();
         const diff = time.getTime() - now.getTime();
-        const id = time.toISOString();
+        const id = time.getTime();
         this.tasks[id] = callback;
         if (diff > 0) {
             setTimeout(this.callbackWithLog(callback, id), diff);
@@ -16,9 +16,8 @@ export class SchedulerConsumer {
         }
     }
 
-    private callbackWithLog(callback: Function, id: string = "") {
+    private callbackWithLog(callback: Function, id: number) {
         return (...args: any[]) => {
-            this.tasks[id] = callback;
             try {
                 const result = callback(...args);
                 return result;

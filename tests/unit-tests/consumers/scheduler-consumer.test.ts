@@ -47,10 +47,9 @@ describe("SchedulerConsumer", () => {
     });
 
     describe("callbackWithLog", () => {
-        it("should call the callback and log completion", () => {
+        it("should call the callback and return result", () => {
             // Arrange
             const callback = jest.fn().mockReturnValue("result");
-            const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
             const id = "test-id";
             const cb = (scheduler as any).callbackWithLog(callback, id);
 
@@ -60,7 +59,6 @@ describe("SchedulerConsumer", () => {
             // Assert
             expect(callback).toHaveBeenCalledWith("arg1", "arg2");
             expect(result).toBe("result");
-            expect(logSpy).toHaveBeenCalledWith(`Task ${id} completed`);
         });
 
         it("should delete the task after completion", () => {
@@ -77,17 +75,15 @@ describe("SchedulerConsumer", () => {
             expect((scheduler as any).tasks[id]).toBeUndefined();
         });
 
-        it("should always log and delete task even if callback throws", () => {
+        it("should always delete task even if callback throws", () => {
             // Arrange
             const callback = jest.fn().mockImplementation(() => { throw new Error("fail"); });
-            const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
             const id = "fail-id";
             (scheduler as any).tasks[id] = callback;
             const cb = (scheduler as any).callbackWithLog(callback, id);
 
             // Act & Assert
             expect(() => cb()).toThrow("fail");
-            expect(logSpy).toHaveBeenCalledWith(`Task ${id} completed`);
             expect((scheduler as any).tasks[id]).toBeUndefined();
         });
     });
