@@ -58,5 +58,6 @@ export type OddFeedGames = {
     [gameId: number]: {
         rounds: OddFeedRounds;
         currentRound?: number;
+        currentEventDetailIndex?: number;
     }
 }

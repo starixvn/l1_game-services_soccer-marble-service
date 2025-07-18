@@ -23,7 +23,6 @@ export class SchedulerConsumer {
                 const result = callback(...args);
                 return result;
             } finally {
-                console.log(`Task ${id} completed`);
                 delete this.tasks[id];
             }
         };

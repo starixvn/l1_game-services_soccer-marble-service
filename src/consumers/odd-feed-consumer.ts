@@ -31,7 +31,7 @@ export interface EventDetail {
     eventID: number;
     oddsAvailableTs: Date;
     scheduleStartTs: Date;
-    resultAvailableTs: Date;
+    resultsAvailableTs: Date;
     hasResult: boolean;
     goalInfo: string;
     playlist: string;
@@ -52,6 +52,7 @@ export interface MarketSelection {
     settlementStatus?: string;
     selectionID: number;
     selectionNameLongKey: string;
+    name: string;
 }
 
 export enum PATHS {

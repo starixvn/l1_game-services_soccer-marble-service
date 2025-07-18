@@ -91,3 +91,7 @@ export const DEFAULT_TOURNAMENT_CODES = {
     code: "UCL",
     teams: ["MCI", "RMA", "BAR", "LIV", "ARS", "FCB", "INT", "LEV", "AVL", "ATA", "BVB", "JUV", "PSG", "SLB", "ATM", "MIL"],
 };
+
+export type BetChoiceSelection = {
+    [K in keyof typeof BET_CHOICES]: string;
+};
