@@ -41,7 +41,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
             await this.eventProcessConsumer.proceed();
             this.eventPullCounter = 0;
         }
-        console.log("remaining time ", this.eventProcessConsumer.getRemainingTime());
+        console.log("remaining time ", this.eventProcessConsumer.updateAndGetRemainingTime());
         this.eventPullCounter++;
     }
 }

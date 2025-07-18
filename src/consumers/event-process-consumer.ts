@@ -2,7 +2,7 @@ import GameData from "../game-data";
 import { SchedulerConsumer } from "./scheduler-consumer";
 import { EventDetail, EventResponse, MarketSelection, OddFeedConsumer, ScheduleResponseItem } from "./odd-feed-consumer";
 import { extractGameId, extractRoundId } from "../helpers/eventid";
-import { GameStatusPublisher } from "../publishers";
+import { GameStatusPublisher, RunningRoundInfoPublisher } from "../publishers";
 import { BetChoiceSelection, LIVE_BET_CHOICES, PRE_MATCH_BET_CHOICES } from "../constants";
 
 export type ProcessingEventContext = {
@@ -19,6 +19,7 @@ export class EventProcessConsumer {
     schedulerConsumer: SchedulerConsumer;
     oddFeedConsumer: OddFeedConsumer;
     gameId: number;
+    runningRoundInfoPublisher: RunningRoundInfoPublisher;
 
     constructor(container: any) {
         this.gameData = container.gameData;
@@ -26,6 +27,7 @@ export class EventProcessConsumer {
         this.oddFeedConsumer = container.oddFeedConsumer;
         this.gameId = container.appConfigs.oddFeed.gameId;
         this.gameStatusPublisher = container.gameStatusPublisher;
+        this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
     }
 
     public async proceed(): Promise<void> {
@@ -82,7 +84,7 @@ export class EventProcessConsumer {
         });
     }
 
-    getRemainingTime() {
+    updateAndGetRemainingTime() {
         const currentRound = this.getCurrentRound();
         if (!currentRound) {
             return 0;
@@ -93,7 +95,9 @@ export class EventProcessConsumer {
             return 0;
         }
         const now = new Date();
-        return Math.ceil((new Date(lastRoundResultAvailableTs).getTime() - now.getTime()) / 1000);
+        const remainingTime = Math.ceil((new Date(lastRoundResultAvailableTs).getTime() - now.getTime()) / 1000);
+        this.gameData.remainingTime = remainingTime;
+        return remainingTime;
     }
 
     async onScheduleStart(context: ProcessingEventContext) {
@@ -104,6 +108,7 @@ export class EventProcessConsumer {
         await this.syncEventDetail(context.fullEvent.eventID);
         this.logCurrentRoundAndEventDetailIndex();
         this.saveOddsToGameData();
+        this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.publishOdds();
     }
 
@@ -115,12 +120,13 @@ export class EventProcessConsumer {
         await this.syncEventDetail(context.fullEvent.eventID);
         this.logCurrentRoundAndEventDetailIndex();
         this.saveOddsToGameData();
+        this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.publishOdds();
     }
 
     async onLockBet(context: ProcessingEventContext) {
         this.logCurrentRoundAndEventDetailIndex();
-        console.log("lock bet");
+        this.gameStatusPublisher.publishEndPlacingBetStatus()
     }
 
     async onMatchResultAvailable(context: ProcessingEventContext) {
@@ -150,6 +156,9 @@ export class EventProcessConsumer {
         }
 
         console.log("live stream ", videoResult);
+        this.runningRoundInfoPublisher.publishToAllUsers({
+            videoResult
+        });
     }
 
     private isLastEventDetailOfTheRound() {
