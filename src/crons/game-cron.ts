@@ -38,10 +38,11 @@ export default class GameCron extends Table.Crons.TableGameCron {
     async proceed() {
         if (this.eventPullCounter === COUNTER_INTERVAL) {
             await this.checkGameStatus()
+            this.gameData.gameId = this.appConfigs.oddFeed.gameId;
             await this.eventProcessConsumer.proceed();
             this.eventPullCounter = 0;
         }
-        console.log("remaining time ", this.eventProcessConsumer.updateAndGetRemainingTime());
+        this.eventProcessConsumer.updateAndGetRemainingTime();
         this.eventPullCounter++;
     }
 }

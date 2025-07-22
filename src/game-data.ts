@@ -24,6 +24,7 @@ export default class GameData extends TableGameData {
     dynamicOdds?: Record<string, number>;
     voiceConfig?: VoiceDurationConfig;
     oddFeedAccessToken?: string;
+    gameId?: number;
 }
 
 export type RealPlayer = {
@@ -47,7 +48,8 @@ export type OddFeedConfig = {
     operator: {
         operatorId: string;
         password: string;
-    }
+    },
+    gameId: number;
 };
 
 export type OddFeedRounds = {

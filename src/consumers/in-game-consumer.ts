@@ -3,10 +3,6 @@ import GameData from "../game-data";
 import { getUserBetPercentage } from "../helpers/bet-percentage";
 import GameDefinition from "../game-definition";
 import {
-    isStreamingVideoFirstHalf,
-    isStreamingVideoSecondHalf,
-    isShowingResultFirstHalf,
-    isShowingResultSecondHalf,
 } from "../helpers/game-timing";
 
 export default class InGameConsumer extends TableInGameConsumer {
@@ -42,60 +38,8 @@ export default class InGameConsumer extends TableInGameConsumer {
     }
 
     getCurrentVideoResult() {
-        const { durations } = this.definition;
-        const { remainingTime } = this.gameData;
 
-        if (isStreamingVideoFirstHalf(remainingTime, durations)) {
-            return this.getFirstHalfStreamingResult();
-        }
-        if (isStreamingVideoSecondHalf(remainingTime, durations)) {
-            return this.getSecondHalfStreamingResult();
-        }
-        if (isShowingResultFirstHalf(remainingTime, durations)) {
-            return this.getFirstHalfResult();
-        }
-        if (isShowingResultSecondHalf(remainingTime, durations)) {
-            return this.getSecondHalfResult();
-        }
         return {};
-    }
-
-    private getFirstHalfStreamingResult() {
-        const { result } = this.gameData;
-        return {
-            firstHalfVideo: result?.firstHalfVideo,
-            firstHalfTimeline: result?.firstHalfTimeline,
-            firstHalf: result?.firstHalf,
-        };
-    }
-
-    private getSecondHalfStreamingResult() {
-        const { result } = this.gameData;
-        return {
-            firstHalfTimeline: result?.firstHalfTimeline,
-            firstHalf: result?.firstHalf,
-            secondHalfVideo: result?.secondHalfVideo,
-            secondHalfTimeline: result?.secondHalfTimeline,
-            secondHalf: result?.secondHalf,
-        };
-    }
-
-    private getFirstHalfResult() {
-        const { result } = this.gameData;
-        return {
-            firstHalfTimeline: result?.firstHalfTimeline,
-            firstHalf: result?.firstHalf,
-        };
-    }
-
-    private getSecondHalfResult() {
-        const { result } = this.gameData;
-        return {
-            firstHalfTimeline: result?.firstHalfTimeline,
-            firstHalf: result?.firstHalf,
-            secondHalfTimeline: result?.secondHalfTimeline,
-            secondHalf: result?.secondHalf,
-        };
     }
 
     publishOddsToPlayer(UID: string): void {

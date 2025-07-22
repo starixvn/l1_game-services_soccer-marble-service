@@ -1,50 +1,30 @@
-import { Duration } from "../game-definition";
+import { EVENT_OFFSET, LOCKBET_OFFSET } from "../constants";
+import GameData from "../game-data";
+import { getCurrentMatch } from "./eventid";
 
-export function isFirstHalfOddsActive(remainingTime: number, durations: Duration) {
-    const { placingBetsSecondHalf } = durations;
-
-    return remainingTime > placingBetsSecondHalf;
+export function getEventOffset(time: Date, offset: number = EVENT_OFFSET) {
+    return new Date(time.getTime() + offset);
 }
 
-export function isWithinBettingTime(remainingTime: number, durations: Duration) {
-    return isWithinFirstHalfBettingTime(remainingTime, durations) || isWithinSecondHalfBettingTime(remainingTime, durations);
-}
+export function isWithinBettingTimeInCurrentEventDetail(gameData: GameData) {
+    const gameId = gameData.gameId;
+    if (!gameId) {
+        return false;
+    }   
+    const currentMatch = getCurrentMatch(gameData, gameId);
+    if (!currentMatch) {
+        return false;
+    }
+    const now = new Date();
+    const currentEventIndex = gameData.oddFeedGames[gameId].currentEventDetailIndex;
 
-export function isWithinFirstHalfBettingTime(remainingTime: number, durations: Duration) {
-    const { placingBetsFirstHalf, lockingBetFirstHalf } = durations;
-    return isRemainingTimeWithinWindow(remainingTime, placingBetsFirstHalf, lockingBetFirstHalf);
-}
 
-export function isWithinSecondHalfBettingTime(remainingTime: number, durations: Duration) {
-    const { placingBetsSecondHalf, lockingBetSecondHalf } = durations;
+    const startPlaceBetTs = currentEventIndex == 0
+        ? gameData.oddFeedGames[gameId].rounds[gameData.roundId].scheduleStartTs
+        : currentMatch.oddsAvailableTs;
 
-    return isRemainingTimeWithinWindow(remainingTime, placingBetsSecondHalf, lockingBetSecondHalf);
-}
+    const lockbetTs = getEventOffset(currentMatch.scheduleStartTs, LOCKBET_OFFSET);
 
-function isRemainingTimeWithinWindow(remainingTime: number, placingBets: number, lockingBet: number) {
-    return remainingTime < placingBets && remainingTime >= lockingBet;
-}
 
-export function isDuringFirstHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.placingBetsFirstHalf && remainingTime > durations.placingBetsSecondHalf;
-}
-
-export function isDuringSecondHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.placingBetsSecondHalf && remainingTime > 0;
-}
-
-export function isStreamingVideoFirstHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.streamingVideoFirstHalf && remainingTime > durations.placingBetsSecondHalf;
-}
-
-export function isStreamingVideoSecondHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.streamingVideoSecondHalf && remainingTime >= 0;
-}
-
-export function isShowingResultFirstHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.placingBetsSecondHalf && remainingTime > durations.lockingBetSecondHalf;
-}
-
-export function isShowingResultSecondHalf(remainingTime: number, durations: Duration): boolean {
-    return remainingTime <= durations.wholeRound && remainingTime > durations.startingRound;
+    return now > startPlaceBetTs && now < lockbetTs;
 }

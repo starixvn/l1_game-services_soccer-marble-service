@@ -1,9 +1,10 @@
 import GameData from "../game-data";
 import { SchedulerConsumer } from "./scheduler-consumer";
 import { EventDetail, EventResponse, MarketSelection, OddFeedConsumer, ScheduleResponseItem } from "./odd-feed-consumer";
-import { extractGameId, extractRoundId } from "../helpers/eventid";
+import { extractGameId, extractRoundId, getCurrentMatch } from "../helpers/eventid";
 import { GameStatusPublisher, RunningRoundInfoPublisher } from "../publishers";
-import { BetChoiceSelection, LIVE_BET_CHOICES, PRE_MATCH_BET_CHOICES } from "../constants";
+import { getEventOffset } from "../helpers/game-timing";
+import { LOCKBET_OFFSET } from "../constants";
 
 export type ProcessingEventContext = {
     fullEvent: EventResponse;
@@ -65,22 +66,29 @@ export class EventProcessConsumer {
             };
         }
         this.gameData.oddFeedGames[gameId].rounds[roundId] = fullEvent;
-        console.log("CURRENT TIME ", new Date().toISOString());
-        console.log("UPCOMING EVENT ", event.eventID, "Game ", gameId, "Round ", roundId, "start time ", new Date(event.scheduleStartTs));
-        this.schedulerConsumer.schedule(new Date(event.scheduleStartTs), () => this.onScheduleStart({fullEvent, eventDetail: fullEvent.eventDetails[0], index: 0, time: new Date(event.scheduleStartTs)}));
+        
+        const eventStartTs = getEventOffset(new Date(event.scheduleStartTs));
+
+        this.schedulerConsumer.schedule(eventStartTs, () => this.onScheduleStart({fullEvent, eventDetail: fullEvent.eventDetails[0], index: 0, time: eventStartTs}));
         
         fullEvent.eventDetails.forEach((eventDetail, index) => {
+            const procesedEventDetail = this.processEventDetailWithTimingOffset(eventDetail);
             const eventContext: ProcessingEventContext = {
                 fullEvent,
-                eventDetail,
+                eventDetail: procesedEventDetail,
                 index,
-                time: new Date(eventDetail.scheduleStartTs)
+                time: procesedEventDetail.scheduleStartTs
             }
 
-            this.schedulerConsumer.schedule(new Date(eventDetail.oddsAvailableTs), () => this.onOddAvailable({ ...eventContext, time: new Date(eventDetail.oddsAvailableTs) }));
-            this.schedulerConsumer.schedule(new Date(new Date(eventDetail.scheduleStartTs).getTime() - 3000), () => this.onLockBet({ ...eventContext, time: new Date(new Date(eventDetail.scheduleStartTs).getTime() - 3000) }));
-            this.schedulerConsumer.schedule(new Date(new Date(eventDetail.scheduleStartTs).getTime()), () => this.onLiveStream({ ...eventContext, time: new Date(new Date(eventDetail.scheduleStartTs).getTime()) }));
-            this.schedulerConsumer.schedule(new Date(eventDetail.resultsAvailableTs), () => this.onMatchResultAvailable({ ...eventContext, time: new Date(eventDetail.resultsAvailableTs) }));
+            const oddsAvailableTs = procesedEventDetail.oddsAvailableTs;
+            const scheduleStartTs = procesedEventDetail.scheduleStartTs;
+            const resultsAvailableTs = procesedEventDetail.resultsAvailableTs;
+            const lockbetTs = getEventOffset(scheduleStartTs, LOCKBET_OFFSET);
+
+            this.schedulerConsumer.schedule(oddsAvailableTs, () => this.onOddAvailable({ ...eventContext, time: oddsAvailableTs }));
+            this.schedulerConsumer.schedule(lockbetTs, () => this.onLockBet({ ...eventContext, time: lockbetTs }));
+            this.schedulerConsumer.schedule(scheduleStartTs, () => this.onLiveStream({ ...eventContext, time: scheduleStartTs }));
+            this.schedulerConsumer.schedule(resultsAvailableTs, () => this.onMatchResultAvailable({ ...eventContext, time: resultsAvailableTs }));
         });
     }
 
@@ -101,9 +109,10 @@ export class EventProcessConsumer {
     }
 
     async onScheduleStart(context: ProcessingEventContext) {
-        console.log("schedule start ", context.time);
+        console.log("onScheduleStart ", context.index);
+        this.gameData.roundId = extractRoundId(context.fullEvent.eventID);
         this.gameData.oddFeedGames[this.gameId].currentRound = extractRoundId(context.fullEvent.eventID);
-        this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = 0;
+        this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
 
         await this.syncEventDetail(context.fullEvent.eventID);
         this.logCurrentRoundAndEventDetailIndex();
@@ -113,8 +122,8 @@ export class EventProcessConsumer {
     }
 
     async onOddAvailable(context: ProcessingEventContext) {
+        console.log("onOddAvailable ", context.index);
         if (context.index == 0) return;
-        console.log("onOddAvailable ");
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         
         await this.syncEventDetail(context.fullEvent.eventID);
@@ -131,12 +140,11 @@ export class EventProcessConsumer {
 
     async onMatchResultAvailable(context: ProcessingEventContext) {
         await this.syncEventDetail(context.eventDetail.eventID);
-        if (context.index === context.fullEvent.eventDetails.length - 1) {
-            const roundId = extractRoundId(context.fullEvent.eventID);
-            console.log("settle ", context.time);
-            console.log("clear round" , roundId);
-            delete this.gameData.oddFeedGames[this.gameId].rounds[roundId];
+        if (context.index !== context.fullEvent.eventDetails.length - 1) {
+            return;
         }
+        const roundId = extractRoundId(context.fullEvent.eventID);
+        delete this.gameData.oddFeedGames[this.gameId].rounds[roundId];
     }
 
     async onLiveStream(context: ProcessingEventContext) {
@@ -155,30 +163,13 @@ export class EventProcessConsumer {
             timeline: updatedCurrentEventDetail.goalInfo
         }
 
-        console.log("live stream ", videoResult);
         this.runningRoundInfoPublisher.publishToAllUsers({
             videoResult
         });
     }
 
-    private isLastEventDetailOfTheRound() {
-        const currentRound = this.getCurrentRound();
-        if (!currentRound) {
-            return false;
-        }
-        return this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex === currentRound.eventDetails.length - 1;
-    }
-
     private getCurrentMatch() {
-        const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
-        const currentEventDetailIndex = this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex;
-        if (!currentRoundId) {
-            return null;
-        }
-        if (currentEventDetailIndex === undefined) {
-            return null;
-        }
-        return this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId].eventDetails[currentEventDetailIndex] ?? null;
+        return getCurrentMatch(this.gameData, this.gameId);
     }
 
     private getCurrentRound() {
@@ -209,21 +200,17 @@ export class EventProcessConsumer {
         const selections: Record<string, MarketSelection> = {}
         for (const market of currentEventDetail.markets) {
             for (const selection of market.selections) {
-                const selectionUniqueKey = `${market.marketNameKey}:${selection.selectionNameLongKey}`;
+                const selectionUniqueKey = selection.betChoice;
                 selections[selectionUniqueKey] = selection;
             }
         }
 
         const odds  = Object.entries(selections)
         .reduce((acc, [key, value]) => {
-            if (!this.isBetChoice(key)) {
-                return acc
-            }
-            const betChoice = SELECTION_TO_BET_CHOICE_MAP[key];
-            acc[betChoice] = value.price ?? 0;
+            acc[key] = value.price ?? 0;
             return acc;
-        }, {} as Record<keyof BetChoiceSelection, number>);
-        this.gameData.dynamicOdds = { ...this.gameData.dynamicOdds, ...odds };
+        }, {} as Record<string, number>);
+        this.gameData.dynamicOdds = odds;
     }
 
     private publishOdds() {
@@ -236,47 +223,23 @@ export class EventProcessConsumer {
         if (currentEventDetailIndex === undefined) {
             return;
         }
-
-        const odds = Object.entries(allOdds)
-        .reduce((acc, [key, value]) => {
-            if (!this.isValidBetChoice(key, currentEventDetailIndex)) {
-                return acc;
-            }
-            acc[key as keyof BetChoiceSelection] = value;
-            return acc;
-        }, {} as Record<keyof BetChoiceSelection, number>);
-        console.log("currentEventDetailIndex ", currentEventDetailIndex);
-        console.log("publishOdds ", odds);
-        this.gameStatusPublisher.publishOdds(odds);
+        this.gameStatusPublisher.publishOdds(allOdds);
     }
 
     private async syncEventDetail(eventID: number) {
         const event = await this.oddFeedConsumer.getEvent({ eventID });
-        const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
-        const currentEventDetailIndex = this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex;
-        if (currentRoundId === undefined || currentEventDetailIndex === undefined) {
-            return;
-        }
-        this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId].eventDetails[currentEventDetailIndex] = event.eventDetails[currentEventDetailIndex];
+        const processedEvent = this.processEventDetails(event);
+        this.gameData.oddFeedGames[this.gameId].rounds[extractRoundId(event.eventID)] = processedEvent;
     }
 
-    private isBetChoice(betChoice: string) {
-        return Object.values(SELECTION_BET_CHOICES).includes(betChoice);
-    }
-
-    private isValidBetChoice(betChoice: string, index: number) {
-        if (index == 0) {
-            return this.isFirstHalfBetChoice(betChoice);
-        }
-        return this.isLiveBetChoice(betChoice);
-    }
-
-    private isFirstHalfBetChoice(betChoice: string) {
-        return Object.values(PRE_MATCH_BET_CHOICES).includes(betChoice);
-    }
-
-    private isLiveBetChoice(betChoice: string) {
-        return Object.values(LIVE_BET_CHOICES).includes(betChoice);
+    private processEventDetails(event: EventResponse) {
+        const processedEvent = { ...event };
+        processedEvent.scheduleStartTs = getEventOffset(new Date(event.scheduleStartTs));
+        processedEvent.eventDetails.forEach((eventDetail, index) => {
+            const procesedEventDetail = this.processEventDetailWithTimingOffset(eventDetail);
+            processedEvent.eventDetails[index] = procesedEventDetail;
+        });
+        return processedEvent;
     }
 
     private logCurrentRoundAndEventDetailIndex() {
@@ -287,27 +250,12 @@ export class EventProcessConsumer {
         console.log("current round ", currentRoundId);
         console.log("current event detail index ", this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex);
     }
+
+    private processEventDetailWithTimingOffset(eventDetail: EventDetail) {
+        const procesedEventDetail = { ...eventDetail };
+        procesedEventDetail.scheduleStartTs = getEventOffset(new Date(eventDetail.scheduleStartTs));
+        procesedEventDetail.oddsAvailableTs = getEventOffset(new Date(eventDetail.oddsAvailableTs));
+        procesedEventDetail.resultsAvailableTs = getEventOffset(new Date(eventDetail.resultsAvailableTs));
+        return procesedEventDetail;
+    }
 }
-
-const SELECTION_BET_CHOICES: BetChoiceSelection = {
-    home: "MARKET_1H_1X2:HOME",
-    away: "MARKET_1H_1X2:AWAY",
-    draw: "MARKET_1H_1X2:TIE",
-    over: "MARKET_1H_OVER_UNDER:OVER",
-    under: "MARKET_1H_OVER_UNDER:UNDER",
-    odd: "MARKET_1H_EVEN_ODD:ODD",
-    even: "MARKET_1H_EVEN_ODD:EVEN",
-    homeLive: "MARKET_1X2:HOME",
-    awayLive: "MARKET_1X2:AWAY",
-    drawLive: "MARKET_1X2:TIE",
-    evenLive: "MARKET_EVEN_ODD:EVEN",
-    overLive: "MARKET_OVER_UNDER:OVER",
-    underLive: "MARKET_OVER_UNDER:UNDER",
-    oddLive: "MARKET_EVEN_ODD:ODD",
-}
-
-
-const SELECTION_TO_BET_CHOICE_MAP: Record<string, keyof BetChoiceSelection> = Object.entries(SELECTION_BET_CHOICES).reduce((acc, [key, value]) => {
-    acc[value] = key as keyof BetChoiceSelection;
-    return acc;
-}, {} as Record<string, keyof BetChoiceSelection>);

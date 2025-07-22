@@ -53,6 +53,7 @@ export interface MarketSelection {
     selectionID: number;
     selectionNameLongKey: string;
     name: string;
+    betChoice: string;
 }
 
 export enum PATHS {

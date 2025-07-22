@@ -95,3 +95,7 @@ export const DEFAULT_TOURNAMENT_CODES = {
 export type BetChoiceSelection = {
     [K in keyof typeof BET_CHOICES]: string;
 };
+
+export const LOCKBET_OFFSET = -3000;
+
+export const EVENT_OFFSET = 0;

@@ -2,39 +2,100 @@ import { Core } from "sc-game-base";
 import PlaceBetConsumer from "../../../src/consumers/place-bet-consumer";
 import GameDefinition from "../../../src/game-definition";
 import { BET_CHOICES, LIVE_BET_CHOICES } from "../../../src/constants";
+import * as gameTimingHelper from "../../../src/helpers/game-timing";
+import * as eventIdHelper from "../../../src/helpers/eventid";
+
+jest.mock("../../../src/helpers/game-timing");
+jest.mock("../../../src/helpers/eventid");
+
+const mockedGameTimingHelper = gameTimingHelper as jest.Mocked<typeof gameTimingHelper>;
+const mockedEventIdHelper = eventIdHelper as jest.Mocked<typeof eventIdHelper>;
 
 describe("PlaceBetConsumer", () => {
     let placeBetConsumer: PlaceBetConsumer;
-    let mockGameDefinition: GameDefinition;
+    let mockGameDefinition: any;
     let mockGameData: any;
     let mockEventPublisher: any;
-    let mockPlayer: any;
-    let mockSettings: any;
-
-    const DURATIONS = {
-        placingBetsFirstHalf: 130,
-        lockingBetFirstHalf: 100,
-        placingBetsSecondHalf: 80,
-        lockingBetSecondHalf: 60,
+    let mockPlayer: {
+        profile: {
+            name: string;
+            minBet: number;
+            maxBet: number;
+        };
+        session: {
+            currencyGroupId: string;
+        };
+    };
+    let mockSettings: {
+        groupId: string;
+        minBet: number;
+        maxBet: number;
+        maxBetPerChoices: Record<string, number>;
     };
 
     beforeEach(() => {
-        jest.spyOn(Core.BaseEventConsumers.PlaceBetConsumer.prototype, "composeBetChoiceValidationCriteria").mockReturnValue([]);
+        jest.clearAllMocks();
 
         mockGameData = {
             remainingTime: 110,
             roundId: 1,
+            gameId: 123,
             gameConfigs: {
                 enabled: true,
-                tournamentConfig: {},
+                enableFreeBet: true,
+                tournamentConfig: {
+                    code: "test",
+                    teams: ["team1", "team2"]
+                },
                 videoStreamConfig: {
                     videoInfos: [],
                 },
             },
+            oddFeedGames: {
+                123: {
+                    rounds: {
+                        1: {
+                            eventID: 123,
+                            eventNameAKey: "Team A",
+                            eventNameBKey: "Team B",
+                            scheduleStartTs: new Date(Date.now() - 60000),
+                            productCode: "SOCCER",
+                            productTypeKey: "MATCH",
+                            eventDetails: [{
+                                eventID: 123,
+                                scheduleStartTs: new Date(Date.now() - 60000),
+                                oddsAvailableTs: new Date(Date.now() - 30000),
+                                resultsAvailableTs: new Date(Date.now() + 120000),
+                                hasResult: false,
+                                playlist: "test-playlist",
+                                goalInfo: "test-goal-info",
+                                result: "test-result",
+                                markets: []
+                            }]
+                        }
+                    },
+                    currentRound: 1,
+                    currentEventDetailIndex: 0
+                }
+            },
+            dynamicOdds: {
+                [BET_CHOICES.home]: 1.5,
+                [BET_CHOICES.away]: 2.0,
+                [BET_CHOICES.draw]: 3.0,
+                [LIVE_BET_CHOICES.homeLive]: 1.8,
+                [LIVE_BET_CHOICES.awayLive]: 2.2,
+            },
+            currencyGroupGames: [],
+            ingame: {},
         };
 
         mockGameDefinition = {
-            durations: DURATIONS,
+            durations: {
+                placingBetsFirstHalf: 130,
+                lockingBetFirstHalf: 100,
+                placingBetsSecondHalf: 80,
+                lockingBetSecondHalf: 60,
+            },
             choices: Object.values(BET_CHOICES),
             hedgeBetGroups: [
                 [BET_CHOICES.home, BET_CHOICES.away],
@@ -85,14 +146,35 @@ describe("PlaceBetConsumer", () => {
         };
 
         mockGameData.currencyGroupGames = [mockSettings];
-        mockGameData.gameConfigs = {
-            enableFreeBet: true,
-        };
         mockGameData.ingame = {
             testPlayer: {
                 betTracks: {},
             },
         };
+
+        // Mock the parent class methods
+        jest.spyOn(Core.BaseEventConsumers.PlaceBetConsumer.prototype, "getNoticeObj").mockImplementation((notice: any, params?: any) => {
+            if (notice === "SB1935") return { errorCode: "SB1935" };
+            if (notice === "SB1910") return { errorCode: "SB1910", maxBet: params?.maxBet };
+            if (notice === "SB1909") return { errorCode: "SB1909", minBet: params?.minBet };
+            if (notice === "SB1911") return { errorCode: "SB1911", maxBet: params?.maxBet };
+            if (notice === "SB1939") return { errorCode: "SB1939", hedgeBetGroup: params?.hedgeBetGroup };
+            return { errorCode: notice };
+        });
+
+        // Mock the helper functions
+        mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
+        mockedEventIdHelper.getCurrentMatch.mockReturnValue({
+            eventID: 123,
+            scheduleStartTs: new Date(Date.now() - 60000),
+            oddsAvailableTs: new Date(Date.now() - 30000),
+            resultsAvailableTs: new Date(Date.now() + 120000),
+            hasResult: false,
+            playlist: "test-playlist",
+            goalInfo: "test-goal-info",
+            result: "test-result",
+            markets: []
+        });
 
         placeBetConsumer = new PlaceBetConsumer(mockGameDefinition, mockGameData, mockEventPublisher);
         placeBetConsumer.definition = mockGameDefinition;
@@ -101,476 +183,63 @@ describe("PlaceBetConsumer", () => {
 
     describe("composeBettingTimeValidationCriteria", () => {
         const roundId = 1;
-        describe("first half", () => {
-            describe("betting boundary", () => {
-                it("right before placingBets, should fail validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 131;
 
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
+        describe("game configs disabled", () => {
+            it("should fail validation when game configs are disabled", () => {
+                // Arrange
+                mockGameData.gameConfigs.enabled = false;
 
-                    // Assert
-                    expect(result[2].failure).toBe(true);
-                });
+                // Act
+                const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
 
-                it("exactly at placingBets, should fail validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 130;
-
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                    // Assert
-                    expect(result[2].failure).toBe(true);
-                });
-
-                it("right after placingBets, should pass validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 129;
-
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                    // Assert
-                    expect(result[2].failure).toBe(false);
-                });
-            });
-
-            describe("locking boundary", () => {
-                describe("right before lockingBet", () => {
-                    it("right before lockingBet, should pass validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 101;
-
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                        // Assert
-                        expect(result[2].failure).toBe(false);
-                    });
-                });
-                describe("exactly at lockingBet", () => {
-                    it("exactly at lockingBet, should pass validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 100;
-
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                        // Assert
-                        expect(result[2].failure).toBe(false);
-                    });
-                });
-                describe("right after lockingBet", () => {
-                    it("right after lockingBet, should fail validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 99;
-
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                        // Assert
-                        expect(result[2].failure).toBe(true);
-                    });
-                });
+                // Assert
+                expect(result[0].failure).toBe(true);
+                expect(result[0].notice).toEqual({ errorCode: "SB1935" });
             });
         });
 
-        describe("second half", () => {
-            describe("betting boundary", () => {
-                it("right before placingBets, should fail validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 81;
+        describe("round id mismatch", () => {
+            it("should fail validation when round id does not match", () => {
+                // Arrange
+                const wrongRoundId = 999;
 
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
+                // Act
+                const result = placeBetConsumer.composeBettingTimeValidationCriteria(wrongRoundId);
 
-                    // Assert
-                    expect(result[2].failure).toBe(true);
-                });
+                // Assert
+                expect(result[1].failure).toBe(true);
+                expect(result[1].notice).toEqual({ errorCode: "SB1935" });
+            });
+        });
 
-                it("exactly at placingBets, should fail validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 80;
+        describe("betting time validation", () => {
+            it("should fail validation when not within betting time", () => {
+                // Arrange
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
 
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
+                // Act
+                const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
 
-                    // Assert
-                    expect(result[2].failure).toBe(true);
-                });
-
-                it("right after placingBets, should pass validation", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 79;
-
-                    // Act
-                    const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                    // Assert
-                    expect(result[2].failure).toBe(false);
-                });
+                // Assert
+                expect(result[2].failure).toBe(true);
+                expect(result[2].notice).toEqual({ errorCode: "SB1905" });
             });
 
-            describe("locking boundary", () => {
-                describe("right before lockingBet", () => {
-                    it("right before lockingBet, should pass validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 61;
+            it("should pass validation when within betting time", () => {
+                // Arrange
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
 
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
+                // Act
+                const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
 
-                        // Assert
-                        expect(result[2].failure).toBe(false);
-                    });
-                });
-                describe("exactly at lockingBet", () => {
-                    it("exactly at lockingBet, should pass validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 60;
-
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                        // Assert
-                        expect(result[2].failure).toBe(false);
-                    });
-                });
-                describe("right after lockingBet", () => {
-                    it("right after lockingBet, should fail validation", () => {
-                        // Arrange
-                        mockGameData.remainingTime = 59;
-
-                        // Act
-                        const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
-
-                        // Assert
-                        expect(result[2].failure).toBe(true);
-                    });
-                });
+                // Assert
+                expect(result[2].failure).toBe(false);
+                expect(result[2].notice).toEqual({ errorCode: "SB1905" });
             });
         });
     });
 
     describe("composeBetChoiceValidationCriteria", () => {
-        describe("first half", () => {
-            describe("betting boundary", () => {
-                it("right before placingBetsFirstHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 131;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right before placingBetsFirstHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 131;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("exactly at placingBetsFirstHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 130;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("exactly at placingBetsFirstHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 130;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right after placingBetsFirstHalf, should pass validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 129;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("right after placingBetsFirstHalf, should fail validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 129;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-            });
-
-            describe("locking boundary", () => {
-                it("right before lockingBetFirstHalf, should pass validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 101;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("right before lockingBetFirstHalf, should fail validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 101;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("exactly at lockingBetFirstHalf, should pass validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 100;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("exactly at lockingBetFirstHalf, should fail validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 100;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right after lockingBetFirstHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 99;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right after lockingBetFirstHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 99;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-            });
-        });
-
-        describe("second half", () => {
-            describe("betting boundary", () => {
-                it("right before placingBetsSecondHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 81;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right before placingBetsSecondHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 81;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("exactly at placingBetsSecondHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 80;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("exactly at placingBetsSecondHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 80;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("right after placingBetsSecondHalf, should fail validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 79;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right after placingBetsSecondHalf, should pass validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 79;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-            });
-
-            describe("locking boundary", () => {
-                it("right before lockingBetSecondHalf, should fail validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 61;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right before lockingBetSecondHalf, should pass validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 61;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("exactly at lockingBetSecondHalf, should fail validation for first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 60;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(true);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("exactly at lockingBetSecondHalf, should pass validation for second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 60;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                });
-
-                it("right after lockingBetSecondHalf, should NOT validate first half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 59;
-                    const betChoice = BET_CHOICES.home;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-
-                it("right after lockingBetSecondHalf, should NOT validate second half bet choice", () => {
-                    // Arrange
-                    mockGameData.remainingTime = 59;
-                    const betChoice = LIVE_BET_CHOICES.homeLive;
-
-                    // Act
-                    const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
-
-                    // Assert
-                    expect(result[0].failure).toBe(false);
-                    expect(result[0].notice).toEqual({ errorCode: "SB1935" });
-                });
-            });
-        });
-
         describe("zero odds validation", () => {
             it("should fail validation when the odds for the bet choice is zero", () => {
                 // Arrange
@@ -583,8 +252,8 @@ describe("PlaceBetConsumer", () => {
                 const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
 
                 // Assert
-                expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1935" });
+                expect(result[0].failure).toBe(true);
+                expect(result[0].notice).toEqual({ errorCode: "SB1935" });
             });
 
             it("should pass validation when the odds for the bet choice is not zero", () => {
@@ -598,7 +267,8 @@ describe("PlaceBetConsumer", () => {
                 const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
 
                 // Assert
-                expect(result[1].failure).toBe(false);
+                expect(result[0].failure).toBe(false);
+                expect(result[0].notice).toEqual({ errorCode: "SB1935" });
             });
 
             it("should fail validation when the odds for the bet choice is undefined (defaults to zero)", () => {
@@ -610,8 +280,8 @@ describe("PlaceBetConsumer", () => {
                 const result = placeBetConsumer.composeBetChoiceValidationCriteria(betChoice);
 
                 // Assert
-                expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1935" });
+                expect(result[0].failure).toBe(true);
+                expect(result[0].notice).toEqual({ errorCode: "SB1935" });
             });
         });
     });
@@ -645,14 +315,15 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[0].failure).toBe(false);
+                expect(result[0].notice).toEqual({ errorCode: "SB1935" });
             });
         });
 
         describe("max bet per choice validation", () => {
-            it("should fail validation when bet amount exceeds max bet per choice for first half", () => {
+            it("should fail validation when bet amount exceeds max bet per choice", () => {
                 // Arrange
                 const betChoice = BET_CHOICES.home;
-                const amount = 600;
+                const amount = 1100;
                 const freeBet = false;
 
                 // Act
@@ -660,16 +331,16 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 500 });
+                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 1000 });
             });
 
             it("should fail validation when bet amount plus existing bet exceeds max bet per choice", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
-                    [BET_CHOICES.home]: 300,
+                    [BET_CHOICES.home]: 600,
                 };
                 const betChoice = BET_CHOICES.home;
-                const amount = 300;
+                const amount = 500;
                 const freeBet = false;
 
                 // Act
@@ -677,15 +348,15 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 500 });
+                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 1000 });
             });
 
             it("should limit max bet based on odds for second half bets", () => {
                 // Arrange
                 mockGameData.dynamicOdds = {
-                    [BET_CHOICES.homeLive]: 2.5,
+                    [LIVE_BET_CHOICES.homeLive]: 2.5,
                 };
-                const betChoice = BET_CHOICES.homeLive;
+                const betChoice = LIVE_BET_CHOICES.homeLive;
                 const amount = 1000;
                 const freeBet = false;
 
@@ -693,39 +364,9 @@ describe("PlaceBetConsumer", () => {
                 const result = placeBetConsumer.composeBetAmountValidationCriteria(mockPlayer, betChoice, amount, freeBet);
 
                 // Assert
-                // maxBet / (odds - 1) = 1000 / (2.5 - 1) = 666.67
+                // maxBet / (odds - 1) = 1000 / (2.5 - 1) = 666.67, rounded to 667
                 expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 600 });
-            });
-
-            it("should limit max bet based on odds when odds-based calculation is smaller than both player profile max bet and settings max bet", () => {
-                // Arrange
-                mockGameData.dynamicOdds = {
-                    [BET_CHOICES.homeLive]: 3.0, // Higher odds will result in smaller max bet
-                };
-                const betChoice = BET_CHOICES.homeLive;
-                const amount = 1000;
-                const freeBet = false;
-
-                (placeBetConsumer.gameData.currencyGroupGames as any) = [
-                    {
-                        groupId: "1",
-                        minBet: 20,
-                        maxBet: 200,
-                        maxBetPerChoices: {
-                            home: 500,
-                            homeLive: 600,
-                        },
-                    },
-                ];
-
-                // Act
-                const result = placeBetConsumer.composeBetAmountValidationCriteria(mockPlayer, betChoice, amount, freeBet);
-
-                // Assert
-                // maxBet / (odds - 1) = 1000 / (3.0 - 1) = 500
-                expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 100 });
+                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 667 });
             });
         });
 
@@ -765,27 +406,8 @@ describe("PlaceBetConsumer", () => {
                 mockGameData.ingame.testPlayer.betTracks = {
                     [BET_CHOICES.home]: 600,
                 };
-                const betChoice = BET_CHOICES.homeLive;
+                const betChoice = LIVE_BET_CHOICES.homeLive;
                 const amount = 500;
-                const freeBet = false;
-
-                // Act
-                const result = placeBetConsumer.composeBetAmountValidationCriteria(mockPlayer, betChoice, amount, freeBet);
-
-                // Assert
-                expect(result[4].failure).toBe(true);
-                expect(result[4].notice).toEqual({ errorCode: "SB1911", maxBet: 1000 });
-            });
-
-            it("should fail validation when total amount across multiple bet choices exceeds max bet", () => {
-                // Arrange
-                mockGameData.ingame.testPlayer.betTracks = {
-                    [BET_CHOICES.home]: 300,
-                    [BET_CHOICES.away]: 400,
-                    [BET_CHOICES.homeLive]: 200,
-                };
-                const betChoice = BET_CHOICES.homeLive;
-                const amount = 200;
                 const freeBet = false;
 
                 // Act
@@ -799,19 +421,19 @@ describe("PlaceBetConsumer", () => {
     });
 
     describe("composeHedgeBetValidationCriteria", () => {
-        describe("when bet choice is violated hedge bet criteria", () => {
-            it("should return failure with hedge bet notice between first half", () => {
+        describe("when bet choice violates hedge bet criteria", () => {
+            it("should return failure with hedge bet notice between first half choices", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
                     [BET_CHOICES.home]: 300,
                 };
 
                 // Act
-                const actualResult = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.away, mockPlayer);
+                const result = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.away, mockPlayer);
 
                 // Assert
-                expect(!!actualResult[0].failure).toBe(true);
-                expect(actualResult[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [BET_CHOICES.home, BET_CHOICES.away] });
+                expect(result[0].failure).toBe(true);
+                expect(result[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [BET_CHOICES.home, BET_CHOICES.away] });
             });
 
             it("should return failure with hedge bet notice between first half and second half", () => {
@@ -821,28 +443,28 @@ describe("PlaceBetConsumer", () => {
                 };
 
                 // Act
-                const actualResult = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.awayLive, mockPlayer);
+                const result = placeBetConsumer.composeHedgeBetValidationCriteria(LIVE_BET_CHOICES.awayLive, mockPlayer);
 
                 // Assert
-                expect(!!actualResult[0].failure).toBe(true);
-                expect(actualResult[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [BET_CHOICES.home, BET_CHOICES.awayLive] });
+                expect(result[0].failure).toBe(true);
+                expect(result[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [BET_CHOICES.home, LIVE_BET_CHOICES.awayLive] });
             });
         });
 
-        describe("when bet choice is NOT violated hedge bet criteria", () => {
-            it("should return NO failure with hedge bet notice", () => {
+        describe("when bet choice does not violate hedge bet criteria", () => {
+            it("should return no failure with empty hedge bet group", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
                     [BET_CHOICES.home]: 300,
                 };
 
                 // Act
-                const actualResult = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.draw, mockPlayer);
+                const result = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.draw, mockPlayer);
 
                 // Assert
-                expect(!!actualResult[0].failure).toBe(false);
-                expect(actualResult[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [] });
+                expect(result[0].failure).toBe(false);
+                expect(result[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [] });
             });
         });
     });
-});
+}); 

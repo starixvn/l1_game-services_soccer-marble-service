@@ -1,9 +1,8 @@
 import { Core } from "sc-game-base";
 import GameDefinition from "../game-definition";
-import { PRE_MATCH_BET_CHOICES, LIVE_BET_CHOICES } from "../constants";
 import { helpers } from "sc-common";
-import { isWithinBettingTime, isWithinFirstHalfBettingTime, isWithinSecondHalfBettingTime } from "../helpers/game-timing";
 import GameData from "../game-data";
+import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetConsumer {
     declare definition: GameDefinition;
@@ -12,14 +11,9 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
     composeBetChoiceValidationCriteria(betChoice: string) {
         return [
             {
-                failure: this.isBetChoiceBanned(betChoice),
-                notice: this.getNoticeObj(helpers.noticeHelper.invalidBet),
-            },
-            {
                 failure: this.isBetChoiceOddZero(betChoice),
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet),
             },
-            ...super.composeBetChoiceValidationCriteria(betChoice),
         ];
     }
 
@@ -74,7 +68,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet, { gameRoundId: roundId }),
             },
             {
-                failure: !isWithinBettingTime(this.gameData.remainingTime, this.definition.durations),
+                failure: !isWithinBettingTimeInCurrentEventDetail(this.gameData),
                 notice: this.getNoticeObj(helpers.noticeHelper.placeBetNextRound),
             },
         ];
@@ -96,48 +90,11 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
         ];
     }
 
-    private isBetChoiceBanned(betChoice: string) {
-        return this.isBetChoiceBannedOnSecondHalf(betChoice) || this.isBetChoiceBannedOnFirstHalf(betChoice);
-    }
-
-    private isBetChoiceBannedOnFirstHalf(betChoice: string) {
-        return this.isWithinFirstHalfBettingTime() && !this.isFirstHalfBetChoice(betChoice);
-    }
-
-    private isBetChoiceBannedOnSecondHalf(betChoice: string) {
-        return this.isWithinSecondHalfBettingTime() && !this.isSecondHalfBetChoice(betChoice);
-    }
-
-    private isWithinFirstHalfBettingTime() {
-        return isWithinFirstHalfBettingTime(this.gameData.remainingTime, this.definition.durations);
-    }
-
-    private isWithinSecondHalfBettingTime() {
-        return isWithinSecondHalfBettingTime(this.gameData.remainingTime, this.definition.durations);
-    }
-
-    private isFirstHalfBetChoice(betChoice: string) {
-        return Object.values(PRE_MATCH_BET_CHOICES).includes(betChoice);
-    }
-
-    private isSecondHalfBetChoice(betChoice: string) {
-        return Object.values(LIVE_BET_CHOICES).includes(betChoice);
-    }
 
     private getMaxBetPerChoice(player: any, betChoice: string, settings?: any) {
         const maxBet = Math.min(player.profile.maxBet, settings.maxBet);
-        const maxBetPerChoice = settings.maxBetPerChoices[betChoice];
-
-        if (this.isFirstHalfBetChoice(betChoice)) {
-            return Math.min(maxBet, maxBetPerChoice);
-        }
-
-        return this.calculateLiveMaxBetPerChoice(betChoice, maxBet, maxBetPerChoice);
-    }
-
-    private calculateLiveMaxBetPerChoice(betChoice: string, maxBet: number, maxBetPerChoice: number) {
         const maxBetByOdds = this.getMaxBetByOdds(betChoice, maxBet);
-        return Math.min(maxBet, maxBetPerChoice, maxBetByOdds);
+        return Math.min(maxBet, maxBetByOdds);
     }
 
     private getMaxBetByOdds(betChoice: string, maxBet: number) {

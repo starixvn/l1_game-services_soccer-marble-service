@@ -1,8 +1,8 @@
 import { TableProcessBetQueue } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import { helpers } from "sc-common";
-import { isWithinBettingTime } from "../helpers/game-timing";
 import GameDefinition from "../game-definition";
+import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 type BetPayload = {
     amount: number;
@@ -38,7 +38,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
             {
-                failure: !isWithinBettingTime(this.gameData.remainingTime, this.definition.durations),
+                failure: !isWithinBettingTimeInCurrentEventDetail(this.gameData),
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
         ];

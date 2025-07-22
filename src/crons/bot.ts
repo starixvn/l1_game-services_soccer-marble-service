@@ -1,9 +1,8 @@
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
-import { isWithinBettingTime, isWithinFirstHalfBettingTime } from "../helpers/game-timing";
 import GameDefinition from "../game-definition";
 import { helpers } from "sc-common";
-import { LIVE_BET_CHOICES, PRE_MATCH_BET_CHOICES } from "../constants";
+import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 export default class Bot extends TableGameConfigBot {
     declare gameData: GameData;
@@ -88,7 +87,7 @@ export default class Bot extends TableGameConfigBot {
         return result;
     }
 
-    isDuringBetTime = () => isWithinBettingTime(this.gameData.remainingTime, this.definition.durations);
+    isDuringBetTime = () => isWithinBettingTimeInCurrentEventDetail(this.gameData);
 
     async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
         const currentAmount = currentBet ? currentBet[choice] : 0;
@@ -117,11 +116,7 @@ export default class Bot extends TableGameConfigBot {
     }
 
     private isBetChoiceValid(choice: string) {
-        const remainingTime = this.gameData.remainingTime;
-        const durations = this.definition.durations;
-        const isFirstHalf = isWithinFirstHalfBettingTime(remainingTime, durations);
-        const acceptedBetChoices = isFirstHalf ? PRE_MATCH_BET_CHOICES : LIVE_BET_CHOICES;
-        return Object.hasOwn(acceptedBetChoices, choice) && this.isOddOfBetChoiceValid(choice);
+        return this.isOddOfBetChoiceValid(choice);
     }
 
     private isOddOfBetChoiceValid(choice: string) {

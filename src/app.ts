@@ -14,7 +14,7 @@ const run = async () => {
         resultHelper.generateRawResultForHash,
     );
 
-    const gameData = new GameData(gameSettings.durations.wholeRound);
+    const gameData = new GameData(0);
 
     const container = new ContainerRegistry().register(appConfigs, definition, gameData);
 
