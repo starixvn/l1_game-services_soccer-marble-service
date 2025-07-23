@@ -1,24 +1,52 @@
 import { UnsettledRoundConsumer } from "../../../src/consumers";
 import { stub } from "jest-auto-stub";
 import GameData from "../../../src/game-data";
-import { decrypt } from "sc-game-base/src/core/helpers/crypto-helper";
+import SettleGameRoundConsumer from "../../../src/consumers/settle-game-round-consumer";
+import { EventProcessConsumer } from "../../../src/consumers/event-process-consumer";
 import { gameManagementApiClientFactory } from "../global-stubs";
-
-jest.mock("sc-game-base/src/core/helpers/crypto-helper", () => ({
-    decrypt: jest.fn().mockReturnValue('{"result":"result"}'),
-}));
 
 describe("UnSettleRoundConsumer", () => {
     let unSettleRoundConsumer: UnsettledRoundConsumer;
+    let mockSettleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
+    let mockEventProcessConsumer: jest.Mocked<EventProcessConsumer>;
     const gameData = stub<GameData>({
         roundId: 1,
-        result: undefined,
+        gameId: 123,
+        lastRoundId: 456,
     });
 
     beforeEach(() => {
+        mockSettleGameRoundConsumer = {
+            settleSpecificRound: jest.fn().mockResolvedValue(undefined),
+        } as unknown as jest.Mocked<SettleGameRoundConsumer>;
+
+        mockEventProcessConsumer = {
+            syncEventDetailForcingResultAvailable: jest.fn().mockResolvedValue({
+                eventID: 528280977864,
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+                scheduleStartTs: new Date(),
+                productCode: "SOCCER",
+                productTypeKey: "MATCH",
+                eventDetails: [{
+                    eventID: 528280977864,
+                    scheduleStartTs: new Date(),
+                    oddsAvailableTs: new Date(),
+                    resultsAvailableTs: new Date(),
+                    hasResults: true,
+                    playlist: "test-playlist",
+                    goalInfo: "test-goal-info",
+                    result: "1:0",
+                    markets: []
+                }]
+            }),
+        } as unknown as jest.Mocked<EventProcessConsumer>;
+
         unSettleRoundConsumer = new UnsettledRoundConsumer({
             gameData,
             gameManagementApiClientFactory,
+            settleGameRoundConsumer: mockSettleGameRoundConsumer,
+            eventProcessConsumer: mockEventProcessConsumer,
         } as any);
     });
 
@@ -26,51 +54,62 @@ describe("UnSettleRoundConsumer", () => {
         jest.clearAllMocks();
     });
 
-    describe("generateResult", () => {
-        describe("when lastResultRecord is not defined", () => {
-            it("should not set result", async () => {
-                // act
-                await unSettleRoundConsumer.generateResult({});
+    describe("proceed", () => {
+        describe("when gameId is not set", () => {
+            it("should return early without processing", async () => {
+                // Arrange
+                gameData.gameId = undefined;
 
-                // assert
-                expect(decrypt).not.toHaveBeenCalled();
-                expect(gameData.result).toBeUndefined();
+                // Act
+                await unSettleRoundConsumer.proceed();
+
+                // Assert
+                expect(mockEventProcessConsumer.syncEventDetailForcingResultAvailable).not.toHaveBeenCalled();
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).not.toHaveBeenCalled();
             });
         });
 
-        describe("when lastResultRecord is different roundId with current roundId", () => {
-            it("should not set result", async () => {
-                // arrange
-                gameData.roundId = 1;
-                gameData.lastResultRecord = {
-                    roundId: 2,
-                    encryptedResult: "encrypted",
-                };
-                // act
-                await unSettleRoundConsumer.generateResult({});
+        describe("when lastRoundId is not set", () => {
+            it("should return early without processing", async () => {
+                // Arrange
+                gameData.gameId = 123;
+                gameData.lastRoundId = undefined;
 
-                // assert
-                expect(decrypt).not.toHaveBeenCalled();
-                expect(gameData.result).toBeUndefined();
+                // Act
+                await unSettleRoundConsumer.proceed();
+
+                // Assert
+                expect(mockEventProcessConsumer.syncEventDetailForcingResultAvailable).not.toHaveBeenCalled();
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).not.toHaveBeenCalled();
             });
         });
 
-        describe("when lastResultRecord is valid", () => {
-            it("should set result with correct value", async () => {
-                // arrange
-                gameData.roundId = 1;
+        describe("when lastRoundId is set", () => {
+            it("should sync event detail and settle round when event is available", async () => {
+                // Arrange
+                gameData.gameId = 123;
+                gameData.lastRoundId = 456;
 
-                gameData.lastResultRecord = {
-                    roundId: 1,
-                    encryptedResult: "encrypted",
-                };
+                // Act
+                await unSettleRoundConsumer.proceed();
 
-                // act
-                await unSettleRoundConsumer.generateResult({});
+                // Assert
+                expect(mockEventProcessConsumer.syncEventDetailForcingResultAvailable).toHaveBeenCalledWith(528280977864);
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).toHaveBeenCalledWith(456);
+            });
 
-                // assert
-                expect(decrypt).toHaveBeenCalledWith("encrypted");
-                expect(gameData.result).toStrictEqual({ result: "result" });
+            it("should not settle round when event is not available", async () => {
+                // Arrange
+                gameData.gameId = 123;
+                gameData.lastRoundId = 456;
+                mockEventProcessConsumer.syncEventDetailForcingResultAvailable.mockResolvedValue(null);
+
+                // Act
+                await unSettleRoundConsumer.proceed();
+
+                // Assert
+                expect(mockEventProcessConsumer.syncEventDetailForcingResultAvailable).toHaveBeenCalledWith(528280977864);
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).not.toHaveBeenCalled();
             });
         });
     });

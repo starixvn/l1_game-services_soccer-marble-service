@@ -6,6 +6,8 @@ import GameStatusPublisher from "../../../src/publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../../../src/publishers/running-round-info-publisher";
 import CacheConsumer from "../../../src/consumers/cache-consumer";
 import { EventProcessConsumer } from "../../../src/consumers/event-process-consumer";
+import RoundIdConsumer from "../../../src/consumers/round-id-consumer";
+import { UnsettledRoundConsumer } from "../../../src/consumers";
 import { Table } from "sc-game-base";
 
 jest.mock("sc-game-base");
@@ -19,6 +21,8 @@ describe("GameCron", () => {
     let mockRunningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
     let mockCacheConsumer: jest.Mocked<CacheConsumer>;
     let mockEventProcessConsumer: jest.Mocked<EventProcessConsumer>;
+    let mockRoundIdConsumer: jest.Mocked<RoundIdConsumer>;
+    let mockUnsettledRoundConsumer: jest.Mocked<UnsettledRoundConsumer>;
     let mockContainer: {
         gameData: jest.Mocked<GameData>;
         definition: jest.Mocked<GameDefinition>;
@@ -27,6 +31,8 @@ describe("GameCron", () => {
         runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
         cacheConsumer: jest.Mocked<CacheConsumer>;
         eventProcessConsumer: jest.Mocked<EventProcessConsumer>;
+        roundIdConsumer: jest.Mocked<RoundIdConsumer>;
+        unsettledRoundConsumer: jest.Mocked<UnsettledRoundConsumer>;
     };
 
     beforeEach(() => {
@@ -77,8 +83,17 @@ describe("GameCron", () => {
 
         mockEventProcessConsumer = {
             proceed: jest.fn(),
-            updateAndGetRemainingTime: jest.fn()
+            updateAndGetRemainingTime: jest.fn(),
+            init: jest.fn()
         } as unknown as jest.Mocked<EventProcessConsumer>;
+
+        mockRoundIdConsumer = {
+            queryLastRound: jest.fn()
+        } as unknown as jest.Mocked<RoundIdConsumer>;
+
+        mockUnsettledRoundConsumer = {
+            proceed: jest.fn()
+        } as unknown as jest.Mocked<UnsettledRoundConsumer>;
 
         mockContainer = {
             gameData: mockGameData,
@@ -87,7 +102,9 @@ describe("GameCron", () => {
             gameStatusPublisher: mockGameStatusPublisher,
             runningRoundInfoPublisher: mockRunningRoundInfoPublisher,
             cacheConsumer: mockCacheConsumer,
-            eventProcessConsumer: mockEventProcessConsumer
+            eventProcessConsumer: mockEventProcessConsumer,
+            roundIdConsumer: mockRoundIdConsumer,
+            unsettledRoundConsumer: mockUnsettledRoundConsumer
         };
 
         // Mock the parent class constructor to properly set up properties
@@ -97,8 +114,12 @@ describe("GameCron", () => {
             this.appConfigs = container.appConfigs;
             this.gameStatusPublisher = container.gameStatusPublisher;
             this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
+            this.roundIdConsumer = container.roundIdConsumer;
+            this.unsettledRoundConsumer = container.unsettledRoundConsumer;
             this.startCron = jest.fn();
             this.checkGameStatus = jest.fn();
+            this.getSettingForNewRound = jest.fn();
+            this.updateExchangeRates = jest.fn();
             return this;
         });
 
@@ -118,15 +139,24 @@ describe("GameCron", () => {
     });
 
     describe("start", () => {
-        it("should start the cron", async () => {
+        it("should initialize event process consumer and start the cron", async () => {
             // Arrange
             const mockStartCron = jest.fn();
+            const mockGetSettingForNewRound = jest.fn();
+            const mockUpdateExchangeRates = jest.fn();
             gameCron.startCron = mockStartCron;
+            gameCron.getSettingForNewRound = mockGetSettingForNewRound;
+            gameCron.updateExchangeRates = mockUpdateExchangeRates;
 
             // Act
             await gameCron.start();
 
             // Assert
+            expect(mockEventProcessConsumer.init).toHaveBeenCalledTimes(1);
+            expect(mockRoundIdConsumer.queryLastRound).toHaveBeenCalledTimes(1);
+            expect(mockGetSettingForNewRound).toHaveBeenCalledTimes(1);
+            expect(mockUpdateExchangeRates).toHaveBeenCalledTimes(1);
+            expect(mockUnsettledRoundConsumer.proceed).toHaveBeenCalledTimes(1);
             expect(mockStartCron).toHaveBeenCalledTimes(1);
         });
     });
@@ -144,7 +174,6 @@ describe("GameCron", () => {
 
                 // Assert
                 expect(mockCheckGameStatus).toHaveBeenCalledTimes(1);
-                expect(mockGameData.gameId).toBe(123);
                 expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
                 expect(mockEventProcessConsumer.updateAndGetRemainingTime).toHaveBeenCalledTimes(1);
                 expect(gameCron.eventPullCounter).toBe(1);
@@ -181,7 +210,7 @@ describe("GameCron", () => {
                 expect(gameCron.eventPullCounter).toBe(1);
             });
 
-            it("should reset counter to 0 after interval is reached", async () => {
+            it("should reset counter to 1 after interval is reached", async () => {
                 // Arrange
                 gameCron.eventPullCounter = 60;
                 const mockCheckGameStatus = jest.fn();
@@ -249,30 +278,19 @@ describe("GameCron", () => {
             });
         });
 
-        describe("game data updates", () => {
-            it("should update gameId when interval is reached", async () => {
+        describe("remaining time logging", () => {
+            it("should log remaining time", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 60;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
-
-                // Act
-                await gameCron.proceed();
-
-                // Assert
-                expect(mockGameData.gameId).toBe(123);
-            });
-
-            it("should not update gameId when interval is not reached", async () => {
-                // Arrange
+                const consoleSpy = jest.spyOn(console, "log").mockImplementation();
                 gameCron.eventPullCounter = 30;
-                const originalGameId = mockGameData.gameId;
+                mockEventProcessConsumer.updateAndGetRemainingTime.mockReturnValue(45);
 
                 // Act
                 await gameCron.proceed();
 
                 // Assert
-                expect(mockGameData.gameId).toBe(originalGameId);
+                expect(consoleSpy).toHaveBeenCalledWith("remainingTime", 45);
+                consoleSpy.mockRestore();
             });
         });
     });

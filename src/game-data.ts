@@ -23,6 +23,7 @@ export default class GameData extends TableGameData {
     voiceConfig?: VoiceDurationConfig;
     oddFeedAccessToken?: string;
     gameId?: number;
+    lastRoundId?: number;
 }
 
 export type RealPlayer = {

@@ -1,14 +1,29 @@
 import { UnsettledRoundConsumer as UnsettledRoundConsumerBase } from "sc-game-base/src/core/event-consumers";
 import GameData from "../game-data";
-import { decrypt } from "sc-game-base/src/core/helpers/crypto-helper";
+import SettleGameRoundConsumer from "./settle-game-round-consumer";
+import { EventProcessConsumer } from "./event-process-consumer";
+import { createEventId } from "../helpers/eventid";
+
 export default class UnsettledRoundConsumer extends UnsettledRoundConsumerBase {
+    declare settleGameRoundConsumer: SettleGameRoundConsumer;
     declare gameData: GameData;
+    declare eventProcessConsumer: EventProcessConsumer;
 
-    override async generateResult(_unsettledBets: any) {
-        const { lastResultRecord } = this.gameData;
+    constructor(container: any) {
+        super(container);
+        this.eventProcessConsumer = container.eventProcessConsumer;
+    }
 
-        if (lastResultRecord && lastResultRecord.roundId === this.gameData.roundId) {
-            this.gameData.result = JSON.parse(decrypt(lastResultRecord.encryptedResult));
+    async proceed(): Promise<void> {
+        if (!this.gameData.gameId) {
+            return;
+        }
+        if (this.gameData.lastRoundId) {
+            const lastEventId = createEventId(this.gameData.gameId, this.gameData.lastRoundId);
+            const lastEvent = await this.eventProcessConsumer.syncEventDetailForcingResultAvailable(lastEventId);
+            if (lastEvent) {
+                await this.settleGameRoundConsumer.settleSpecificRound(this.gameData.lastRoundId);
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 import { EventProcessConsumer, ProcessingEventContext } from "../../../src/consumers/event-process-consumer";
 import { SchedulerConsumer } from "../../../src/consumers/scheduler-consumer";
-import { OddFeedConsumer, ScheduleResponseItem, EventResponse, EventDetail, MarketSelection } from "../../../src/consumers/odd-feed-consumer";
+import { OddFeedConsumer, ScheduleResponseItem, EventResponse, EventDetail } from "../../../src/consumers/odd-feed-consumer";
 import GameData from "../../../src/game-data";
 import { GameStatusPublisher, RunningRoundInfoPublisher } from "../../../src/publishers";
 import * as eventIdHelper from "../../../src/helpers/eventid";
@@ -169,6 +169,23 @@ describe("EventProcessConsumer", () => {
                 return new Date(date.getTime() + offset);
             }
             return date;
+        });
+    });
+
+    describe("init", () => {
+        it("should initialize game data with gameId and oddFeedGames structure", async () => {
+            // Arrange
+            mockGameData.gameId = undefined;
+            mockGameData.oddFeedGames = {};
+
+            // Act
+            await eventProcessConsumer.init();
+
+            // Assert
+            expect(mockGameData.gameId).toBe(123);
+            expect(mockGameData.oddFeedGames[123]).toEqual({
+                rounds: {}
+            });
         });
     });
 

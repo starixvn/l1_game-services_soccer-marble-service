@@ -33,6 +33,13 @@ export class EventProcessConsumer {
         this.settleGameRoundConsumer = container.settleGameRoundConsumer;
     }
 
+    async init() {
+        this.gameData.gameId = this.gameId;
+        this.gameData.oddFeedGames[this.gameId] = {
+            rounds: {},
+        };
+    }
+
     public async proceed(): Promise<void> {
         if (this.gameData.disabled) {
             return;
@@ -59,11 +66,6 @@ export class EventProcessConsumer {
         }
         const fullEvent = await this.oddFeedConsumer.getEvent({ eventID: event.eventID });
 
-        if (!this.gameData.oddFeedGames[gameId]) {
-            this.gameData.oddFeedGames[gameId] = {
-                rounds: {},
-            };
-        }
         this.gameData.oddFeedGames[gameId].rounds[roundId] = fullEvent;
         
         const eventStartTs = getEventOffset(new Date(event.scheduleStartTs));
@@ -248,7 +250,7 @@ export class EventProcessConsumer {
         return processedEvent;
     }
 
-    private async syncEventDetailForcingResultAvailable(eventID: number, { maxAttempts = 3, delay = 100 }: { maxAttempts?: number, delay?: number } = {}) {
+    async syncEventDetailForcingResultAvailable(eventID: number, { maxAttempts = 1, delay = 100 }: { maxAttempts?: number, delay?: number } = {}) {
         let attempt = maxAttempts;
         while (attempt > 0) {
             const event = await this.syncEventDetail(eventID);
