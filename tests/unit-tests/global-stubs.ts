@@ -21,7 +21,6 @@ import {
 import GameManagementApiClientFactory from "sc-game-base/src/core/game-management-api";
 import Bot from "../../src/crons/bot";
 import { IRound } from "../../src/models/rounds";
-import { TournamentConsumer } from "../../src/consumers";
 import CacheConsumer from "../../src/consumers/cache-consumer";
 jest.mock("sc-game-management-client");
 
@@ -55,17 +54,6 @@ const resultsRepository = {
     exec: jest.fn(),
 } as unknown as mongoose.Model<any>;
 
-const tournamentRepository = {
-    findById: jest.fn().mockReturnThis(),
-    findOne: jest.fn().mockReturnThis(),
-    findOneAndUpdate: jest.fn().mockReturnThis(),
-    updateOne: jest.fn(),
-    sort: jest.fn().mockReturnThis(),
-    create: jest.fn(),
-    exec: jest.fn(),
-    lean: jest.fn().mockReturnThis(),
-} as unknown as mongoose.Model<any>;
-
 const endGame = jest.fn();
 const placeBet = jest.fn();
 const gameManagementApiClientFactory = new GameManagementApiClientFactory({});
@@ -74,7 +62,6 @@ const roundQuery = stub<Core.QueryApis.RoundQuery>();
 const publisher = stub<BaseEventPublisher>();
 
 const bot = stub<Bot>();
-const tournamentConsumer: TournamentConsumer = stub<TournamentConsumer>();
 const cacheConsumer: CacheConsumer = stub<CacheConsumer>();
 const settleGameConsumer: SettleGameRoundConsumer = stub<SettleGameRoundConsumer>();
 const gameStatusPublisher: GameStatusPublisher = stub<GameStatusPublisher>();
@@ -116,9 +103,7 @@ export {
     roundsRepository,
     runningRoundInfoPublisher,
     settleGameConsumer,
-    tournamentConsumer,
     tempBetsRepository,
-    tournamentRepository,
     unsettledRoundConsumer,
     userBetResultPublisher,
 };

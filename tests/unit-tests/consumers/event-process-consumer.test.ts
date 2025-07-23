@@ -5,6 +5,7 @@ import GameData from "../../../src/game-data";
 import { GameStatusPublisher, RunningRoundInfoPublisher } from "../../../src/publishers";
 import * as eventIdHelper from "../../../src/helpers/eventid";
 import * as gameTimingHelper from "../../../src/helpers/game-timing";
+import SettleGameRoundConsumer from "../../../src/consumers/settle-game-round-consumer";
 
 jest.mock("../../../src/helpers/eventid");
 jest.mock("../../../src/helpers/game-timing");
@@ -20,6 +21,7 @@ describe("EventProcessConsumer", () => {
     let mockOddFeedConsumer: jest.Mocked<OddFeedConsumer>;
     let mockGameStatusPublisher: jest.Mocked<GameStatusPublisher>;
     let mockRunningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
+    let mockSettleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
     let mockContainer: {
         gameData: jest.Mocked<GameData>;
         schedulerConsumer: jest.Mocked<SchedulerConsumer>;
@@ -31,6 +33,7 @@ describe("EventProcessConsumer", () => {
         };
         gameStatusPublisher: jest.Mocked<GameStatusPublisher>;
         runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
+        settleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
     };
 
     const mockScheduleResponseItem: ScheduleResponseItem = {
@@ -47,10 +50,10 @@ describe("EventProcessConsumer", () => {
         scheduleStartTs: new Date(Date.now() + 60000),
         oddsAvailableTs: new Date(Date.now() + 30000),
         resultsAvailableTs: new Date(Date.now() + 120000),
-        hasResult: false,
+        hasResults: false,
         playlist: "test-playlist",
         goalInfo: "test-goal-info",
-        result: "test-result",
+        result: "1:0",
         markets: [
             {
                 marketID: 1,
@@ -60,6 +63,8 @@ describe("EventProcessConsumer", () => {
                     { 
                         betChoice: "home", 
                         price: 2.0,
+                        point: 1.5,
+                        settlementStatus: "active",
                         selectionID: 1,
                         selectionNameLongKey: "home_team",
                         name: "Home Team"
@@ -67,6 +72,8 @@ describe("EventProcessConsumer", () => {
                     { 
                         betChoice: "away", 
                         price: 3.0,
+                        point: 2.0,
+                        settlementStatus: "active",
                         selectionID: 2,
                         selectionNameLongKey: "away_team",
                         name: "Away Team"
@@ -74,6 +81,8 @@ describe("EventProcessConsumer", () => {
                     { 
                         betChoice: "draw", 
                         price: 2.5,
+                        point: 1.8,
+                        settlementStatus: "active",
                         selectionID: 3,
                         selectionNameLongKey: "draw",
                         name: "Draw"
@@ -107,7 +116,8 @@ describe("EventProcessConsumer", () => {
             },
             roundId: 0,
             remainingTime: 0,
-            dynamicOdds: {}
+            dynamicOdds: {},
+            betChoicePoints: {}
         } as Partial<GameData> as GameData;
 
         mockSchedulerConsumer = {
@@ -122,12 +132,18 @@ describe("EventProcessConsumer", () => {
         mockGameStatusPublisher = {
             publishStartPlacingBetStatus: jest.fn(),
             publishEndPlacingBetStatus: jest.fn(),
-            publishOdds: jest.fn()
+            publishOdds: jest.fn(),
+            publishMatch: jest.fn(),
+            publishToAllUsers: jest.fn()
         } as unknown as jest.Mocked<GameStatusPublisher>;
 
         mockRunningRoundInfoPublisher = {
             publishToAllUsers: jest.fn()
         } as unknown as jest.Mocked<RunningRoundInfoPublisher>;
+
+        mockSettleGameRoundConsumer = {
+            settleSpecificRound: jest.fn()
+        } as unknown as jest.Mocked<SettleGameRoundConsumer>;
 
         mockContainer = {
             gameData: mockGameData,
@@ -139,7 +155,8 @@ describe("EventProcessConsumer", () => {
                 }
             },
             gameStatusPublisher: mockGameStatusPublisher,
-            runningRoundInfoPublisher: mockRunningRoundInfoPublisher
+            runningRoundInfoPublisher: mockRunningRoundInfoPublisher,
+            settleGameRoundConsumer: mockSettleGameRoundConsumer
         };
 
         eventProcessConsumer = new EventProcessConsumer(mockContainer);
@@ -157,7 +174,7 @@ describe("EventProcessConsumer", () => {
 
     describe("proceed", () => {
         describe("game disabled", () => {
-            it("should do nothing", async () => {
+            it("should do nothing when game is disabled", async () => {
                 // Arrange
                 mockGameData.disabled = true;
 
@@ -170,7 +187,7 @@ describe("EventProcessConsumer", () => {
         });
 
         describe("game enabled", () => {
-            it("should proceed each event in pulled schedule", async () => {
+            it("should process each event in pulled schedule", async () => {
                 // Arrange
                 const mockSchedule = [mockScheduleResponseItem];
                 mockOddFeedConsumer.getSchedule.mockResolvedValue(mockSchedule);
@@ -187,7 +204,7 @@ describe("EventProcessConsumer", () => {
     });
 
     describe("processEvent", () => {
-        describe("no game id", () => {
+        describe("no game id match", () => {
             it("should return early when game id does not match", async () => {
                 // Arrange
                 mockedEventIdHelper.extractGameId.mockReturnValue(999);
@@ -213,7 +230,7 @@ describe("EventProcessConsumer", () => {
             });
         });
 
-        describe("event processed", () => {
+        describe("event already processed", () => {
             it("should return early when event is already processed", async () => {
                 // Arrange
                 mockGameData.oddFeedGames[123] = {
@@ -315,6 +332,7 @@ describe("EventProcessConsumer", () => {
             expect(mockGameData.oddFeedGames[123].currentEventDetailIndex).toBe(0);
             expect(mockGameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalledTimes(1);
             expect(mockGameStatusPublisher.publishOdds).toHaveBeenCalledTimes(1);
+            expect(mockGameStatusPublisher.publishMatch).toHaveBeenCalledWith({ home: "Team A", away: "Team B" });
         });
     });
 
@@ -379,7 +397,7 @@ describe("EventProcessConsumer", () => {
 
     describe("onMatchResultAvailable", () => {
         describe("not last event detail", () => {
-            it("should sync event detail but not delete round", async () => {
+            it("should return early without syncing event detail", async () => {
                 // Arrange
                 const context: ProcessingEventContext = {
                     fullEvent: { ...mockEventResponse, eventDetails: [mockEventDetail, mockEventDetail] },
@@ -387,22 +405,18 @@ describe("EventProcessConsumer", () => {
                     index: 0,
                     time: new Date()
                 };
-                mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-                mockGameData.oddFeedGames[123] = {
-                    rounds: { 456: mockEventResponse }
-                };
 
                 // Act
                 await eventProcessConsumer.onMatchResultAvailable(context);
 
                 // Assert
-                expect(mockOddFeedConsumer.getEvent).toHaveBeenCalledWith({ eventID: 12345 });
-                expect(mockGameData.oddFeedGames[123].rounds[456]).toBeDefined();
+                expect(mockOddFeedConsumer.getEvent).not.toHaveBeenCalled();
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).not.toHaveBeenCalled();
             });
         });
 
-        describe("last event detail", () => {
-            it("should sync event detail and delete round", async () => {
+        describe("last event detail without results", () => {
+            it("should sync event detail but not settle when no results", async () => {
                 // Arrange
                 const context: ProcessingEventContext = {
                     fullEvent: mockEventResponse,
@@ -410,18 +424,42 @@ describe("EventProcessConsumer", () => {
                     index: 0,
                     time: new Date()
                 };
-                mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+                const eventWithoutResults = { ...mockEventResponse, eventDetails: [{ ...mockEventDetail, hasResults: false }] };
+                mockOddFeedConsumer.getEvent.mockResolvedValue(eventWithoutResults);
                 mockGameData.oddFeedGames[123] = {
-                    rounds: { 456: mockEventResponse }
+                    rounds: { 456: eventWithoutResults }
                 };
-                mockEventResponse.eventDetails = [mockEventDetail];
 
                 // Act
                 await eventProcessConsumer.onMatchResultAvailable(context);
 
                 // Assert
                 expect(mockOddFeedConsumer.getEvent).toHaveBeenCalledWith({ eventID: 12345 });
-                expect(mockGameData.oddFeedGames[123].rounds[456]).toBeUndefined();
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).not.toHaveBeenCalled();
+            });
+        });
+
+        describe("last event detail with results", () => {
+            it("should sync event detail and settle round when results available", async () => {
+                // Arrange
+                const context: ProcessingEventContext = {
+                    fullEvent: mockEventResponse,
+                    eventDetail: mockEventDetail,
+                    index: 0,
+                    time: new Date()
+                };
+                const eventWithResults = { ...mockEventResponse, eventDetails: [{ ...mockEventDetail, hasResults: true }] };
+                mockOddFeedConsumer.getEvent.mockResolvedValue(eventWithResults);
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventWithResults }
+                };
+
+                // Act
+                await eventProcessConsumer.onMatchResultAvailable(context);
+
+                // Assert
+                expect(mockOddFeedConsumer.getEvent).toHaveBeenCalledWith({ eventID: 12345 });
+                expect(mockSettleGameRoundConsumer.settleSpecificRound).toHaveBeenCalledWith(456);
             });
         });
     });
@@ -488,6 +526,44 @@ describe("EventProcessConsumer", () => {
                         timeline: mockEventDetail.goalInfo
                     }
                 });
+            });
+        });
+    });
+
+    describe("bet choice points and odds", () => {
+        it("should save odds and points to game data and publish them", async () => {
+            // Arrange
+            const context: ProcessingEventContext = {
+                fullEvent: mockEventResponse,
+                eventDetail: mockEventDetail,
+                index: 0,
+                time: new Date()
+            };
+            mockGameData.oddFeedGames[123].currentRound = 456;
+            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
+            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
+            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            expect(mockGameData.dynamicOdds).toEqual({
+                "0:home": 2.0,
+                "0:away": 3.0,
+                "0:draw": 2.5
+            });
+            expect(mockGameData.betChoicePoints).toEqual({
+                "0:home": 1.5,
+                "0:away": 2.0,
+                "0:draw": 1.8
+            });
+            expect(mockGameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
+                points: {
+                    "0:home": 1.5,
+                    "0:away": 2.0,
+                    "0:draw": 1.8
+                }
             });
         });
     });

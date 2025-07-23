@@ -1,7 +1,6 @@
-import { ODDS_TYPE } from "./constants";
 
 export type OddsType = {
-    [key in keyof typeof ODDS_TYPE]?: number;
+    [key: string]: number;
 };
 
 export type HalfConfigType = {

@@ -5,6 +5,7 @@ import { extractGameId, extractRoundId, getCurrentMatch } from "../helpers/event
 import { GameStatusPublisher, RunningRoundInfoPublisher } from "../publishers";
 import { getEventOffset } from "../helpers/game-timing";
 import { LOCKBET_OFFSET } from "../constants";
+import SettleGameRoundConsumer from "./settle-game-round-consumer";
 
 export type ProcessingEventContext = {
     fullEvent: EventResponse;
@@ -21,7 +22,7 @@ export class EventProcessConsumer {
     oddFeedConsumer: OddFeedConsumer;
     gameId: number;
     runningRoundInfoPublisher: RunningRoundInfoPublisher;
-
+    settleGameRoundConsumer: SettleGameRoundConsumer;
     constructor(container: any) {
         this.gameData = container.gameData;
         this.schedulerConsumer = container.schedulerConsumer;
@@ -29,6 +30,7 @@ export class EventProcessConsumer {
         this.gameId = container.appConfigs.oddFeed.gameId;
         this.gameStatusPublisher = container.gameStatusPublisher;
         this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
+        this.settleGameRoundConsumer = container.settleGameRoundConsumer;
     }
 
     public async proceed(): Promise<void> {
@@ -42,7 +44,6 @@ export class EventProcessConsumer {
     }
 
     async processEvent(event: ScheduleResponseItem) {
-        console.log("--- PROCESS EVENT --- ", event.eventID);
         const gameId = extractGameId(event.eventID);
         if (gameId !== this.gameId) {
             return;
@@ -51,13 +52,11 @@ export class EventProcessConsumer {
         const roundId = extractRoundId(event.eventID);
  
         if (new Date(event.scheduleStartTs) < new Date()) {
-            console.log("Skipping event ", event.eventID, " because it is in the past");
             return;
         }
         if (this.gameData.oddFeedGames[gameId]?.rounds[roundId]) {
             return;
         }
-        console.log("Processing event ", event.eventID, "Game ", gameId, "Round ", roundId);
         const fullEvent = await this.oddFeedConsumer.getEvent({ eventID: event.eventID });
 
         if (!this.gameData.oddFeedGames[gameId]) {
@@ -109,46 +108,38 @@ export class EventProcessConsumer {
     }
 
     async onScheduleStart(context: ProcessingEventContext) {
-        console.log("onScheduleStart ", context.index);
         this.gameData.roundId = extractRoundId(context.fullEvent.eventID);
         this.gameData.oddFeedGames[this.gameId].currentRound = extractRoundId(context.fullEvent.eventID);
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
-
         await this.syncEventDetail(context.fullEvent.eventID);
-        this.logCurrentRoundAndEventDetailIndex();
-        this.saveOddsToGameData();
-        this.gameStatusPublisher.publishStartPlacingBetStatus();
-        this.publishOdds();
+        this.publishMatch(context.fullEvent);
+        this.publishBetChoiceReady();
     }
 
     async onOddAvailable(context: ProcessingEventContext) {
-        console.log("onOddAvailable ", context.index);
         if (context.index == 0) return;
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         
         await this.syncEventDetail(context.fullEvent.eventID);
-        this.logCurrentRoundAndEventDetailIndex();
-        this.saveOddsToGameData();
-        this.gameStatusPublisher.publishStartPlacingBetStatus();
-        this.publishOdds();
+        this.publishBetChoiceReady();
     }
 
     async onLockBet(context: ProcessingEventContext) {
-        this.logCurrentRoundAndEventDetailIndex();
         this.gameStatusPublisher.publishEndPlacingBetStatus()
     }
 
     async onMatchResultAvailable(context: ProcessingEventContext) {
-        await this.syncEventDetail(context.eventDetail.eventID);
         if (context.index !== context.fullEvent.eventDetails.length - 1) {
             return;
         }
-        const roundId = extractRoundId(context.fullEvent.eventID);
-        delete this.gameData.oddFeedGames[this.gameId].rounds[roundId];
+        const event = await this.syncEventDetailForcingResultAvailable(context.eventDetail.eventID);
+        if (!event?.eventDetails[context.index]?.hasResults) {
+            return;
+        }
+        await this.settleGameRoundConsumer.settleSpecificRound(extractRoundId(event.eventID));
     }
 
     async onLiveStream(context: ProcessingEventContext) {
-        this.logCurrentRoundAndEventDetailIndex();
         const currentEventDetail = this.getCurrentMatch();
         if (!currentEventDetail) {
             return;
@@ -168,6 +159,13 @@ export class EventProcessConsumer {
         });
     }
 
+    private publishBetChoiceReady() {
+        this.saveOddsAndPointsToGameData();
+        this.gameStatusPublisher.publishStartPlacingBetStatus();
+        this.publishOdds();
+        this.publishBetChoicePoints();
+    }
+ 
     private getCurrentMatch() {
         return getCurrentMatch(this.gameData, this.gameId);
     }
@@ -180,7 +178,7 @@ export class EventProcessConsumer {
         return this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId] ?? null;
     }
 
-    private saveOddsToGameData() {
+    private saveOddsAndPointsToGameData() {
         const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
         if (!currentRoundId) {
             return;
@@ -200,7 +198,7 @@ export class EventProcessConsumer {
         const selections: Record<string, MarketSelection> = {}
         for (const market of currentEventDetail.markets) {
             for (const selection of market.selections) {
-                const selectionUniqueKey = selection.betChoice;
+                const selectionUniqueKey = `${currentEventDetailIndex}:${selection.betChoice}`;
                 selections[selectionUniqueKey] = selection;
             }
         }
@@ -210,26 +208,57 @@ export class EventProcessConsumer {
             acc[key] = value.price ?? 0;
             return acc;
         }, {} as Record<string, number>);
+
+        const points = Object.entries(selections)
+        .reduce((acc, [key, value]) => {
+            acc[key] = value.point ?? 0;
+            return acc;
+        }, {} as Record<string, number>);
+
         this.gameData.dynamicOdds = odds;
+        this.gameData.betChoicePoints = points;
     }
 
     private publishOdds() {
         const allOdds = this.gameData.dynamicOdds;
-        const currentEventDetailIndex = this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex;
         if (!allOdds) {
             return;
         }
+        this.gameStatusPublisher.publishOdds(allOdds);
+    }
 
-        if (currentEventDetailIndex === undefined) {
+    private publishBetChoicePoints() {
+        const allBetChoicePoints = this.gameData.betChoicePoints;
+        if (!allBetChoicePoints) {
             return;
         }
-        this.gameStatusPublisher.publishOdds(allOdds);
+        this.gameStatusPublisher.publishToAllUsers({ points: allBetChoicePoints });
+    }
+
+    private publishMatch(event: EventResponse) {
+        const home = event.eventNameAKey;
+        const away = event.eventNameBKey;
+        this.gameStatusPublisher.publishMatch({ home, away });
     }
 
     private async syncEventDetail(eventID: number) {
         const event = await this.oddFeedConsumer.getEvent({ eventID });
         const processedEvent = this.processEventDetails(event);
         this.gameData.oddFeedGames[this.gameId].rounds[extractRoundId(event.eventID)] = processedEvent;
+        return processedEvent;
+    }
+
+    private async syncEventDetailForcingResultAvailable(eventID: number, { maxAttempts = 3, delay = 100 }: { maxAttempts?: number, delay?: number } = {}) {
+        let attempt = maxAttempts;
+        while (attempt > 0) {
+            const event = await this.syncEventDetail(eventID);
+            if (event.eventDetails[event.eventDetails.length - 1].hasResults) {
+                return event;
+            }
+            attempt--;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        return null;
     }
 
     private processEventDetails(event: EventResponse) {
@@ -240,15 +269,6 @@ export class EventProcessConsumer {
             processedEvent.eventDetails[index] = procesedEventDetail;
         });
         return processedEvent;
-    }
-
-    private logCurrentRoundAndEventDetailIndex() {
-        const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
-        if (!currentRoundId) {
-            return;
-        }
-        console.log("current round ", currentRoundId);
-        console.log("current event detail index ", this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex);
     }
 
     private processEventDetailWithTimingOffset(eventDetail: EventDetail) {

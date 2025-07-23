@@ -29,61 +29,75 @@ describe("InGameConsumer", () => {
     });
 
     it("should inherit from TableInGameConsumer", () => {
+        // Assert
         expect(consumer instanceof TableInGameConsumer).toBeTruthy();
     });
 
     describe("consume", () => {
         it("should call super.consume and publishOddsToPlayer", async () => {
-            // arrange
+            // Arrange
             const realPlayer = { UID: "player123" };
             const superConsumeSpy = jest.spyOn(TableInGameConsumer.prototype, "consume").mockResolvedValue();
             const publishOddsToPlayerSpy = jest.spyOn(consumer, "publishOddsToPlayer").mockReturnValue(undefined);
 
-            // act
+            // Act
             await consumer.consume(realPlayer);
 
-            // assert
+            // Assert
             expect(superConsumeSpy).toHaveBeenCalledWith(realPlayer);
             expect(publishOddsToPlayerSpy).toHaveBeenCalledWith("player123");
         });
     });
 
     describe("buildPayload", () => {
-        it("should build payload with userBetPercentage and video result", async () => {
-            // arrange
+        it("should build payload with userBetPercentage", async () => {
+            // Arrange
             const realPlayer = { id: "player1" };
             const basePayload = { some: "payload" };
             const playerBetCount = { home: ["111", "113"], away: ["112"] };
             const userBetPercentage = { home: 66, away: 34, draw: 0 };
-            const videoResult = {
-                firstHalfVideo: "video1.mp4",
-                secondHalfVideo: "video2.mp4",
-                firstHalfTimeline: [],
-                secondHalfTimeline: [],
-                firstHalf: "AH",
-                secondHalf: "HA",
-            };
 
-            gameData.publishedTournament = {} as any;
-            gameData.liveStreamServer = "server1";
             gameData.playerBetCount = playerBetCount;
 
             jest.spyOn(TableInGameConsumer.prototype, "buildPayload").mockResolvedValue(basePayload);
-            jest.spyOn(consumer, "getCurrentVideoResult").mockReturnValue(videoResult as any);
             jest.spyOn(helper, "getUserBetPercentage").mockReturnValue(userBetPercentage);
 
-            // act
+            // Act
             const result = await consumer.buildPayload(realPlayer);
 
-            // assert
+            // Assert
             expect(helper.getUserBetPercentage).toHaveBeenCalledWith(playerBetCount);
             expect(result).toEqual({
                 ...basePayload,
                 userBetPercentage,
-                videoResult,
-                liveStreamServer: "server1",
-                tournament: {},
             });
+        });
+    });
+
+    describe("publishOddsToPlayer", () => {
+        it("should publish odds to user", () => {
+            // Arrange
+            const UID = "player123";
+            const dynamicOdds = { home: 2.0, away: 1.8, draw: 3.2 };
+            gameData.dynamicOdds = dynamicOdds;
+
+            // Act
+            consumer.publishOddsToPlayer(UID);
+
+            // Assert
+            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { odds: dynamicOdds });
+        });
+
+        it("should handle undefined dynamicOdds", () => {
+            // Arrange
+            const UID = "player123";
+            gameData.dynamicOdds = undefined;
+
+            // Act
+            consumer.publishOddsToPlayer(UID);
+
+            // Assert
+            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { odds: undefined });
         });
     });
 });

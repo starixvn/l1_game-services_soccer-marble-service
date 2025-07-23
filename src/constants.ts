@@ -50,7 +50,7 @@ export const OVER_UNDER_VALUE = 4.5;
 
 export const IS_DEV_ENV = process.env.NODE_ENV === "development";
 
-export const GAME_NAME = "marblefootball2";
+export const GAME_NAME = "soccermarble";
 
 export const MODEL_NAME_PREFIX = IS_DEV_ENV ? `${GAME_NAME}_dev` : `${GAME_NAME}`;
 

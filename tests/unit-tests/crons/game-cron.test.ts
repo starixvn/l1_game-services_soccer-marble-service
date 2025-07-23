@@ -2,7 +2,6 @@ import GameCron from "../../../src/crons/game-cron";
 import GameData from "../../../src/game-data";
 import GameDefinition from "../../../src/game-definition";
 import AppConfigs from "../../../src/app-configs";
-import { TournamentConsumer } from "../../../src/consumers";
 import GameStatusPublisher from "../../../src/publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../../../src/publishers/running-round-info-publisher";
 import CacheConsumer from "../../../src/consumers/cache-consumer";
@@ -18,7 +17,6 @@ describe("GameCron", () => {
     let mockAppConfigs: jest.Mocked<typeof AppConfigs>;
     let mockGameStatusPublisher: jest.Mocked<GameStatusPublisher>;
     let mockRunningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
-    let mockTournamentConsumer: jest.Mocked<TournamentConsumer>;
     let mockCacheConsumer: jest.Mocked<CacheConsumer>;
     let mockEventProcessConsumer: jest.Mocked<EventProcessConsumer>;
     let mockContainer: {
@@ -27,7 +25,6 @@ describe("GameCron", () => {
         appConfigs: jest.Mocked<typeof AppConfigs>;
         gameStatusPublisher: jest.Mocked<GameStatusPublisher>;
         runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
-        tournamentConsumer: jest.Mocked<TournamentConsumer>;
         cacheConsumer: jest.Mocked<CacheConsumer>;
         eventProcessConsumer: jest.Mocked<EventProcessConsumer>;
     };
@@ -74,16 +71,6 @@ describe("GameCron", () => {
             publishApiError: jest.fn()
         } as unknown as jest.Mocked<RunningRoundInfoPublisher>;
 
-        mockTournamentConsumer = {
-            getCurrentTournament: jest.fn(),
-            getLastTournament: jest.fn(),
-            getTournamentConfigs: jest.fn(),
-            updateMatchResult: jest.fn(),
-            updateNext: jest.fn(),
-            generate: jest.fn(),
-            isHomeUpcoming: jest.fn()
-        } as unknown as jest.Mocked<TournamentConsumer>;
-
         mockCacheConsumer = {
             proceed: jest.fn()
         } as unknown as jest.Mocked<CacheConsumer>;
@@ -99,7 +86,6 @@ describe("GameCron", () => {
             appConfigs: mockAppConfigs,
             gameStatusPublisher: mockGameStatusPublisher,
             runningRoundInfoPublisher: mockRunningRoundInfoPublisher,
-            tournamentConsumer: mockTournamentConsumer,
             cacheConsumer: mockCacheConsumer,
             eventProcessConsumer: mockEventProcessConsumer
         };
@@ -125,7 +111,6 @@ describe("GameCron", () => {
 
             // Assert
             expect(gameCron.gameData.liveStreamServer).toBe("test-server");
-            expect(gameCron.tournamentConsumer).toBe(mockTournamentConsumer);
             expect(gameCron.cacheConsumer).toBe(mockCacheConsumer);
             expect(gameCron.eventProcessConsumer).toBe(mockEventProcessConsumer);
             expect(gameCron.eventPullCounter).toBe(60);

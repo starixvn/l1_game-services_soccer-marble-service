@@ -71,7 +71,7 @@ describe("Game Timing Helpers", () => {
                 scheduleStartTs: new Date("2023-01-01T10:00:00Z"),
                 oddsAvailableTs: new Date("2023-01-01T09:55:00Z"),
                 resultsAvailableTs: new Date("2023-01-01T10:30:00Z"),
-                hasResult: false,
+                hasResults: false,
                 playlist: "test-playlist",
                 goalInfo: "test-goal-info",
                 result: "test-result",

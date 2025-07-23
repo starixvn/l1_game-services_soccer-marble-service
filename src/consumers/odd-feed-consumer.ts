@@ -32,7 +32,7 @@ export interface EventDetail {
     oddsAvailableTs: Date;
     scheduleStartTs: Date;
     resultsAvailableTs: Date;
-    hasResult: boolean;
+    hasResults: boolean;
     goalInfo: string;
     playlist: string;
     result: string;
@@ -49,7 +49,7 @@ export interface Market {
 export interface MarketSelection {
     price?: number;
     point?: number;
-    settlementStatus?: string;
+    settlementStatus: string;
     selectionID: number;
     selectionNameLongKey: string;
     name: string;

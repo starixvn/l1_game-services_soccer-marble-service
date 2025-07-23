@@ -67,12 +67,19 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             newBet.operatorId = player.session.operatorId;
             newBet.playerId = player.session.playerId;
         }
+
+        const oddsUpdate = this.gameData.dynamicOdds ? 
+            Object.entries(this.gameData.dynamicOdds).reduce((acc, [key, value]) => {
+                acc[`odds.${key}`] = value;
+                return acc;
+            }, {} as Record<string, any>) : {};
+
         await this.betsRepository.updateOne(
             existingBetFilter,
             {
                 $inc: existingBetIncrement,
                 $setOnInsert: newBet,
-                $set: { odds: this.gameData.dynamicOdds },
+                $set: oddsUpdate,
             },
             { upsert: true, setDefaultsOnInsert: true },
         );

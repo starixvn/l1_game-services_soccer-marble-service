@@ -1,6 +1,5 @@
 import { TableGameData } from "sc-game-base/src/table";
 import { ResultType } from "./models/rounds";
-import { ITournament } from "./models/tournaments";
 import { GameConfigs } from "sc-game-base/src/core/game-data";
 import { DEFAULT_TOURNAMENT_CODES } from "./constants";
 import { MatchConfigType } from "./match-configs";
@@ -18,10 +17,9 @@ export default class GameData extends TableGameData {
     }
     playerBetCount: Record<string, string[]> = {};
     liveStreamServer = "";
-    tournament = {} as ITournament;
-    publishedTournament = {} as ITournament;
     oddFeedGames: OddFeedGames = {};
     dynamicOdds?: Record<string, number>;
+    betChoicePoints?: Record<string, number>;
     voiceConfig?: VoiceDurationConfig;
     oddFeedAccessToken?: string;
     gameId?: number;

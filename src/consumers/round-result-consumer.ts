@@ -1,12 +1,10 @@
 import { RoundResultConsumer as RoundResultConsumerBase } from "sc-game-base/src/core/event-consumers";
 import GameData from "../game-data";
-import type TournamentConsumer from "./tournament-consumer";
 import { resultHelper } from "../helpers";
 import { encrypt } from "sc-game-base/src/core/helpers/crypto-helper";
 import { DEFAULT_NUMBER_OF_VIDEOS } from "../constants";
 export default class RoundResultConsumer extends RoundResultConsumerBase {
     declare gameData: GameData;
-    tournamentConsumer: TournamentConsumer;
 
     constructor(container: any) {
         super(
@@ -17,7 +15,6 @@ export default class RoundResultConsumer extends RoundResultConsumerBase {
             container.provablyFairConsumer,
         );
 
-        this.tournamentConsumer = container.tournamentConsumer;
     }
 
     getNumberOfVideos = () => {
@@ -40,19 +37,14 @@ export default class RoundResultConsumer extends RoundResultConsumerBase {
     }
 
     override async generateResult() {
-        await super.generateResult();
-
-        const tournament = await this.tournamentConsumer.getCurrentTournament();
-        this.gameData.result.tournamentId = tournament._id;
-        await this.createResultRecord();
+        this.generateResultFromAdmin();
     }
 
     override generateResultFromAdmin() {
         const { roundId, settlementResultFromAdmin: resultFromAdmin } = this.gameData;
-        const numberOfVideos = this.getNumberOfVideos();
 
         if (roundId === resultFromAdmin.roundId) {
-            this.gameData.result = resultHelper.generateResultFromAdminRawResult(resultFromAdmin.result, numberOfVideos);
+            this.gameData.result = resultHelper.generateResultFromAdminRawResult(resultFromAdmin.result);
             return true;
         }
 

@@ -285,9 +285,11 @@ describe("ProcessBetQueue", () => {
                         freeBet: bet.freeBet,
                         roundId: bet.roundId,
                         clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
                     }),
                     $set: {
-                        odds: mockGameData.dynamicOdds,
+                        "odds.choice1": 1.5,
+                        "odds.choice2": 2.0,
                     },
                 },
                 { upsert: true, setDefaultsOnInsert: true },
@@ -321,9 +323,17 @@ describe("ProcessBetQueue", () => {
                         [bet.betChoice]: bet.amount,
                         totalAmount: bet.amount,
                     },
-                    $setOnInsert: expect.any(Object),
+                    $setOnInsert: expect.objectContaining({
+                        uid: player.UID,
+                        name: player.profile.name,
+                        freeBet: bet.freeBet,
+                        roundId: bet.roundId,
+                        clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
+                    }),
                     $set: {
-                        odds: mockGameData.dynamicOdds,
+                        "odds.choice1": 1.5,
+                        "odds.choice2": 2.0,
                     },
                 },
                 { upsert: true, setDefaultsOnInsert: true },
@@ -363,6 +373,12 @@ describe("ProcessBetQueue", () => {
                         totalAmount: bet.amount,
                     },
                     $setOnInsert: expect.objectContaining({
+                        uid: player.UID,
+                        name: player.profile.name,
+                        freeBet: bet.freeBet,
+                        roundId: bet.roundId,
+                        clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
                         siteId: player.session.siteId,
                         currency: player.session.currencyName,
                         rate: rate,
@@ -370,7 +386,8 @@ describe("ProcessBetQueue", () => {
                         playerId: player.session.playerId,
                     }),
                     $set: {
-                        odds: mockGameData.dynamicOdds,
+                        "odds.choice1": 1.5,
+                        "odds.choice2": 2.0,
                     },
                 },
                 { upsert: true, setDefaultsOnInsert: true },
@@ -409,9 +426,11 @@ describe("ProcessBetQueue", () => {
                         freeBet: bet.freeBet,
                         roundId: bet.roundId,
                         clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
                     }),
                     $set: {
-                        odds: mockGameData.dynamicOdds,
+                        "odds.choice1": 1.5,
+                        "odds.choice2": 2.0,
                     },
                 },
                 { upsert: true, setDefaultsOnInsert: true },
@@ -439,7 +458,65 @@ describe("ProcessBetQueue", () => {
             // Assert
             expect(processBetQueue.betsRepository.updateOne).toHaveBeenCalledWith(
                 { uid: player.UID, roundId: bet.roundId, freeBet: bet.freeBet },
-                expect.any(Object),
+                expect.objectContaining({
+                    $inc: {
+                        [bet.betChoice]: bet.amount,
+                        totalAmount: bet.amount,
+                    },
+                    $setOnInsert: expect.objectContaining({
+                        uid: player.UID,
+                        name: player.profile.name,
+                        freeBet: bet.freeBet,
+                        roundId: bet.roundId,
+                        clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
+                    }),
+                    $set: {
+                        "odds.choice1": 1.5,
+                        "odds.choice2": 2.0,
+                    },
+                }),
+                { upsert: true, setDefaultsOnInsert: true },
+            );
+        });
+
+        it("should handle empty dynamic odds", async () => {
+            // Arrange
+            const player = {
+                UID: "player1",
+                profile: { name: "Test Player" },
+            };
+            const bet = {
+                amount: 100,
+                betChoice: "choice1",
+                roundId: 1,
+                clientSeed: new Date(),
+                freeBet: false,
+            };
+            const rate = 1.5;
+            mockGameData.dynamicOdds = undefined;
+
+            // Act
+            await processBetQueue.upsertBet(player, bet.roundId, bet, rate);
+
+            // Assert
+            expect(processBetQueue.betsRepository.updateOne).toHaveBeenCalledWith(
+                { uid: player.UID, roundId: bet.roundId, freeBet: bet.freeBet },
+                {
+                    $inc: {
+                        [bet.betChoice]: bet.amount,
+                        totalAmount: bet.amount,
+                    },
+                    $setOnInsert: expect.objectContaining({
+                        uid: player.UID,
+                        name: player.profile.name,
+                        freeBet: bet.freeBet,
+                        roundId: bet.roundId,
+                        clientSeed: bet.clientSeed,
+                        time: expect.any(Date),
+                    }),
+                    $set: {},
+                },
                 { upsert: true, setDefaultsOnInsert: true },
             );
         });

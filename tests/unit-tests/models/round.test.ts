@@ -36,7 +36,7 @@ describe("Round", () => {
 
             // Assert
             expect(error.message).toBe(
-                `marblefootball2_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
+                `soccermarble_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
             );
         });
     });
@@ -62,7 +62,7 @@ describe("Round", () => {
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("marblefootball2_dev_rounds");
+            expect(model.collection.name).toBe("soccermarble_dev_rounds");
         });
 
         it("should not have _dev suffix in production environment", async () => {
@@ -75,7 +75,7 @@ describe("Round", () => {
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("marblefootball2_rounds");
+            expect(model.collection.name).toBe("soccermarble_rounds");
         });
 
         it("should handle undefined environment as production", async () => {
@@ -88,7 +88,7 @@ describe("Round", () => {
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("marblefootball2_rounds");
+            expect(model.collection.name).toBe("soccermarble_rounds");
         });
     });
 });

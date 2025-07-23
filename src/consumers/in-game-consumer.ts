@@ -23,7 +23,6 @@ export default class InGameConsumer extends TableInGameConsumer {
     override async consume(realPlayer: any): Promise<void> {
         await super.consume(realPlayer);
         this.publishOddsToPlayer(realPlayer.UID);
-        this.publishVoiceToPlayer(realPlayer.UID);
     }
 
     override async buildPayload(realPlayer: any) {
@@ -31,23 +30,10 @@ export default class InGameConsumer extends TableInGameConsumer {
         return {
             ...payload,
             userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount),
-            liveStreamServer: this.gameData.liveStreamServer,
-            videoResult: this.getCurrentVideoResult(),
-            tournament: this.gameData.publishedTournament,
         };
-    }
-
-    getCurrentVideoResult() {
-
-        return {};
     }
 
     publishOddsToPlayer(UID: string): void {
         this.publisher.publishToUser(UID, { odds: this.gameData.dynamicOdds });
-    }
-
-    publishVoiceToPlayer(UID: string): void {
-        const { result } = this.gameData;
-        this.publisher.publishToUser(UID, { voices: result?.voices ?? {} });
     }
 }

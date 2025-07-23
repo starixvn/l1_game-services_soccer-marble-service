@@ -2,7 +2,6 @@ import {
     provablyFairConsumer,
     resultsRepository,
     roundResultPublisher,
-    tournamentConsumer,
     roundResultConsumer as roundResultConsumerStub,
 } from "../global-stubs";
 
@@ -53,11 +52,6 @@ describe("RoundResultConsumer", () => {
             roundResultPublisher,
             resultsRepository,
             provablyFairConsumer,
-            tournamentConsumer,
-        });
-
-        tournamentConsumer.getCurrentTournament = jest.fn().mockResolvedValue({
-            _id: "fake_id",
         });
     });
 
@@ -67,7 +61,7 @@ describe("RoundResultConsumer", () => {
 
     describe("getDataForGenerateResult", () => {
         it("should return matchConfig from gameData", () => {
-            // arrange
+            // Arrange
             gameData.gameConfigs.randomMode = 1;
             gameData.matchConfig = {
                 firstHalfConfig: {
@@ -88,42 +82,24 @@ describe("RoundResultConsumer", () => {
                 ],
             };
 
-            // act
+            // Act
             const data = roundResultConsumer.getDataForGenerateResult();
 
-            // assert
+            // Assert
             expect(data).toEqual({ numberOfVideos: { HAA: 1, AHH: 2 }, matchConfig: gameData.matchConfig });
         });
     });
 
     describe("generateResult", () => {
-        it("should call super.generateResult", async () => {
-            // Act
-            await roundResultConsumer.generateResult();
-
-            // Assert
-            expect(roundResultConsumerStub.generateResult).toHaveBeenCalled();
-        });
-
-        it("should generate the round result", async () => {
-            // Act
-            await roundResultConsumer.generateResult();
-
-            // Assert
-            expect(gameData.result).toStrictEqual({
-                tournamentId: "fake_id",
-            });
-        });
-
-        it("should call createResultRecord", async () => {
+        it("should call generateResultFromAdmin", async () => {
             // Arrange
-            jest.spyOn(roundResultConsumer, "createResultRecord").mockResolvedValue();
+            const generateResultFromAdminSpy = jest.spyOn(roundResultConsumer, "generateResultFromAdmin").mockReturnValue(true);
 
             // Act
             await roundResultConsumer.generateResult();
 
             // Assert
-            expect(roundResultConsumer.createResultRecord).toHaveBeenCalled();
+            expect(generateResultFromAdminSpy).toHaveBeenCalled();
         });
     });
 
@@ -162,10 +138,7 @@ describe("RoundResultConsumer", () => {
                 roundResultConsumer.generateResultFromAdmin();
 
                 // Assert
-                expect(ResultHelper.generateResultFromAdminRawResult).toHaveBeenCalledWith(gameData.settlementResultFromAdmin.result, {
-                    HAA: 1,
-                    AHH: 2,
-                });
+                expect(ResultHelper.generateResultFromAdminRawResult).toHaveBeenCalledWith(gameData.settlementResultFromAdmin.result);
             });
         });
 

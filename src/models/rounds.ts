@@ -1,45 +1,23 @@
 import mongoose from "mongoose";
-import { MODEL_NAME_PREFIX, ODDS_TYPE } from "../constants";
-import { MatchType } from "./tournaments";
-import { VoiceGenerationResult } from "../helpers/voices";
+import { MODEL_NAME_PREFIX } from "../constants";
 
 export type ResultType = {
-    tournamentId?: mongoose.Types.ObjectId;
-    firstHalf: string;
-    secondHalf: string;
-    firstHalfVideo: string;
-    secondHalfVideo: string;
-    overUnderValue: number;
-    homeWinsOnDraw: boolean;
-    penalty: { home: number; away: number };
-    firstHalfTimeline?: number[];
-    secondHalfTimeline?: number[];
-    firstHalfEventTimeline?: {
-        timeLine: number[];
-        eventName: string[];
-        frame: number[];
-    }
-    secondHalfEventTimeline?: {
-        timeLine: number[];
-        eventName: string[];
-        frame: number[];
-    }
-    voices?: VoiceGenerationResult;
+    home: number;
+    away: number;
 };
 
 const resultSchema = new mongoose.Schema<ResultType>(
     {
-        tournamentId: { type: mongoose.Schema.Types.ObjectId },
-        firstHalf: { type: String },
-        secondHalf: { type: String },
-        firstHalfVideo: { type: String },
-        secondHalfVideo: { type: String },
-        overUnderValue: { type: Number },
-        homeWinsOnDraw: { type: Boolean },
-        penalty: { type: Object },
+        home: { type: Number },
+        away: { type: Number },
     },
     { _id: false },
 );
+
+export type MatchType = {
+    home: string;
+    away: string;
+};
 
 const matchSchema = new mongoose.Schema<MatchType>(
     {
@@ -50,18 +28,8 @@ const matchSchema = new mongoose.Schema<MatchType>(
 );
 
 export type SettlementResultType = {
-    [key in keyof typeof ODDS_TYPE]: boolean;
+    [key: string]: boolean;
 };
-
-const dynamicResultSchema = Object.values(ODDS_TYPE).reduce(
-    (schema, item) => ({
-        ...schema,
-        [item]: { type: Boolean },
-    }),
-    {},
-);
-
-const settlementResultSchema = new mongoose.Schema<SettlementResultType>(dynamicResultSchema, { _id: false });
 
 export interface IRound {
     id: number;
@@ -75,8 +43,10 @@ export interface IRound {
 const RoundSchema = new mongoose.Schema<IRound>({
     id: { type: Number, required: true },
     result: resultSchema,
-    settlementResult: settlementResultSchema,
-    match: matchSchema,
+    settlementResult: {
+        type: Map,
+        of: Boolean
+    },
     time: { type: Date, default: () => new Date() },
     exchangeRateId: { type: Number, required: true },
 });

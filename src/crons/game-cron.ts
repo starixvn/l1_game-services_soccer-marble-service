@@ -2,7 +2,6 @@ import { Table } from "sc-game-base";
 import GameData from "../game-data";
 import GameDefinition from "../game-definition";
 import AppConfigs from "../app-configs";
-import { TournamentConsumer } from "../consumers";
 import GameStatusPublisher from "../publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../publishers/running-round-info-publisher";
 import CacheConsumer from "../consumers/cache-consumer";
@@ -19,14 +18,12 @@ export default class GameCron extends Table.Crons.TableGameCron {
     eventPullCounter = COUNTER_INTERVAL;
     eventProcessConsumer: EventProcessConsumer;
 
-    tournamentConsumer: TournamentConsumer;
     cacheConsumer: CacheConsumer;
 
     constructor(container: any) {
         super(container);
 
         this.gameData.liveStreamServer = this.appConfigs.liveStreamServer;
-        this.tournamentConsumer = container.tournamentConsumer;
         this.cacheConsumer = container.cacheConsumer;
         this.eventProcessConsumer = container.eventProcessConsumer;
     }

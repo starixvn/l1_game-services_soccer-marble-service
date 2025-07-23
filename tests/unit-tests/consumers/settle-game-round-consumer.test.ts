@@ -8,14 +8,13 @@ import {
     roundResultPublisher,
     roundsRepository,
     tempBetsRepository,
-    tournamentConsumer,
-    userBetResultPublisher,
 } from "../global-stubs";
 import { stub } from "jest-auto-stub";
 import GameDefinition from "../../../src/game-definition";
 import { OddsType } from "../../../src/match-configs";
 import { BET_CHOICES } from "../../../src/constants";
 import { SettlementResultType } from "../../../src/models/rounds";
+import { EventResponse } from "../../../src/consumers/odd-feed-consumer";
 
 describe("SettleGameRoundConsumer", () => {
     let settleGameRoundConsumer: SettleGameRoundConsumer;
@@ -26,10 +25,8 @@ describe("SettleGameRoundConsumer", () => {
     beforeEach(() => {
         mockContainer = {
             gameData: gameData,
-            tournamentConsumer: tournamentConsumer,
             definition,
             roundResultPublisher,
-            userBetResultPublisher,
             endGame,
             roundsRepository,
             betsRepository,
@@ -41,69 +38,272 @@ describe("SettleGameRoundConsumer", () => {
         settleGameRoundConsumer = new SettleGameRoundConsumer(mockContainer);
     });
 
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
     describe("constructor", () => {
         it("should initialize with the provided container", () => {
             // Assert
-            expect(settleGameRoundConsumer.tournamentConsumer).toBe(tournamentConsumer);
             expect(settleGameRoundConsumer.gameData).toBe(gameData);
+            expect(settleGameRoundConsumer.definition).toBe(definition);
         });
     });
 
     describe("settleRound", () => {
-        it("should call super.settleRound and updateTournament", async () => {
+        it("should call super.settleRound", async () => {
             // Arrange
             const superSettleRoundSpy = jest
                 .spyOn(Table.EventConsumers.TableSettleGameRoundConsumer.prototype, "settleRound")
                 .mockResolvedValue();
-
-            const updateTournamentSpy = jest.spyOn(settleGameRoundConsumer, "updateTournament").mockResolvedValue();
 
             // Act
             await settleGameRoundConsumer.settleRound();
 
             // Assert
             expect(superSettleRoundSpy).toHaveBeenCalledTimes(1);
-            expect(updateTournamentSpy).toHaveBeenCalledTimes(1);
         });
     });
 
-    describe("updateTournament", () => {
-        it("should call tournamentConsumer.updateMatchResult with the correct argument (homeWins = true)", async () => {
+    describe("settleSpecificRound", () => {
+        it("should settle a specific round successfully", async () => {
             // Arrange
-            settleGameRoundConsumer.definition = {
-                settle: jest.fn(() => ({
-                    draw: false,
-                    home: true,
-                })),
-            } as any;
+            const roundId = 123;
+            const gameId = 456;
+            const mockRound: EventResponse = {
+                eventID: 12345,
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+                scheduleStartTs: new Date(),
+                productCode: "SOCCER",
+                productTypeKey: "MATCH",
+                eventDetails: [
+                    {
+                        eventID: 12345,
+                        scheduleStartTs: new Date(),
+                        oddsAvailableTs: new Date(),
+                        resultsAvailableTs: new Date(),
+                        hasResults: true,
+                        playlist: "test-playlist",
+                        goalInfo: "test-goal-info",
+                        result: "2:1",
+                        markets: []
+                    }
+                ]
+            };
 
-            gameData.result.homeWinsOnDraw = true;
+            gameData.gameId = gameId;
+            gameData.oddFeedGames = {
+                [gameId]: {
+                    rounds: {
+                        [roundId]: mockRound
+                    }
+                }
+            };
+            gameData.exchangeRates = { exId: 789 } as any;
+
+            definition.settle = jest.fn().mockReturnValue({
+                home: true,
+                away: false,
+                draw: false
+            });
+
+            roundsRepository.create = jest.fn().mockResolvedValue({
+                id: roundId,
+                result: { home: 2, away: 1 },
+                settlementResult: { home: true, away: false, draw: false },
+                time: new Date(),
+                exchangeRateId: 789
+            });
+
+            settleGameRoundConsumer.settleBets = jest.fn().mockResolvedValue(undefined);
 
             // Act
-            await settleGameRoundConsumer.updateTournament();
+            await settleGameRoundConsumer.settleSpecificRound(roundId);
 
             // Assert
-            expect(settleGameRoundConsumer.definition.settle).toHaveBeenCalledWith(gameData.result);
-            expect(tournamentConsumer.updateMatchResult).toHaveBeenCalledWith(true);
+            expect(definition.settle).toHaveBeenCalledWith(mockRound);
+            expect(roundsRepository.create).toHaveBeenCalledWith({
+                id: roundId,
+                result: { home: 2, away: 1 },
+                settlementResult: { home: true, away: false, draw: false },
+                time: expect.any(Date),
+                exchangeRateId: 789
+            });
+            expect(roundResultPublisher.publishRoundResult).toHaveBeenCalledWith({
+                result: { home: 2, away: 1 },
+                settlementResult: { home: true, away: false, draw: false },
+                roundId
+            });
+            expect(settleGameRoundConsumer.settleBets).toHaveBeenCalledWith({
+                settlementResult: { home: true, away: false, draw: false },
+                result: { home: 2, away: 1 },
+                roundId,
+                time: expect.any(Date)
+            });
+            expect(roundResultPublisher.publishWinners).toHaveBeenCalledWith(roundId, gameData.winningPlayers);
+            expect(gameData.oddFeedGames[gameId].rounds[roundId]).toBeUndefined();
         });
 
-        it("should call tournamentConsumer.updateMatchResult with the correct argument (homeWins = false)", async () => {
+        it("should return early when gameId is not set", async () => {
             // Arrange
-            settleGameRoundConsumer.definition = {
-                settle: jest.fn(() => ({
-                    draw: true,
-                    home: false,
-                })),
-            } as any;
-
-            gameData.result.homeWinsOnDraw = false;
+            const roundId = 123;
+            gameData.gameId = undefined;
+            gameData.oddFeedGames = {};
+            definition.settle = jest.fn();
 
             // Act
-            await settleGameRoundConsumer.updateTournament();
+            await settleGameRoundConsumer.settleSpecificRound(roundId);
 
             // Assert
-            expect(settleGameRoundConsumer.definition.settle).toHaveBeenCalledWith(gameData.result);
-            expect(tournamentConsumer.updateMatchResult).toHaveBeenCalledWith(false);
+            expect(definition.settle).not.toHaveBeenCalled();
+            expect(roundsRepository.create).not.toHaveBeenCalled();
+        });
+
+        it("should handle undefined round gracefully", async () => {
+            // Arrange
+            const roundId = 123;
+            const gameId = 456;
+            gameData.gameId = gameId;
+            gameData.oddFeedGames = {
+                [gameId]: {
+                    rounds: {}
+                }
+            };
+            gameData.exchangeRates = { exId: 789 } as any;
+            definition.settle = jest.fn().mockReturnValue({ home: false, away: false, draw: false });
+
+            // Act & Assert
+            await expect(settleGameRoundConsumer.settleSpecificRound(roundId)).rejects.toThrow();
+        });
+
+        it("should not publish results when newRound creation fails", async () => {
+            // Arrange
+            const roundId = 123;
+            const gameId = 456;
+            const mockRound: EventResponse = {
+                eventID: 12345,
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+                scheduleStartTs: new Date(),
+                productCode: "SOCCER",
+                productTypeKey: "MATCH",
+                eventDetails: [
+                    {
+                        eventID: 12345,
+                        scheduleStartTs: new Date(),
+                        oddsAvailableTs: new Date(),
+                        resultsAvailableTs: new Date(),
+                        hasResults: true,
+                        playlist: "test-playlist",
+                        goalInfo: "test-goal-info",
+                        result: "1:0",
+                        markets: []
+                    }
+                ]
+            };
+
+            gameData.gameId = gameId;
+            gameData.oddFeedGames = {
+                [gameId]: {
+                    rounds: {
+                        [roundId]: mockRound
+                    }
+                }
+            };
+            gameData.exchangeRates = { exId: 789 } as any;
+
+            definition.settle = jest.fn().mockReturnValue({
+                home: true,
+                away: false,
+                draw: false
+            });
+
+            roundsRepository.create = jest.fn().mockResolvedValue(null);
+
+            // Act
+            await settleGameRoundConsumer.settleSpecificRound(roundId);
+
+            // Assert
+            expect(definition.settle).toHaveBeenCalledWith(mockRound);
+            expect(roundsRepository.create).toHaveBeenCalled();
+            expect(roundResultPublisher.publishRoundResult).not.toHaveBeenCalled();
+            expect(roundResultPublisher.publishWinners).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("getResultFromRound", () => {
+        it("should calculate result correctly from round with single event detail", () => {
+            // Arrange
+            const mockRound: EventResponse = {
+                eventID: 12345,
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+                scheduleStartTs: new Date(),
+                productCode: "SOCCER",
+                productTypeKey: "MATCH",
+                eventDetails: [
+                    {
+                        eventID: 12345,
+                        scheduleStartTs: new Date(),
+                        oddsAvailableTs: new Date(),
+                        resultsAvailableTs: new Date(),
+                        hasResults: true,
+                        playlist: "test-playlist",
+                        goalInfo: "test-goal-info",
+                        result: "2:1",
+                        markets: []
+                    }
+                ]
+            };
+
+            // Act
+            const result = settleGameRoundConsumer.getResultFromRound(mockRound);
+
+            // Assert
+            expect(result).toEqual({ home: 2, away: 1 });
+        });
+
+        it("should calculate result correctly from round with multiple event details", () => {
+            // Arrange
+            const mockRound: EventResponse = {
+                eventID: 12345,
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+                scheduleStartTs: new Date(),
+                productCode: "SOCCER",
+                productTypeKey: "MATCH",
+                eventDetails: [
+                    {
+                        eventID: 12345,
+                        scheduleStartTs: new Date(),
+                        oddsAvailableTs: new Date(),
+                        resultsAvailableTs: new Date(),
+                        hasResults: true,
+                        playlist: "test-playlist",
+                        goalInfo: "test-goal-info",
+                        result: "1:0",
+                        markets: []
+                    },
+                    {
+                        eventID: 12345,
+                        scheduleStartTs: new Date(),
+                        oddsAvailableTs: new Date(),
+                        resultsAvailableTs: new Date(),
+                        hasResults: true,
+                        playlist: "test-playlist",
+                        goalInfo: "test-goal-info",
+                        result: "2:1",
+                        markets: []
+                    }
+                ]
+            };
+
+            // Act
+            const result = settleGameRoundConsumer.getResultFromRound(mockRound);
+
+            // Assert
+            expect(result).toEqual({ home: 3, away: 1 });
         });
     });
 
@@ -162,7 +362,8 @@ describe("SettleGameRoundConsumer", () => {
             // Assert
             expect(result.totalBetAmount).toBe(100);
             expect(result.totalWin).toBe(0);
-            expect((result.winningByChoices as any)[BET_CHOICES.home]).toEqual(0);
+            expect(result.totalLost).toBe(100);
+            expect((result.winningByChoices as any)[BET_CHOICES.away]).toEqual(0);
         });
 
         it("should handle free bets correctly", () => {
@@ -205,6 +406,24 @@ describe("SettleGameRoundConsumer", () => {
             const result = settleGameRoundConsumer.calculateBetResult(settlementResult, bet, odds);
 
             // Assert
+            expect(result.totalWin).toBe(200);
+            expect(result.netWin).toBe(100);
+        });
+
+        it("should handle bet with _doc property", () => {
+            // Arrange
+            const settlementResult = { ...defaultSettlementResult, [BET_CHOICES.home]: true };
+            const bet = { 
+                _doc: { [BET_CHOICES.home]: 100, freeBet: false },
+                [BET_CHOICES.home]: 200, 
+                freeBet: false 
+            };
+
+            // Act
+            const result = settleGameRoundConsumer.calculateBetResult(settlementResult, bet, odds);
+
+            // Assert
+            expect(result.totalBetAmount).toBe(100);
             expect(result.totalWin).toBe(200);
             expect(result.netWin).toBe(100);
         });

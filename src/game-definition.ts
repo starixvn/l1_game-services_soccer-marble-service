@@ -5,11 +5,6 @@ export default class GameDefinition extends TableGameDefinition {
         super(
             {
                 ...gameSettings,
-                durations: {
-                    ...gameSettings.durations,
-                    placingBets: gameSettings.durations.placingBetsFirstHalf,
-                    lockingBet: gameSettings.durations.lockingBetFirstHalf,
-                },
             },
             generateResult,
             settle,
