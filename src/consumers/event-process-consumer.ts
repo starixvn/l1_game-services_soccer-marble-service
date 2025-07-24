@@ -130,6 +130,21 @@ export class EventProcessConsumer {
         this.gameStatusPublisher.publishEndPlacingBetStatus()
     }
 
+    async syncForSettle(eventID: number) {
+        const event = await this.syncEventDetail(eventID);
+        const index = event.eventDetails.length - 1;
+        const lastEventDetail = event.eventDetails[index];
+        const resultAvailable = lastEventDetail.resultsAvailableTs;
+        this.schedulerConsumer.schedule(resultAvailable, () => this.onMatchResultAvailable(
+            {
+                fullEvent: event,
+                eventDetail: lastEventDetail,
+                index,
+                time: resultAvailable
+            }
+        ));
+    }
+
     async onMatchResultAvailable(context: ProcessingEventContext) {
         if (context.index !== context.fullEvent.eventDetails.length - 1) {
             return;
@@ -159,6 +174,26 @@ export class EventProcessConsumer {
         this.runningRoundInfoPublisher.publishToAllUsers({
             videoResult
         });
+    }
+
+    async syncEventDetail(eventID: number) {
+        const event = await this.oddFeedConsumer.getEvent({ eventID });
+        const processedEvent = this.processEventDetails(event);
+        this.gameData.oddFeedGames[this.gameId].rounds[extractRoundId(event.eventID)] = processedEvent;
+        return processedEvent;
+    }
+
+    async syncEventDetailForcingResultAvailable(eventID: number, { maxAttempts = 1, delay = 100 }: { maxAttempts?: number, delay?: number } = {}) {
+        let attempt = maxAttempts;
+        while (attempt > 0) {
+            const event = await this.syncEventDetail(eventID);
+            if (event.eventDetails[event.eventDetails.length - 1].hasResults) {
+                return event;
+            }
+            attempt--;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        return null;
     }
 
     private publishBetChoiceReady() {
@@ -241,26 +276,6 @@ export class EventProcessConsumer {
         const home = event.eventNameAKey;
         const away = event.eventNameBKey;
         this.gameStatusPublisher.publishMatch({ home, away });
-    }
-
-    private async syncEventDetail(eventID: number) {
-        const event = await this.oddFeedConsumer.getEvent({ eventID });
-        const processedEvent = this.processEventDetails(event);
-        this.gameData.oddFeedGames[this.gameId].rounds[extractRoundId(event.eventID)] = processedEvent;
-        return processedEvent;
-    }
-
-    async syncEventDetailForcingResultAvailable(eventID: number, { maxAttempts = 1, delay = 100 }: { maxAttempts?: number, delay?: number } = {}) {
-        let attempt = maxAttempts;
-        while (attempt > 0) {
-            const event = await this.syncEventDetail(eventID);
-            if (event.eventDetails[event.eventDetails.length - 1].hasResults) {
-                return event;
-            }
-            attempt--;
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-        return null;
     }
 
     private processEventDetails(event: EventResponse) {

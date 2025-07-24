@@ -18,12 +18,24 @@ export default class UnsettledRoundConsumer extends UnsettledRoundConsumerBase {
         if (!this.gameData.gameId) {
             return;
         }
-        if (this.gameData.lastRoundId) {
-            const lastEventId = createEventId(this.gameData.gameId, this.gameData.lastRoundId);
-            const lastEvent = await this.eventProcessConsumer.syncEventDetailForcingResultAvailable(lastEventId);
-            if (lastEvent) {
-                await this.settleGameRoundConsumer.settleSpecificRound(this.gameData.lastRoundId);
-            }
-        }
+        await this.settleUnsettledRounds(this.gameData.gameId);
+    }
+
+    private async settleUnsettledRounds(gameId: number): Promise<any> {
+        const unsettledBets = await this.getUnsettledBets();
+        const unsettledRounds = [...new Set(unsettledBets.map((bet: any) => bet.roundId))];
+        return Promise.all(unsettledRounds.map(async (roundId) => {
+            const eventId = createEventId(gameId, Number(roundId));
+            return this.eventProcessConsumer.syncForSettle(eventId);
+        }));
+    }
+
+    override async getUnsettledBets(): Promise<any> {
+        const playerBets = await this.betsRepository.find({ paid: false }).lean().exec();
+        const botBets = this.tempBetsRepository
+            ? await this.tempBetsRepository.find({ paid: false }).lean().exec()
+            : [];
+
+        return playerBets.concat(botBets);
     }
 }
