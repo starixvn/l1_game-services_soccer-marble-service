@@ -1,7 +1,6 @@
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import GameDefinition from "../game-definition";
-import { helpers } from "sc-common";
 import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 export default class Bot extends TableGameConfigBot {
@@ -53,13 +52,12 @@ export default class Bot extends TableGameConfigBot {
     }
 
     getBetChoice(bot: any) {
-        const betChoiceRatios = this.filterBetChoicesRatios(this.getBetChoicesRatios());
-        const underRatioGroups = helpers.arrayHelper.shuffle(betChoiceRatios.filter((data) => data.underBetRatio));
-        const choice = this.chance.pickone(underRatioGroups[0].group);
-        const hedgeBetGroup = this.hedgeBetGroups.find((group) => group.includes(choice));
+        const betChoices = Object.keys(this.gameData.dynamicOdds ?? {}).filter((choice) => this.isBetChoiceValid(choice));
+        const choice = this.chance.pickone(betChoices);
+        const hedgeBetGroup = this.gameData.dynamicHedgeBetGroups?.find((group) => group.has(choice));
 
         if (hedgeBetGroup) {
-            const oppositeChoice = choice === hedgeBetGroup[0] ? hedgeBetGroup[1] : hedgeBetGroup[0];
+            const oppositeChoice = Array.from(hedgeBetGroup).find((c) => c !== choice);
             return bot.choices.includes(oppositeChoice) ? oppositeChoice : choice;
         } else {
             return choice;
@@ -90,7 +88,7 @@ export default class Bot extends TableGameConfigBot {
     isDuringBetTime = () => isWithinBettingTimeInCurrentEventDetail(this.gameData);
 
     async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
-        const currentAmount = currentBet ? currentBet[choice] : 0;
+        const currentAmount = currentBet ? currentBet[choice] ?? 0 : 0;
         const update = { [choice]: amount + currentAmount, odds: this.gameData.dynamicOdds };
         const create = {
             uid: bot.id,

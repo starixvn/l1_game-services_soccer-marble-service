@@ -85,6 +85,12 @@ describe("PlaceBetConsumer", () => {
                 [LIVE_BET_CHOICES.homeLive]: 1.8,
                 [LIVE_BET_CHOICES.awayLive]: 2.2,
             },
+            dynamicHedgeBetGroups: [
+                new Set([BET_CHOICES.home, BET_CHOICES.away]),
+                new Set([LIVE_BET_CHOICES.homeLive, LIVE_BET_CHOICES.awayLive]),
+                new Set([BET_CHOICES.home, LIVE_BET_CHOICES.awayLive]),
+                new Set([BET_CHOICES.away, LIVE_BET_CHOICES.homeLive]),
+            ],
             currencyGroupGames: [],
             ingame: {},
         };
@@ -460,6 +466,33 @@ describe("PlaceBetConsumer", () => {
 
                 // Act
                 const result = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.draw, mockPlayer);
+
+                // Assert
+                expect(result[0].failure).toBe(false);
+                expect(result[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [] });
+            });
+
+            it("should return no failure when no existing bets in hedge bet group", () => {
+                // Arrange
+                mockGameData.ingame.testPlayer.betTracks = {};
+
+                // Act
+                const result = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.home, mockPlayer);
+
+                // Assert
+                expect(result[0].failure).toBe(false);
+                expect(result[0].notice).toEqual({ errorCode: "SB1939", hedgeBetGroup: [] });
+            });
+
+            it("should return no failure when dynamicHedgeBetGroups is undefined", () => {
+                // Arrange
+                mockGameData.dynamicHedgeBetGroups = undefined;
+                mockGameData.ingame.testPlayer.betTracks = {
+                    [BET_CHOICES.home]: 300,
+                };
+
+                // Act
+                const result = placeBetConsumer.composeHedgeBetValidationCriteria(BET_CHOICES.away, mockPlayer);
 
                 // Assert
                 expect(result[0].failure).toBe(false);

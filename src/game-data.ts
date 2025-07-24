@@ -19,6 +19,7 @@ export default class GameData extends TableGameData {
     liveStreamServer = "";
     oddFeedGames: OddFeedGames = {};
     dynamicOdds?: Record<string, number>;
+    dynamicHedgeBetGroups?: Set<string>[];
     betChoicePoints?: Record<string, number>;
     voiceConfig?: VoiceDurationConfig;
     oddFeedAccessToken?: string;

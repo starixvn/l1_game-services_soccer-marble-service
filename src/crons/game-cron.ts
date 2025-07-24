@@ -7,6 +7,7 @@ import RunningRoundInfoPublisher from "../publishers/running-round-info-publishe
 import CacheConsumer from "../consumers/cache-consumer";
 import { EventProcessConsumer } from "../consumers/event-process-consumer";
 import RoundIdConsumer from "../consumers/round-id-consumer";
+import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 const COUNTER_INTERVAL = 60;
 
@@ -45,8 +46,11 @@ export default class GameCron extends Table.Crons.TableGameCron {
             await this.eventProcessConsumer.proceed();
             this.eventPullCounter = 0;
         }
-        const remainingTime = this.eventProcessConsumer.updateAndGetRemainingTime();
-        console.log("remainingTime", remainingTime);
+
+        this.eventProcessConsumer.updateAndGetRemainingTime();
+        if (isWithinBettingTimeInCurrentEventDetail(this.gameData)) {
+            this.bot && (await this.bot.run())
+        }
         this.eventPullCounter++;
     }
 }

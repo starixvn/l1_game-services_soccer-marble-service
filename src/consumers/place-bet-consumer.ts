@@ -76,16 +76,15 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     composeHedgeBetValidationCriteria(betChoice: string, player: any): { failure: boolean; notice: string }[] {
         const { betTracks } = this.gameData.ingame[player.profile.name] || { betTracks: {} };
-        const hedgeBetGroups = this.definition.hedgeBetGroups.filter((group) => group.includes(betChoice));
-
+        const hedgeBetGroups = this.gameData.dynamicHedgeBetGroups?.filter((group) => group.has(betChoice)) ?? [];
         const invalidGroup = hedgeBetGroups.find((group) =>
-            Object.keys(betTracks).some((betKey) => betTracks[betKey] && group.includes(betKey) && betKey !== betChoice)
+            Object.keys(betTracks).some((betKey) => betTracks[betKey] && group.has(betKey) && betKey !== betChoice)
         );
 
         return [
             {
                 failure: !!invalidGroup,
-                notice: this.getNoticeObj(helpers.noticeHelper.disallowHedgeBet, { hedgeBetGroup: invalidGroup || [] }),
+                notice: this.getNoticeObj(helpers.noticeHelper.disallowHedgeBet, { hedgeBetGroup: Array.from(invalidGroup?.values() ?? []) }),
             },
         ];
     }

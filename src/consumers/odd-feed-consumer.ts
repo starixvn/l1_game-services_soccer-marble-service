@@ -44,6 +44,7 @@ export interface Market {
     marketNameKey: string;
     marketName: string;
     selections: MarketSelection[];
+    hedgeBetExclusion?: string[];
 }
 
 export interface MarketSelection {

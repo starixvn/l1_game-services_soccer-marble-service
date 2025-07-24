@@ -34,6 +34,7 @@ describe("EventProcessConsumer", () => {
         gameStatusPublisher: jest.Mocked<GameStatusPublisher>;
         runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
         settleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
+        bot?: { reset: jest.MockedFunction<() => void> };
     };
 
     const mockScheduleResponseItem: ScheduleResponseItem = {
@@ -59,6 +60,7 @@ describe("EventProcessConsumer", () => {
                 marketID: 1,
                 marketNameKey: "match_result",
                 marketName: "Match Result",
+                hedgeBetExclusion: ["draw"],
                 selections: [
                     { 
                         betChoice: "home", 
@@ -117,7 +119,8 @@ describe("EventProcessConsumer", () => {
             roundId: 0,
             remainingTime: 0,
             dynamicOdds: {},
-            betChoicePoints: {}
+            betChoicePoints: {},
+            dynamicHedgeBetGroups: [] as Array<Set<string>>
         } as Partial<GameData> as GameData;
 
         mockSchedulerConsumer = {
@@ -145,6 +148,10 @@ describe("EventProcessConsumer", () => {
             settleSpecificRound: jest.fn()
         } as unknown as jest.Mocked<SettleGameRoundConsumer>;
 
+        const mockBot = {
+            reset: jest.fn()
+        };
+
         mockContainer = {
             gameData: mockGameData,
             schedulerConsumer: mockSchedulerConsumer,
@@ -156,7 +163,8 @@ describe("EventProcessConsumer", () => {
             },
             gameStatusPublisher: mockGameStatusPublisher,
             runningRoundInfoPublisher: mockRunningRoundInfoPublisher,
-            settleGameRoundConsumer: mockSettleGameRoundConsumer
+            settleGameRoundConsumer: mockSettleGameRoundConsumer,
+            bot: mockBot
         };
 
         eventProcessConsumer = new EventProcessConsumer(mockContainer);
@@ -508,6 +516,41 @@ describe("EventProcessConsumer", () => {
 
             // Assert
             expect(mockGameStatusPublisher.publishMatch).toHaveBeenCalledWith({ home: "Team A", away: "Team B" });
+        });
+
+        it("should call bot reset", async () => {
+            // Arrange
+            const context: ProcessingEventContext = {
+                fullEvent: mockEventResponse,
+                eventDetail: mockEventDetail,
+                index: 0,
+                time: new Date()
+            };
+            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            expect(mockContainer.bot?.reset).toHaveBeenCalledTimes(1);
+        });
+
+        it("should handle when bot is undefined", async () => {
+            // Arrange
+            const context: ProcessingEventContext = {
+                fullEvent: mockEventResponse,
+                eventDetail: mockEventDetail,
+                index: 0,
+                time: new Date()
+            };
+            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+            mockContainer.bot = undefined;
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            expect(mockGameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -1000,6 +1043,83 @@ describe("EventProcessConsumer", () => {
                     "0:draw": 1.8
                 }
             });
+        });
+
+        it("should save hedge bet groups to game data", async () => {
+            // Arrange
+            const context: ProcessingEventContext = {
+                fullEvent: mockEventResponse,
+                eventDetail: mockEventDetail,
+                index: 0,
+                time: new Date()
+            };
+            mockGameData.oddFeedGames[123].currentRound = 456;
+            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
+            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
+            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            expect(mockGameData.dynamicHedgeBetGroups).toHaveLength(1);
+        });
+
+        it("should create hedge bet group excluding specified choices", async () => {
+            // Arrange
+            const context: ProcessingEventContext = {
+                fullEvent: mockEventResponse,
+                eventDetail: mockEventDetail,
+                index: 0,
+                time: new Date()
+            };
+            mockGameData.oddFeedGames[123].currentRound = 456;
+            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
+            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
+            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            const hedgeBetGroup = mockGameData.dynamicHedgeBetGroups![0];
+            expect(hedgeBetGroup.has("0:home")).toBe(true);
+            expect(hedgeBetGroup.has("0:away")).toBe(true);
+            expect(hedgeBetGroup.has("0:draw")).toBe(false);
+        });
+
+        it("should handle market without hedge bet exclusion", async () => {
+            // Arrange
+            const eventDetailWithoutExclusion = {
+                ...mockEventDetail,
+                markets: [{
+                    ...mockEventDetail.markets[0],
+                    hedgeBetExclusion: undefined
+                }]
+            };
+            const eventResponseWithoutExclusion = {
+                ...mockEventResponse,
+                eventDetails: [eventDetailWithoutExclusion]
+            };
+            const context: ProcessingEventContext = {
+                fullEvent: eventResponseWithoutExclusion,
+                eventDetail: eventDetailWithoutExclusion,
+                index: 0,
+                time: new Date()
+            };
+            mockGameData.oddFeedGames[123].currentRound = 456;
+            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
+            mockGameData.oddFeedGames[123].rounds[456] = eventResponseWithoutExclusion;
+            mockOddFeedConsumer.getEvent.mockResolvedValue(eventResponseWithoutExclusion);
+
+            // Act
+            await eventProcessConsumer.onScheduleStart(context);
+
+            // Assert
+            const hedgeBetGroup = mockGameData.dynamicHedgeBetGroups![0];
+            expect(hedgeBetGroup.has("0:home")).toBe(true);
+            expect(hedgeBetGroup.has("0:away")).toBe(true);
+            expect(hedgeBetGroup.has("0:draw")).toBe(true);
         });
     });
 });

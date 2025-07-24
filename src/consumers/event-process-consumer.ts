@@ -6,6 +6,7 @@ import { GameStatusPublisher, RunningRoundInfoPublisher } from "../publishers";
 import { getEventOffset } from "../helpers/game-timing";
 import { LOCKBET_OFFSET } from "../constants";
 import SettleGameRoundConsumer from "./settle-game-round-consumer";
+import { Bot } from "../crons";
 
 export type ProcessingEventContext = {
     fullEvent: EventResponse;
@@ -23,6 +24,7 @@ export class EventProcessConsumer {
     gameId: number;
     runningRoundInfoPublisher: RunningRoundInfoPublisher;
     settleGameRoundConsumer: SettleGameRoundConsumer;
+    bot: Bot;
     constructor(container: any) {
         this.gameData = container.gameData;
         this.schedulerConsumer = container.schedulerConsumer;
@@ -31,6 +33,7 @@ export class EventProcessConsumer {
         this.gameStatusPublisher = container.gameStatusPublisher;
         this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
         this.settleGameRoundConsumer = container.settleGameRoundConsumer;
+        this.bot = container.bot;
     }
 
     async init() {
@@ -114,6 +117,7 @@ export class EventProcessConsumer {
         this.gameData.oddFeedGames[this.gameId].currentRound = extractRoundId(context.fullEvent.eventID);
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         await this.syncEventDetail(context.fullEvent.eventID);
+        this.bot?.reset();
         this.publishMatch(context.fullEvent);
         this.publishBetChoiceReady();
     }
@@ -197,7 +201,7 @@ export class EventProcessConsumer {
     }
 
     private publishBetChoiceReady() {
-        this.saveOddsAndPointsToGameData();
+        this.saveBetOptionsToGameData();
         this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.publishOdds();
         this.publishBetChoicePoints();
@@ -215,7 +219,7 @@ export class EventProcessConsumer {
         return this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId] ?? null;
     }
 
-    private saveOddsAndPointsToGameData() {
+    private saveBetOptionsToGameData() {
         const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
         if (!currentRoundId) {
             return;
@@ -233,11 +237,17 @@ export class EventProcessConsumer {
             return;
         }
         const selections: Record<string, MarketSelection> = {}
+        const hedgeBetGroups: Array<Set<string>> = [];
         for (const market of currentEventDetail.markets) {
+            const hedgeBetGroup = new Set<string>();
             for (const selection of market.selections) {
                 const selectionUniqueKey = `${currentEventDetailIndex}:${selection.betChoice}`;
                 selections[selectionUniqueKey] = selection;
+                if (!market.hedgeBetExclusion?.includes(selection.betChoice)) {
+                    hedgeBetGroup.add(selectionUniqueKey);
+                }
             }
+            hedgeBetGroups.push(hedgeBetGroup);
         }
 
         const odds  = Object.entries(selections)
@@ -254,6 +264,7 @@ export class EventProcessConsumer {
 
         this.gameData.dynamicOdds = odds;
         this.gameData.betChoicePoints = points;
+        this.gameData.dynamicHedgeBetGroups = hedgeBetGroups;
     }
 
     private publishOdds() {

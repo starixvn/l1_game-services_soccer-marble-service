@@ -1,6 +1,5 @@
 import Bot from "../../../src/crons/bot";
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
-import { helpers } from "sc-common";
 import * as gameTimingHelper from "../../../src/helpers/game-timing";
 import {
     gameManagementApiClientFactory,
@@ -43,6 +42,12 @@ describe("Bot", () => {
                 homeLive: 1.8,
                 awayLive: 2.2,
             },
+            dynamicHedgeBetGroups: [
+                new Set(["home", "away"]),
+                new Set(["homeLive", "awayLive"]),
+                new Set(["home", "awayLive"]),
+                new Set(["away", "homeLive"]),
+            ],
             gameConfigs: {
                 bot_maxbet: 1000,
             },
@@ -248,11 +253,22 @@ describe("Bot", () => {
     });
 
     describe("getBetChoice", () => {
-        it("should return choice from under ratio groups", () => {
+        it("should return choice from available bet choices", () => {
             // Arrange
             const bot = { choices: ["home", "away"] };
-            const betChoiceRatios = [{ underBetRatio: true, group: ["home"] }];
-            (botInstance.getBetChoicesRatios as jest.Mock).mockReturnValue(betChoiceRatios);
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("away"); // Should return opposite choice since bot has "away" in choices
+            expect(mockChance.pickone).toHaveBeenCalledWith(["home", "away", "draw", "homeLive", "awayLive"]);
+        });
+
+        it("should return opposite choice when bot has opposite choice in hedge bet group", () => {
+            // Arrange
+            const bot = { choices: ["home", "away"] };
             mockChance.pickone.mockReturnValue("home");
 
             // Act
@@ -260,14 +276,11 @@ describe("Bot", () => {
 
             // Assert
             expect(result).toBe("away"); // Should return opposite choice from hedge bet group
-            expect(helpers.arrayHelper.shuffle).toHaveBeenCalled();
         });
 
         it("should return original choice when bot doesn't have opposite choice", () => {
             // Arrange
             const bot = { choices: ["home"] };
-            const betChoiceRatios = [{ underBetRatio: true, group: ["home"] }];
-            (botInstance.getBetChoicesRatios as jest.Mock).mockReturnValue(betChoiceRatios);
             mockChance.pickone.mockReturnValue("home");
 
             // Act
@@ -280,8 +293,6 @@ describe("Bot", () => {
         it("should return choice when no hedge bet group found", () => {
             // Arrange
             const bot = { choices: ["draw"] };
-            const betChoiceRatios = [{ underBetRatio: true, group: ["draw"] }];
-            (botInstance.getBetChoicesRatios as jest.Mock).mockReturnValue(betChoiceRatios);
             mockChance.pickone.mockReturnValue("draw");
 
             // Act
@@ -289,6 +300,76 @@ describe("Bot", () => {
 
             // Assert
             expect(result).toBe("draw"); // Should return original choice since no hedge bet group
+        });
+
+        it("should return choice when dynamicHedgeBetGroups is undefined", () => {
+            // Arrange
+            mockGameData.dynamicHedgeBetGroups = undefined;
+            const bot = { choices: ["home", "away"] };
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("home"); // Should return original choice since no hedge bet groups
+        });
+
+        it("should return choice when dynamicOdds is undefined", () => {
+            // Arrange
+            mockGameData.dynamicOdds = undefined;
+            const bot = { choices: ["home", "away"] };
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("away"); // Should return opposite choice since bot has "away" in choices
+        });
+
+        it("should filter out choices with zero odds", () => {
+            // Arrange
+            mockGameData.dynamicOdds = {
+                home: 1.5,
+                away: 0, // Zero odds
+                draw: 3.0,
+                homeLive: 1.8,
+                awayLive: 2.2,
+            };
+            const bot = { choices: ["home", "away"] };
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("away"); // Should return opposite choice since bot has "away" in choices
+            expect(mockChance.pickone).toHaveBeenCalledWith(["home", "draw", "homeLive", "awayLive"]);
+        });
+
+        it("should handle cross-period hedge bet groups", () => {
+            // Arrange
+            const bot = { choices: ["home", "awayLive"] };
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("home"); // Should return original choice since bot doesn't have "away" (opposite)
+        });
+
+        it("should handle case where picked choice is not in bot choices", () => {
+            // Arrange
+            const bot = { choices: ["draw"] };
+            mockChance.pickone.mockReturnValue("home");
+
+            // Act
+            const result = botInstance.getBetChoice(bot);
+
+            // Assert
+            expect(result).toBe("home"); // Should return picked choice since bot doesn't have "away" (opposite)
         });
     });
 

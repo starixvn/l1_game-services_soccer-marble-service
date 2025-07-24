@@ -9,8 +9,12 @@ import { EventProcessConsumer } from "../../../src/consumers/event-process-consu
 import RoundIdConsumer from "../../../src/consumers/round-id-consumer";
 import { UnsettledRoundConsumer } from "../../../src/consumers";
 import { Table } from "sc-game-base";
+import * as gameTimingHelper from "../../../src/helpers/game-timing";
 
 jest.mock("sc-game-base");
+jest.mock("../../../src/helpers/game-timing");
+
+const mockedGameTimingHelper = gameTimingHelper as jest.Mocked<typeof gameTimingHelper>;
 
 describe("GameCron", () => {
     let gameCron: GameCron;
@@ -23,6 +27,7 @@ describe("GameCron", () => {
     let mockEventProcessConsumer: jest.Mocked<EventProcessConsumer>;
     let mockRoundIdConsumer: jest.Mocked<RoundIdConsumer>;
     let mockUnsettledRoundConsumer: jest.Mocked<UnsettledRoundConsumer>;
+    let mockBot: any;
     let mockContainer: {
         gameData: jest.Mocked<GameData>;
         definition: jest.Mocked<GameDefinition>;
@@ -33,6 +38,7 @@ describe("GameCron", () => {
         eventProcessConsumer: jest.Mocked<EventProcessConsumer>;
         roundIdConsumer: jest.Mocked<RoundIdConsumer>;
         unsettledRoundConsumer: jest.Mocked<UnsettledRoundConsumer>;
+        bot?: any;
     };
 
     beforeEach(() => {
@@ -95,6 +101,8 @@ describe("GameCron", () => {
             proceed: jest.fn()
         } as unknown as jest.Mocked<UnsettledRoundConsumer>;
 
+        mockBot = { run: jest.fn() };
+
         mockContainer = {
             gameData: mockGameData,
             definition: mockGameDefinition,
@@ -104,7 +112,8 @@ describe("GameCron", () => {
             cacheConsumer: mockCacheConsumer,
             eventProcessConsumer: mockEventProcessConsumer,
             roundIdConsumer: mockRoundIdConsumer,
-            unsettledRoundConsumer: mockUnsettledRoundConsumer
+            unsettledRoundConsumer: mockUnsettledRoundConsumer,
+            bot: mockBot
         };
 
         // Mock the parent class constructor to properly set up properties
@@ -116,12 +125,16 @@ describe("GameCron", () => {
             this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
             this.roundIdConsumer = container.roundIdConsumer;
             this.unsettledRoundConsumer = container.unsettledRoundConsumer;
+            this.bot = container.bot;
             this.startCron = jest.fn();
             this.checkGameStatus = jest.fn();
             this.getSettingForNewRound = jest.fn();
             this.updateExchangeRates = jest.fn();
             return this;
         });
+
+        // Mock the game timing helper
+        mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
 
         gameCron = new GameCron(mockContainer);
     });
@@ -278,19 +291,61 @@ describe("GameCron", () => {
             });
         });
 
-        describe("remaining time logging", () => {
-            it("should log remaining time", async () => {
+        describe("bot running", () => {
+            it("should run bot when within betting time and bot exists", async () => {
                 // Arrange
-                const consoleSpy = jest.spyOn(console, "log").mockImplementation();
                 gameCron.eventPullCounter = 30;
-                mockEventProcessConsumer.updateAndGetRemainingTime.mockReturnValue(45);
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
+                gameCron.bot = mockBot;
 
                 // Act
                 await gameCron.proceed();
 
                 // Assert
-                expect(consoleSpy).toHaveBeenCalledWith("remainingTime", 45);
-                consoleSpy.mockRestore();
+                expect(mockBot.run).toHaveBeenCalledTimes(1);
+            });
+
+            it("should not run bot when not within betting time", async () => {
+                // Arrange
+                gameCron.eventPullCounter = 30;
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
+                gameCron.bot = mockBot;
+
+                // Act
+                await gameCron.proceed();
+
+                // Assert
+                expect(mockBot.run).not.toHaveBeenCalled();
+            });
+
+            it("should not run bot when bot does not exist", async () => {
+                // Arrange
+                gameCron.eventPullCounter = 30;
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
+                (gameCron as any).bot = undefined;
+
+                // Act
+                await gameCron.proceed();
+
+                // Assert
+                expect(mockBot.run).not.toHaveBeenCalled();
+            });
+
+            it("should run bot when within betting time during interval execution", async () => {
+                // Arrange
+                gameCron.eventPullCounter = 60;
+                mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
+                gameCron.bot = mockBot;
+                const mockCheckGameStatus = jest.fn();
+                gameCron.checkGameStatus = mockCheckGameStatus;
+
+                // Act
+                await gameCron.proceed();
+
+                // Assert
+                expect(mockBot.run).toHaveBeenCalledTimes(1);
+                expect(mockCheckGameStatus).toHaveBeenCalledTimes(1);
+                expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
             });
         });
     });
