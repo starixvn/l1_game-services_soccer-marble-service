@@ -19,6 +19,7 @@ import { EventProcessConsumer } from "./consumers/event-process-consumer";
 import { OddFeedConsumer } from "./consumers/odd-feed-consumer";
 import { SchedulerConsumer } from "./consumers/scheduler-consumer";
 import RoundIdConsumer from "./consumers/round-id-consumer";
+import { UserSignInConsumer } from "./consumers/user-sign-in-cosumer";
 
 export default class ContainerRegistry extends Table.TableContainerRegistry {
     register(appConfigs: any, definition: any, gameData: any): AwilixContainer<any> {
@@ -64,6 +65,7 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
             oddFeedConsumer: asClass(OddFeedConsumer).singleton().proxy(),
             schedulerConsumer: asClass(SchedulerConsumer).singleton().proxy(),
             roundIdConsumer: asClass(RoundIdConsumer).singleton(),
+            userSignInConsumer: asClass(UserSignInConsumer).singleton(),
         });
     }
 

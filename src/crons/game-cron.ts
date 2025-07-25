@@ -7,7 +7,8 @@ import RunningRoundInfoPublisher from "../publishers/running-round-info-publishe
 import CacheConsumer from "../consumers/cache-consumer";
 import { EventProcessConsumer } from "../consumers/event-process-consumer";
 import RoundIdConsumer from "../consumers/round-id-consumer";
-import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
+import { isOddFeedAvailable, isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
+import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 
 const COUNTER_INTERVAL = 60;
 
@@ -34,23 +35,61 @@ export default class GameCron extends Table.Crons.TableGameCron {
     public override async start() {
         this.eventProcessConsumer.init();
         await this.roundIdConsumer.queryLastRound();
-        await this.getSettingForNewRound();
         await this.updateExchangeRates();
-        void this.unsettledRoundConsumer.proceed();
+        await this.unsettledRoundConsumer.proceed();
+        this.gameData.proceedEvent = true;
         this.startCron();
     }
 
     async proceed() {
-        if (this.eventPullCounter === COUNTER_INTERVAL) {
-            await this.checkGameStatus()
+        if (this.gameData.proceedEvent) {
+            this.gameData.proceedEvent = false;
+            await this.checkGameStatus();
             await this.eventProcessConsumer.proceed();
-            this.eventPullCounter = 0;
         }
-
-        this.eventProcessConsumer.updateAndGetRemainingTime();
+        const remainingTime = this.eventProcessConsumer.updateRemainingTime();
+        console.log('remainingTime ', remainingTime);
         if (isWithinBettingTimeInCurrentEventDetail(this.gameData)) {
             this.bot && (await this.bot.run())
         }
         this.eventPullCounter++;
+    }
+
+    override async checkGameStatus() {
+        const { configName } = this.definition;
+
+        const newGameConfigs = await getOrDefault(
+            this.gameManagementApiClient.gameConfigs.getGameConfigs(configName),
+            this.gameData.gameConfigs
+        );
+
+        if (!newGameConfigs) {
+            this.logService.logError(`Cannot get game configs of ${this.definition.name}.`);
+        }
+
+        const previouslyDisabled = this.gameData.disabled;
+        const configuredlyDisabled = !newGameConfigs?.enabled;
+
+        if (previouslyDisabled) {
+            this.gameData.delayStartTime = this.getDelayStartTime(configuredlyDisabled, newGameConfigs);
+        }
+
+        this.assignNewGameConfigs(newGameConfigs);
+
+        this.gameData.disabled = configuredlyDisabled || this.gameData.delayStartTime > 0 || this.oddFeedNotAvailable();
+
+        await this.getSettingForNewRound();
+
+        if (this.gameData.gameConfigs.exchangeReload) {
+            await this.updateExchangeRates();
+
+            await post(this.gameManagementApiClient.gameConfigs.updateExchangeReload(false, configName));
+        }
+
+        this.handleGameStatus(previouslyDisabled);
+    }
+
+    private oddFeedNotAvailable() {
+        return !isOddFeedAvailable(this.gameData);
     }
 }

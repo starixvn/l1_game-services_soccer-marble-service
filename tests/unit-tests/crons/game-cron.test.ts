@@ -10,11 +10,14 @@ import RoundIdConsumer from "../../../src/consumers/round-id-consumer";
 import { UnsettledRoundConsumer } from "../../../src/consumers";
 import { Table } from "sc-game-base";
 import * as gameTimingHelper from "../../../src/helpers/game-timing";
+import * as gameManagementApi from "sc-game-base/src/core/game-management-api";
 
 jest.mock("sc-game-base");
 jest.mock("../../../src/helpers/game-timing");
+jest.mock("sc-game-base/src/core/game-management-api");
 
 const mockedGameTimingHelper = gameTimingHelper as jest.Mocked<typeof gameTimingHelper>;
+const mockedGameManagementApi = gameManagementApi as jest.Mocked<typeof gameManagementApi>;
 
 describe("GameCron", () => {
     let gameCron: GameCron;
@@ -47,10 +50,18 @@ describe("GameCron", () => {
         mockGameData = {
             liveStreamServer: "",
             gameId: 0,
-            remainingTime: 0
+            remainingTime: 0,
+            proceedEvent: false,
+            disabled: false,
+            delayStartTime: 0,
+            gameConfigs: { enabled: true, exchangeReload: false },
+            oddFeedGames: {}
         } as unknown as jest.Mocked<GameData>;
 
-        mockGameDefinition = {} as unknown as jest.Mocked<GameDefinition>;
+        mockGameDefinition = {
+            configName: "test-config",
+            name: "test-game"
+        } as unknown as jest.Mocked<GameDefinition>;
 
         mockAppConfigs = {
             liveStreamServer: "test-server",
@@ -89,7 +100,7 @@ describe("GameCron", () => {
 
         mockEventProcessConsumer = {
             proceed: jest.fn(),
-            updateAndGetRemainingTime: jest.fn(),
+            updateRemainingTime: jest.fn().mockReturnValue(100),
             init: jest.fn()
         } as unknown as jest.Mocked<EventProcessConsumer>;
 
@@ -126,8 +137,19 @@ describe("GameCron", () => {
             this.roundIdConsumer = container.roundIdConsumer;
             this.unsettledRoundConsumer = container.unsettledRoundConsumer;
             this.bot = container.bot;
+            this.gameManagementApiClient = {
+                gameConfigs: {
+                    getGameConfigs: jest.fn(),
+                    updateExchangeReload: jest.fn()
+                }
+            };
+            this.logService = {
+                logError: jest.fn()
+            };
             this.startCron = jest.fn();
-            this.checkGameStatus = jest.fn();
+            this.getDelayStartTime = jest.fn().mockReturnValue(0);
+            this.assignNewGameConfigs = jest.fn();
+            this.handleGameStatus = jest.fn();
             this.getSettingForNewRound = jest.fn();
             this.updateExchangeRates = jest.fn();
             return this;
@@ -135,6 +157,11 @@ describe("GameCron", () => {
 
         // Mock the game timing helper
         mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
+        mockedGameTimingHelper.isOddFeedAvailable.mockReturnValue(true);
+
+        // Mock game management API
+        mockedGameManagementApi.getOrDefault.mockResolvedValue({ enabled: true });
+        mockedGameManagementApi.post.mockResolvedValue({});
 
         gameCron = new GameCron(mockContainer);
     });
@@ -167,36 +194,56 @@ describe("GameCron", () => {
             // Assert
             expect(mockEventProcessConsumer.init).toHaveBeenCalledTimes(1);
             expect(mockRoundIdConsumer.queryLastRound).toHaveBeenCalledTimes(1);
-            expect(mockGetSettingForNewRound).toHaveBeenCalledTimes(1);
             expect(mockUpdateExchangeRates).toHaveBeenCalledTimes(1);
             expect(mockUnsettledRoundConsumer.proceed).toHaveBeenCalledTimes(1);
             expect(mockStartCron).toHaveBeenCalledTimes(1);
+            expect(mockGameData.proceedEvent).toBe(true);
         });
     });
 
     describe("proceed", () => {
-        describe("interval passed", () => {
-            it("should execute full proceed logic when counter reaches interval", async () => {
-                // Arrange
-                gameCron.eventPullCounter = 60;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
+        describe("when proceedEvent is true", () => {
+                    it("should execute full proceed logic when proceedEvent is true", async () => {
+            // Arrange
+            gameCron.eventPullCounter = 60;
+            mockGameData.proceedEvent = true;
+            const mockGetGameConfigs = jest.fn().mockReturnValue("api-call");
+            gameCron.gameManagementApiClient.gameConfigs.getGameConfigs = mockGetGameConfigs;
+            const newConfigs = { enabled: true };
+            mockedGameManagementApi.getOrDefault.mockResolvedValue(newConfigs);
 
-                // Act
-                await gameCron.proceed();
+            // Act
+            await gameCron.proceed();
 
-                // Assert
-                expect(mockCheckGameStatus).toHaveBeenCalledTimes(1);
-                expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
-                expect(mockEventProcessConsumer.updateAndGetRemainingTime).toHaveBeenCalledTimes(1);
-                expect(gameCron.eventPullCounter).toBe(1);
-            });
+            // Assert
+            expect(mockGetGameConfigs).toHaveBeenCalledWith("test-config");
+            expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
+            expect(mockEventProcessConsumer.updateRemainingTime).toHaveBeenCalledTimes(1);
+            expect(mockGameData.proceedEvent).toBe(false);
+            expect(gameCron.eventPullCounter).toBe(61);
         });
 
-        describe("interval not passed", () => {
-            it("should only update remaining time and increment counter when interval not reached", async () => {
+                    it("should reset proceedEvent to false after execution", async () => {
+            // Arrange
+            mockGameData.proceedEvent = true;
+            const mockGetGameConfigs = jest.fn().mockReturnValue("api-call");
+            gameCron.gameManagementApiClient.gameConfigs.getGameConfigs = mockGetGameConfigs;
+            const newConfigs = { enabled: true };
+            mockedGameManagementApi.getOrDefault.mockResolvedValue(newConfigs);
+
+            // Act
+            await gameCron.proceed();
+
+            // Assert
+            expect(mockGameData.proceedEvent).toBe(false);
+        });
+        });
+
+        describe("when proceedEvent is false", () => {
+            it("should only update remaining time and increment counter when proceedEvent is false", async () => {
                 // Arrange
                 gameCron.eventPullCounter = 30;
+                mockGameData.proceedEvent = false;
                 const mockCheckGameStatus = jest.fn();
                 gameCron.checkGameStatus = mockCheckGameStatus;
 
@@ -206,7 +253,7 @@ describe("GameCron", () => {
                 // Assert
                 expect(mockCheckGameStatus).not.toHaveBeenCalled();
                 expect(mockEventProcessConsumer.proceed).not.toHaveBeenCalled();
-                expect(mockEventProcessConsumer.updateAndGetRemainingTime).toHaveBeenCalledTimes(1);
+                expect(mockEventProcessConsumer.updateRemainingTime).toHaveBeenCalledTimes(1);
                 expect(gameCron.eventPullCounter).toBe(31);
             });
         });
@@ -215,6 +262,7 @@ describe("GameCron", () => {
             it("should increment counter after each proceed call", async () => {
                 // Arrange
                 gameCron.eventPullCounter = 0;
+                mockGameData.proceedEvent = false;
 
                 // Act
                 await gameCron.proceed();
@@ -223,9 +271,10 @@ describe("GameCron", () => {
                 expect(gameCron.eventPullCounter).toBe(1);
             });
 
-            it("should reset counter to 1 after interval is reached", async () => {
+            it("should increment counter even when proceedEvent is true", async () => {
                 // Arrange
                 gameCron.eventPullCounter = 60;
+                mockGameData.proceedEvent = true;
                 const mockCheckGameStatus = jest.fn();
                 gameCron.checkGameStatus = mockCheckGameStatus;
 
@@ -233,68 +282,42 @@ describe("GameCron", () => {
                 await gameCron.proceed();
 
                 // Assert
-                expect(gameCron.eventPullCounter).toBe(1);
+                expect(gameCron.eventPullCounter).toBe(61);
             });
         });
 
-        describe("game status check", () => {
-            it("should call checkGameStatus when interval is reached", async () => {
+        describe("remaining time update", () => {
+            it("should always call updateRemainingTime", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 60;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
+                mockGameData.proceedEvent = false;
 
                 // Act
                 await gameCron.proceed();
 
                 // Assert
-                expect(mockCheckGameStatus).toHaveBeenCalledTimes(1);
+                expect(mockEventProcessConsumer.updateRemainingTime).toHaveBeenCalledTimes(1);
             });
 
-            it("should not call checkGameStatus when interval is not reached", async () => {
+            it("should call updateRemainingTime when proceedEvent is true", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 30;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
+                mockGameData.proceedEvent = true;
+                const mockGetGameConfigs = jest.fn().mockReturnValue("api-call");
+                gameCron.gameManagementApiClient.gameConfigs.getGameConfigs = mockGetGameConfigs;
+                const newConfigs = { enabled: true };
+                mockedGameManagementApi.getOrDefault.mockResolvedValue(newConfigs);
 
                 // Act
                 await gameCron.proceed();
 
                 // Assert
-                expect(mockCheckGameStatus).not.toHaveBeenCalled();
-            });
-        });
-
-        describe("event process consumer calls", () => {
-            it("should call eventProcessConsumer.proceed when interval is reached", async () => {
-                // Arrange
-                gameCron.eventPullCounter = 60;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
-
-                // Act
-                await gameCron.proceed();
-
-                // Assert
-                expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
-            });
-
-            it("should always call eventProcessConsumer.updateAndGetRemainingTime", async () => {
-                // Arrange
-                gameCron.eventPullCounter = 30;
-
-                // Act
-                await gameCron.proceed();
-
-                // Assert
-                expect(mockEventProcessConsumer.updateAndGetRemainingTime).toHaveBeenCalledTimes(1);
+                expect(mockEventProcessConsumer.updateRemainingTime).toHaveBeenCalledTimes(1);
             });
         });
 
         describe("bot running", () => {
             it("should run bot when within betting time and bot exists", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 30;
+                mockGameData.proceedEvent = false;
                 mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
                 gameCron.bot = mockBot;
 
@@ -307,7 +330,7 @@ describe("GameCron", () => {
 
             it("should not run bot when not within betting time", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 30;
+                mockGameData.proceedEvent = false;
                 mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
                 gameCron.bot = mockBot;
 
@@ -320,7 +343,7 @@ describe("GameCron", () => {
 
             it("should not run bot when bot does not exist", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 30;
+                mockGameData.proceedEvent = false;
                 mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
                 (gameCron as any).bot = undefined;
 
@@ -331,22 +354,49 @@ describe("GameCron", () => {
                 expect(mockBot.run).not.toHaveBeenCalled();
             });
 
-            it("should run bot when within betting time during interval execution", async () => {
+            it("should run bot when within betting time during proceedEvent execution", async () => {
                 // Arrange
-                gameCron.eventPullCounter = 60;
+                mockGameData.proceedEvent = true;
                 mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
                 gameCron.bot = mockBot;
-                const mockCheckGameStatus = jest.fn();
-                gameCron.checkGameStatus = mockCheckGameStatus;
+                const mockGetGameConfigs = jest.fn().mockReturnValue("api-call");
+                gameCron.gameManagementApiClient.gameConfigs.getGameConfigs = mockGetGameConfigs;
+                const newConfigs = { enabled: true };
+                mockedGameManagementApi.getOrDefault.mockResolvedValue(newConfigs);
 
                 // Act
                 await gameCron.proceed();
 
                 // Assert
                 expect(mockBot.run).toHaveBeenCalledTimes(1);
-                expect(mockCheckGameStatus).toHaveBeenCalledTimes(1);
                 expect(mockEventProcessConsumer.proceed).toHaveBeenCalledTimes(1);
             });
+        });
+    });
+
+
+
+    describe("oddFeedNotAvailable", () => {
+        it("should return true when odd feed is not available", () => {
+            // Arrange
+            mockedGameTimingHelper.isOddFeedAvailable.mockReturnValue(false);
+
+            // Act
+            const result = (gameCron as any).oddFeedNotAvailable();
+
+            // Assert
+            expect(result).toBe(true);
+        });
+
+        it("should return false when odd feed is available", () => {
+            // Arrange
+            mockedGameTimingHelper.isOddFeedAvailable.mockReturnValue(true);
+
+            // Act
+            const result = (gameCron as any).oddFeedNotAvailable();
+
+            // Assert
+            expect(result).toBe(false);
         });
     });
 });

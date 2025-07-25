@@ -25,6 +25,8 @@ export default class GameData extends TableGameData {
     oddFeedAccessToken?: string;
     gameId?: number;
     lastRoundId?: number;
+    currentMatch?: { home: string, away: string };
+    proceedEvent?: boolean;
 }
 
 export type RealPlayer = {

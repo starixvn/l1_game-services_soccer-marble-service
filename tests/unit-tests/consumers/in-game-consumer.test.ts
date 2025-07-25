@@ -39,6 +39,8 @@ describe("InGameConsumer", () => {
             const realPlayer = { UID: "player123" };
             const superConsumeSpy = jest.spyOn(TableInGameConsumer.prototype, "consume").mockResolvedValue();
             const publishOddsToPlayerSpy = jest.spyOn(consumer, "publishOddsToPlayer").mockReturnValue(undefined);
+            const publishBetChoicePointsToPlayerSpy = jest.spyOn(consumer, "publishBetChoicePointsToPlayer").mockReturnValue(undefined);
+            const publishMatchToPlayerSpy = jest.spyOn(consumer, "publishMatchToPlayer").mockReturnValue(undefined);
 
             // Act
             await consumer.consume(realPlayer);
@@ -46,6 +48,8 @@ describe("InGameConsumer", () => {
             // Assert
             expect(superConsumeSpy).toHaveBeenCalledWith(realPlayer);
             expect(publishOddsToPlayerSpy).toHaveBeenCalledWith("player123");
+            expect(publishBetChoicePointsToPlayerSpy).toHaveBeenCalledWith("player123");
+            expect(publishMatchToPlayerSpy).toHaveBeenCalledWith("player123");
         });
     });
 
@@ -98,6 +102,36 @@ describe("InGameConsumer", () => {
 
             // Assert
             expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { odds: undefined });
+        });
+    });
+
+    describe("publishBetChoicePointsToPlayer", () => {
+        it("should publish bet choice points to user", () => {
+            // Arrange
+            const UID = "player123";
+            const betChoicePoints = { home: 1, away: 2 };
+            gameData.betChoicePoints = betChoicePoints;
+
+            // Act
+            consumer.publishBetChoicePointsToPlayer(UID);
+
+            // Assert
+            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { points: betChoicePoints });
+        });
+    });
+
+    describe("publishMatchToPlayer", () => {
+        it("should publish match to user", () => {
+            // Arrange
+            const UID = "player123";
+            const match = { home: "A", away: "B" };
+            gameData.currentMatch = match;
+
+            // Act
+            consumer.publishMatchToPlayer(UID);
+
+            // Assert
+            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { match });
         });
     });
 });

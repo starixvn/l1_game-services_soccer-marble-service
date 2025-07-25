@@ -1,5 +1,4 @@
-import { getEventOffset, isWithinBettingTimeInCurrentEventDetail } from "../../../src/helpers/game-timing";
-import GameData from "../../../src/game-data";
+import { getEventOffset, isWithinBettingTimeInCurrentEventDetail, isOddFeedAvailable } from "../../../src/helpers/game-timing";
 import * as eventIdHelper from "../../../src/helpers/eventid";
 import { EVENT_OFFSET, LOCKBET_OFFSET } from "../../../src/constants";
 
@@ -304,6 +303,218 @@ describe("Game Timing Helpers", () => {
 
                 // Assert
                 expect(result).toBe(false); // Should default to first event behavior (impossible window)
+            });
+        });
+    });
+
+    describe("isOddFeedAvailable", () => {
+        let mockGameData: any;
+
+        beforeEach(() => {
+            mockGameData = {
+                gameId: 123,
+                remainingTime: 100,
+                oddFeedGames: {
+                    123: {
+                        currentRound: 456,
+                        currentEventDetailIndex: 0
+                    }
+                }
+            };
+        });
+
+        describe("no game id", () => {
+            it("should return false when gameId is undefined", () => {
+                // Arrange
+                mockGameData.gameId = undefined;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+
+            it("should return false when gameId is null", () => {
+                // Arrange
+                mockGameData.gameId = null;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+
+            it("should return false when gameId is 0", () => {
+                // Arrange
+                mockGameData.gameId = 0;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+        });
+
+        describe("no current round", () => {
+            it("should return false when currentRound is undefined", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123].currentRound = undefined;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+
+            it("should return false when oddFeedGames for gameId does not exist", () => {
+                // Arrange
+                delete mockGameData.oddFeedGames[123];
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+        });
+
+        describe("no current event detail index", () => {
+            it("should return false when currentEventDetailIndex is undefined", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123].currentEventDetailIndex = undefined;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+        });
+
+        describe("negative remaining time", () => {
+            it("should return false when remainingTime is negative", () => {
+                // Arrange
+                mockGameData.remainingTime = -10;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+
+            it("should return true when remainingTime is 0", () => {
+                // Arrange
+                mockGameData.remainingTime = 0;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(true);
+            });
+        });
+
+        describe("valid conditions", () => {
+            it("should return true when all conditions are met", () => {
+                // Arrange
+                mockGameData.gameId = 123;
+                mockGameData.remainingTime = 100;
+                mockGameData.oddFeedGames[123] = {
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(true);
+            });
+
+            it("should return true when currentRound is 0", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123].currentRound = 0;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(true);
+            });
+
+            it("should return true when currentEventDetailIndex is 0", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(true);
+            });
+
+            it("should return true when remainingTime is positive", () => {
+                // Arrange
+                mockGameData.remainingTime = 1;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(true);
+            });
+        });
+
+        describe("edge cases", () => {
+            it("should handle missing oddFeedGames property", () => {
+                // Arrange
+                delete mockGameData.oddFeedGames;
+
+                // Act & Assert
+                expect(() => isOddFeedAvailable(mockGameData)).toThrow();
+            });
+
+            it("should handle oddFeedGames as null", () => {
+                // Arrange
+                mockGameData.oddFeedGames = null;
+
+                // Act & Assert
+                expect(() => isOddFeedAvailable(mockGameData)).toThrow();
+            });
+
+            it("should handle oddFeedGames as undefined", () => {
+                // Arrange
+                mockGameData.oddFeedGames = undefined;
+
+                // Act & Assert
+                expect(() => isOddFeedAvailable(mockGameData)).toThrow();
+            });
+
+            it("should handle missing remainingTime property", () => {
+                // Arrange
+                delete mockGameData.remainingTime;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
+            });
+
+            it("should handle remainingTime as undefined", () => {
+                // Arrange
+                mockGameData.remainingTime = undefined;
+
+                // Act
+                const result = isOddFeedAvailable(mockGameData);
+
+                // Assert
+                expect(result).toBe(false);
             });
         });
     });

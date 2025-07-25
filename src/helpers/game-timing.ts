@@ -28,3 +28,14 @@ export function isWithinBettingTimeInCurrentEventDetail(gameData: GameData) {
 
     return now > startPlaceBetTs && now < lockbetTs;
 }
+
+export function isOddFeedAvailable(gameData: GameData) {
+    const gameId = gameData.gameId;
+    if (!gameId) {
+        return false;
+    }
+    const currentRound = gameData.oddFeedGames[gameId]?.currentRound !== undefined;
+    const currentEventDetailIndex = gameData.oddFeedGames[gameId]?.currentEventDetailIndex !== undefined;
+
+    return currentRound && currentEventDetailIndex && gameData.remainingTime >= 0;
+}

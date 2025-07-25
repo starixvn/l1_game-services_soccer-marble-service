@@ -23,6 +23,8 @@ export default class InGameConsumer extends TableInGameConsumer {
     override async consume(realPlayer: any): Promise<void> {
         await super.consume(realPlayer);
         this.publishOddsToPlayer(realPlayer.UID);
+        this.publishBetChoicePointsToPlayer(realPlayer.UID);
+        this.publishMatchToPlayer(realPlayer.UID);
     }
 
     override async buildPayload(realPlayer: any) {
@@ -35,5 +37,13 @@ export default class InGameConsumer extends TableInGameConsumer {
 
     publishOddsToPlayer(UID: string): void {
         this.publisher.publishToUser(UID, { odds: this.gameData.dynamicOdds });
+    }
+
+    publishBetChoicePointsToPlayer(UID: string): void {
+        this.publisher.publishToUser(UID, { points: this.gameData.betChoicePoints });
+    }
+
+    publishMatchToPlayer(UID: string): void {
+        this.publisher.publishToUser(UID, { match: this.gameData.currentMatch });
     }
 }

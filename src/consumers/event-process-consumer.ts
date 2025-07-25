@@ -36,6 +36,10 @@ export class EventProcessConsumer {
         this.bot = container.bot;
     }
 
+    async checkGameStatus() {
+        this.gameData.proceedEvent = true;
+    }
+
     async init() {
         this.gameData.gameId = this.gameId;
         this.gameData.oddFeedGames[this.gameId] = {
@@ -44,10 +48,12 @@ export class EventProcessConsumer {
     }
 
     public async proceed(): Promise<void> {
-        if (this.gameData.disabled) {
+        const schedule = await this.oddFeedConsumer.getSchedule();
+        if (!schedule || schedule.length === 0) {
+            this.gameData.proceedEvent = true;
             return;
         }
-        const schedule = await this.oddFeedConsumer.getSchedule();
+
         for (const event of schedule) {
             void this.processEvent(event);
         }
@@ -73,7 +79,7 @@ export class EventProcessConsumer {
         
         const eventStartTs = getEventOffset(new Date(event.scheduleStartTs));
 
-        this.schedulerConsumer.schedule(eventStartTs, () => this.onScheduleStart({fullEvent, eventDetail: fullEvent.eventDetails[0], index: 0, time: eventStartTs}));
+        this.schedulerConsumer.schedule(eventStartTs, () => this.onScheduleStart({fullEvent, eventDetail: fullEvent.eventDetails[0], index: 0, time: eventStartTs}), { key: 'scheduleStart' });
         
         fullEvent.eventDetails.forEach((eventDetail, index) => {
             const procesedEventDetail = this.processEventDetailWithTimingOffset(eventDetail);
@@ -89,14 +95,22 @@ export class EventProcessConsumer {
             const resultsAvailableTs = procesedEventDetail.resultsAvailableTs;
             const lockbetTs = getEventOffset(scheduleStartTs, LOCKBET_OFFSET);
 
-            this.schedulerConsumer.schedule(oddsAvailableTs, () => this.onOddAvailable({ ...eventContext, time: oddsAvailableTs }));
-            this.schedulerConsumer.schedule(lockbetTs, () => this.onLockBet({ ...eventContext, time: lockbetTs }));
-            this.schedulerConsumer.schedule(scheduleStartTs, () => this.onLiveStream({ ...eventContext, time: scheduleStartTs }));
-            this.schedulerConsumer.schedule(resultsAvailableTs, () => this.onMatchResultAvailable({ ...eventContext, time: resultsAvailableTs }));
+            this.schedulerConsumer.schedule(oddsAvailableTs, () => this.onOddAvailable({ ...eventContext, time: oddsAvailableTs }), { key: 'oddsAvailable' });
+            this.schedulerConsumer.schedule(lockbetTs, () => this.onLockBet({ ...eventContext, time: lockbetTs }), { key: 'lockbet' });
+            this.schedulerConsumer.schedule(scheduleStartTs, () => this.onLiveStream({ ...eventContext, time: scheduleStartTs }), { key: 'scheduleStart' });
+            this.schedulerConsumer.schedule(resultsAvailableTs, 
+                () => this.onMatchResultAvailable(
+                    { ...eventContext, 
+                        time: resultsAvailableTs 
+                    }, 
+                    { isRegularResultEvent: true }
+                ), 
+                { key: 'resultsAvailable' }
+            );
         });
     }
 
-    updateAndGetRemainingTime() {
+    updateRemainingTime() {
         const currentRound = this.getCurrentRound();
         if (!currentRound) {
             return 0;
@@ -118,8 +132,9 @@ export class EventProcessConsumer {
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         await this.syncEventDetail(context.fullEvent.eventID);
         this.bot?.reset();
-        this.publishMatch(context.fullEvent);
+        this.saveMatchToGameData(context.fullEvent);
         this.publishBetChoiceReady();
+        this.publishMatch();
     }
 
     async onOddAvailable(context: ProcessingEventContext) {
@@ -146,10 +161,12 @@ export class EventProcessConsumer {
                 index,
                 time: resultAvailable
             }
-        ));
+        ), { key: 'resultsAvailable' });
     }
 
-    async onMatchResultAvailable(context: ProcessingEventContext) {
+    async onMatchResultAvailable(context: ProcessingEventContext, options: {
+        isRegularResultEvent?: boolean;
+    } = {}) {
         if (context.index !== context.fullEvent.eventDetails.length - 1) {
             return;
         }
@@ -158,6 +175,10 @@ export class EventProcessConsumer {
             return;
         }
         await this.settleGameRoundConsumer.settleSpecificRound(extractRoundId(event.eventID));
+
+        if (options.isRegularResultEvent) {
+            void this.checkGameStatus();
+        }
     }
 
     async onLiveStream(context: ProcessingEventContext) {
@@ -178,6 +199,8 @@ export class EventProcessConsumer {
         this.runningRoundInfoPublisher.publishToAllUsers({
             videoResult
         });
+
+
     }
 
     async syncEventDetail(eventID: number) {
@@ -275,6 +298,14 @@ export class EventProcessConsumer {
         this.gameStatusPublisher.publishOdds(allOdds);
     }
 
+    private publishMatch() {
+        const match = this.gameData.currentMatch;
+        if (!match) {
+            return;
+        }
+        this.gameStatusPublisher.publishMatch(match);
+    }
+
     private publishBetChoicePoints() {
         const allBetChoicePoints = this.gameData.betChoicePoints;
         if (!allBetChoicePoints) {
@@ -283,10 +314,10 @@ export class EventProcessConsumer {
         this.gameStatusPublisher.publishToAllUsers({ points: allBetChoicePoints });
     }
 
-    private publishMatch(event: EventResponse) {
+    private saveMatchToGameData(event: EventResponse) {
         const home = event.eventNameAKey;
         const away = event.eventNameBKey;
-        this.gameStatusPublisher.publishMatch({ home, away });
+        this.gameData.currentMatch = { home, away };
     }
 
     private processEventDetails(event: EventResponse) {
