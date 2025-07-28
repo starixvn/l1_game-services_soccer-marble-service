@@ -67,4 +67,12 @@ export default {
         code: "SEAOC",
         teams: ["BRN", "KHM", "IDN", "LAO", "MYS", "PHL", "SGP", "THA", "TLS", "VNM", "JPN", "KOR", "CHN", "TWN", "HKG", "IND"],
     },
+    oddFeed: {
+        baseUrl: "http://localhost:5999",
+        operator:{
+            "operatorId": "asdsadaddad",
+            "password": "asdsadadda"
+          },
+        gameId: 2001
+    }
 };
