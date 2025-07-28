@@ -11,6 +11,7 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
     }
 
     async settleSpecificRound(roundId: number) {
+        console.log("SETTLING ROUND", roundId);
         const gameId = this.gameData.gameId;
         if (!gameId) return;
         const round = this.gameData.oddFeedGames[gameId]?.rounds[roundId];

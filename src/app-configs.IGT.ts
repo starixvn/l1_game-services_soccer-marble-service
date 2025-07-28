@@ -23,5 +23,13 @@ export default Object.assign(appConfigs, {
             auto_reconnect: true,
         },
     },
+    oddFeed: {
+        baseUrl: "http://localhost:5999",
+        operator:{
+            "operatorId": "asdsadaddad",
+            "password": "asdsadadda"
+          },
+        gameId: 2001
+    },
     disableCors: true,
 });

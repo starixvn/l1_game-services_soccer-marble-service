@@ -49,6 +49,7 @@ export class EventProcessConsumer {
 
     public async proceed(): Promise<void> {
         const schedule = await this.oddFeedConsumer.getSchedule();
+        console.log('scheduled events ', schedule?.length);
         if (!schedule || schedule.length === 0) {
             this.gameData.proceedEvent = true;
             return;
@@ -147,6 +148,7 @@ export class EventProcessConsumer {
 
     async onLockBet(context: ProcessingEventContext) {
         this.gameStatusPublisher.publishEndPlacingBetStatus()
+        console.log("PLEASE PLEASE STOP BETTING PLEASE")
     }
 
     async syncForSettle(eventID: number) {
@@ -228,6 +230,7 @@ export class EventProcessConsumer {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.publishOdds();
         this.publishBetChoicePoints();
+        console.log("GO BET PLEASE")
     }
  
     private getCurrentMatch() {

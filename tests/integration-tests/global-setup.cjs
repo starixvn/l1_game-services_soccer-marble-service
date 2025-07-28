@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const { OddFeedApiService } = require("./_stubs/odd-feed");
 
 const startSetupDataProcess = (onSetupDataDone) => {
     const setupDataProcess = spawn("node", ["--experimental-loader=extensionless", "./tests/integration-tests/_stubs/test-data-setup.js"]);
@@ -46,6 +47,8 @@ const startServiceProcess = (onServiceStarted) => {
 module.exports = async function () {
     return new Promise(function (resolve) {
         startSetupDataProcess(() => {
+            globalThis.processStartOddFeed = new OddFeedApiService();
+            globalThis.processStartOddFeed.start();
             globalThis.processStartService = startServiceProcess(() => {
                 console.log("Start service job done!");
                 resolve();

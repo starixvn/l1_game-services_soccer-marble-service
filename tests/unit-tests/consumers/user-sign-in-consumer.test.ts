@@ -160,14 +160,15 @@ describe("UserSignInConsumer", () => {
 
             it("should handle empty umMessages", async () => {
                 // Arrange
-                (mockGameData as any).umMessages = { time: new Date(), message: "", displayKind: "info", gameName: "", messages: {} };
+                const time = new Date();
+                (mockGameData as any).umMessages = { time, message: "", displayKind: "info", gameName: "", messages: {} };
                 mockedGameTimingHelper.isOddFeedAvailable.mockReturnValue(false);
 
                 // Act
                 await userSignInConsumer.consume(mockSocketClient, mockPayload);
 
                 // Assert
-                expect(mockUserSignInPublisher.publishUmNotice).toHaveBeenCalledWith(mockSocketClient, { time: new Date(), message: "", displayKind: "info", gameName: "", messages: {} });
+                expect(mockUserSignInPublisher.publishUmNotice).toHaveBeenCalledWith(mockSocketClient, { time, message: "", displayKind: "info", gameName: "", messages: {} });
             });
 
             it("should handle undefined payload", async () => {
