@@ -4,16 +4,38 @@ describe("SchedulerConsumer", () => {
     let scheduler: SchedulerConsumer;
     let originalSetTimeout: typeof setTimeout;
     let setTimeoutMock: jest.Mock;
+    let originalDate: typeof Date;
+    let originalDateNow: typeof Date.now;
+    const FIXED_TIME = 1000000;
 
     beforeEach(() => {
         scheduler = new SchedulerConsumer();
         setTimeoutMock = jest.fn();
         originalSetTimeout = global.setTimeout;
         (global as any).setTimeout = setTimeoutMock;
+
+        originalDate = global.Date;
+        originalDateNow = Date.now;
+        const MockDate = class extends Date {
+            constructor(...args: any[]) {
+                if (args.length === 0) {
+                    super(FIXED_TIME);
+                } else {
+                    super(...(args as [any]));
+                }
+            }
+            static now() {
+                return FIXED_TIME;
+            }
+        };
+        (global as any).Date = MockDate;
+        Date.now = MockDate.now;
     });
 
     afterEach(() => {
         (global as any).setTimeout = originalSetTimeout;
+        (global as any).Date = originalDate;
+        Date.now = originalDateNow;
         jest.restoreAllMocks();
     });
 

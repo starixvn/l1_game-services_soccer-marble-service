@@ -1,7 +1,7 @@
 export const CONFIGURED_DATE = new Date();
 
 
-export const INCOMING = 10;
+export const INCOMING = 5;
 
 export const FLOW = {
     scheduleStart: 5,

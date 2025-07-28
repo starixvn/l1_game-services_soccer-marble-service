@@ -1,10 +1,22 @@
 import { GameClientDriver, normalUser, eventTypes } from "sc-game-service-integration-utils";
-import gameSettings from "../../_stubs/game-settings";
-import { getTimeOutToBet, initUserSession } from "../../helper/helper";
+import { initUserSession } from "../../helper/helper";
 import { socketOptionsFunc } from "../../_stubs/test-data";
 import appConfigs from "../../../../build/app-configs.IGT";
+import { dateWithOffset, FLOW, INCOMING, CONFIGURED_DATE } from "../../shared";
 
 const socketOptions = socketOptionsFunc(appConfigs.hostingPort);
+
+const LOCKBET_OFFSET = -3000;
+
+const timeStamps = {
+    firstHalf: {
+        startPlaceBet: dateWithOffset(CONFIGURED_DATE, FLOW.scheduleStart + INCOMING),
+    },
+    secondHalf: {
+        startPlaceBet: dateWithOffset(CONFIGURED_DATE, FLOW.h2OddAvailable + INCOMING),
+    },
+    settle: dateWithOffset(CONFIGURED_DATE, FLOW.h2ResultAvailable + INCOMING),
+}
 
 const signInClient = async (client) => {
     const interval = setInterval(() => client.sendSignInEvent(), 500);
@@ -22,129 +34,78 @@ const placeBetAfterTimeout = async (betChoice, amount, timeout, client) => {
 };
 
 describe("when placing a bet", () => {
-    let client;
+    describe("within betting time 1h", () => {
+        let client;
 
-    beforeEach(async () => {
-        client = new GameClientDriver(socketOptions, initUserSession(normalUser));
-        await signInClient(client);
-    });
+        beforeEach(async () => {
+            client = new GameClientDriver(socketOptions, initUserSession(normalUser));
+            await signInClient(client);
+        });
+    
+        afterEach(() => {
+            client.close();
+            client = null;
+        });
+        describe("invalid bet", () => {
+            const handleEndBetCallback = (data) => data.endBet;
+            it("endbet", async () => {
+                // Arrange
+                const betChoie = "1:ft_hdp_home"
+                const time = timeStamps.firstHalf.startPlaceBet + 1000 - Date.now();
 
-    afterEach(() => {
-        client.close();
-        client = null;
-    });
+                // Act
+                await placeBetAfterTimeout(betChoie, 100.8, time / 1000, client);
 
-    describe("when placing a bet in the first half", () => {
-        it("should round bet choices to the nearest integer", async () => {
-            // Arrange
-            const inGameData = await client.handleGameEvent((data) => data.remainingTime);
-            const timeout = getTimeOutToBet(
-                inGameData.remainingTime,
-                gameSettings.durations.lockingBetFirstHalf,
-                gameSettings.durations.placingBetsFirstHalf,
-                gameSettings.durations.wholeRound,
-            );
+                // Assert
+                const result = await client.handleGameEvent(handleEndBetCallback);
+                console.log(result);
+                expect(result.endBet).toBe(-1);
+                expect(result.notice).toStrictEqual({ errorCode: 'SB1935' })
+            });
+        })
 
-            // Act
-            await placeBetAfterTimeout("home", 100.8, timeout, client);
-            const result = await client.handleGameEvent((data) => data.endBet);
+        describe("valid bet", () => {
+            const handleOwnBetsCallback = (data) => data.ownBets;
+            it("ownsBets", async () => {
+                // Arrange
+                const betChoie = "0:ft_hdp_home"
+                const time = timeStamps.firstHalf.startPlaceBet + 1000 - Date.now();
 
-            // Assert
-            expect(result.endBet).toBe(100);
+                // Act
+                await placeBetAfterTimeout(betChoie, 100.8, time / 1000, client);
+
+                // Assert
+                const result = await client.handleGameEvent(handleOwnBetsCallback);
+                console.log(result);
+                expect(result.ownBets).toStrictEqual({ '0:ft_hdp_home': 100 })
+            })
         });
 
-        it("should allow betting only within placing bet duration", async () => {
-            // Arrange
-            const timeCanBet = new Set([7, 8, 9]);
-            let check = {};
-            const interval = setInterval(() => client?.sendInGameEvent(), 1000);
-            const betChoice = "home";
+        describe("not valid betting time", () => {
+            const pingRemainingTimeCallback = () => client?.sendInGameEvent();
+            const handleRemainingTimeCallback = (data) => data.remainingTime;
+            const handleEndBetCallback = (data) => data.endBet;
+            it("endbet", async () => {
+                // Arrange
+                
+                const timeBet = new Set([22])
+                const interval = setInterval(pingRemainingTimeCallback, 500);
+                let result = null;
 
-            // Act & Assert
-            for (let count = 0; count < 12; ) {
-                const inGameData = await client.handleGameEvent((data) => data.remainingTime);
-                if (!check[inGameData.remainingTime]) {
-                    check[inGameData.remainingTime] = true;
-                    count++;
+                // Act
+                while (true) {
+                    const inGameData = await client.handleGameEvent(handleRemainingTimeCallback);
+                    if (timeBet.has(inGameData.remainingTime)) {
+                        await placeBetAfterTimeout("0:ft_hdp_home", 100.8, 0, client);
+                        result = await client.handleGameEvent(handleEndBetCallback);
+                        break;
+                    }
                 }
-                client.emit(eventTypes.bet, { betChoice, amount: 100 });
-                const result = await client.handleGameEvent((data) => data.endBet);
-
-                if (timeCanBet.has(inGameData.remainingTime)) {
-                    expect(result.endBet).toBe(100);
-                } else {
-                    expect(result.endBet).toBe(-1);
-                }
-            }
-
-            clearInterval(interval);
-        });
-
-        it("should reject bet choices that are not in the first half", async () => {
-            // Arrange
-            const inGameData = await client.handleGameEvent((data) => data.remainingTime);
-            const timeout = getTimeOutToBet(
-                inGameData.remainingTime,
-                gameSettings.durations.lockingBetFirstHalf,
-                gameSettings.durations.placingBetsFirstHalf,
-                gameSettings.durations.wholeRound,
-            );
-
-            // Act
-            await placeBetAfterTimeout("homeLive", 100.8, timeout, client);
-            const result = await client.handleGameEvent((data) => data.endBet);
-
-            // Assert
-            expect(result.endBet).toBe(-1);
-        });
-    });
-
-    describe("when placing a bet in the second half", () => {
-        it("should round bet choices to the nearest integer", async () => {
-            // Arrange
-            const inGameData = await client.handleGameEvent((data) => data.remainingTime);
-            const timeout = getTimeOutToBet(
-                inGameData.remainingTime,
-                gameSettings.durations.lockingBetSecondHalf,
-                gameSettings.durations.placingBetsSecondHalf,
-                gameSettings.durations.wholeRound,
-            );
-
-            const betChoice = "homeLive";
-
-            // Act
-            await placeBetAfterTimeout(betChoice, 100.8, timeout, client);
-            const result = await client.handleGameEvent((data) => data.endBet);
-
-            // Assert
-            expect(result.endBet).toBe(100);
-        });
-
-        it("should allow betting only within placing bet duration", async () => {
-            // Arrange
-            const timeCanBet = new Set([2, 3, 4]);
-            let check = {};
-            const interval = setInterval(() => client?.sendInGameEvent(), 1000);
-            const betChoice = "homeLive";
-
-            // Act & Assert
-            for (let count = 0; count < 12; ) {
-                const inGameData = await client.handleGameEvent((data) => data.remainingTime);
-                if (!check[inGameData.remainingTime]) {
-                    check[inGameData.remainingTime] = true;
-                    count++;
-                }
-                client.emit(eventTypes.bet, { betChoice, amount: 100 });
-                const result = await client.handleGameEvent((data) => data.endBet);
-
-                if (timeCanBet.has(inGameData.remainingTime)) {
-                    expect(result.endBet).toBe(100);
-                } else {
-                    expect(result.endBet).toBe(-1);
-                }
-            }
-
-            clearInterval(interval);
-        });
+                clearInterval(interval);
+                // Assert
+                expect(result.endBet).toBe(-1);
+                expect(result.notice).toStrictEqual({ errorCode: 'SB1905' })
+            })
+        })
     });
 });
