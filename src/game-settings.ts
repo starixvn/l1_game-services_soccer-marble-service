@@ -2,8 +2,8 @@ import { BET_CHOICE_ENUM, BET_CHOICES } from "./constants";
 
 export default {
     id: 114,
-    name: "SoccerMarble",
-    configName: "soccermarble",
+    name: "MarbleFootball2",
+    configName: "marblefootball2",
     durations: {
         wholeRound: 126,
         startingRound: 116,
