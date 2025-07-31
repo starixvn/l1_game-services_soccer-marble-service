@@ -1,3 +1,4 @@
+//NOSONAR 
 import { EventProcessConsumer, ProcessingEventContext } from "../../../src/consumers/event-process-consumer";
 import { SchedulerConsumer } from "../../../src/consumers/scheduler-consumer";
 import { OddFeedConsumer, ScheduleResponseItem, EventResponse, EventDetail } from "../../../src/consumers/odd-feed-consumer";
@@ -6,13 +7,16 @@ import { GameStatusPublisher, RunningRoundInfoPublisher } from "../../../src/pub
 import * as eventIdHelper from "../../../src/helpers/eventid";
 import * as gameTimingHelper from "../../../src/helpers/game-timing";
 import SettleGameRoundConsumer from "../../../src/consumers/settle-game-round-consumer";
+import axios from "axios";
 
 jest.mock("../../../src/helpers/eventid");
 jest.mock("../../../src/helpers/game-timing");
 jest.mock("../../../src/publishers");
+jest.mock("axios");
 
 const mockedEventIdHelper = eventIdHelper as jest.Mocked<typeof eventIdHelper>;
 const mockedGameTimingHelper = gameTimingHelper as jest.Mocked<typeof gameTimingHelper>;
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe("EventProcessConsumer", () => {
     let eventProcessConsumer: EventProcessConsumer;
@@ -22,20 +26,17 @@ describe("EventProcessConsumer", () => {
     let mockGameStatusPublisher: jest.Mocked<GameStatusPublisher>;
     let mockRunningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
     let mockSettleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
-    let mockContainer: {
-        gameData: jest.Mocked<GameData>;
-        schedulerConsumer: jest.Mocked<SchedulerConsumer>;
-        oddFeedConsumer: jest.Mocked<OddFeedConsumer>;
-        appConfigs: {
-            oddFeed: {
-                gameId: number;
-            };
+            let mockContainer: {
+            gameData: jest.Mocked<GameData>;
+            schedulerConsumer: jest.Mocked<SchedulerConsumer>;
+            oddFeedConsumer: jest.Mocked<OddFeedConsumer>;
+            appConfigs: any;
+            gameStatusPublisher: jest.Mocked<GameStatusPublisher>;
+            runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
+            settleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
+            bot?: { reset: jest.MockedFunction<() => void> };
+            logService: { logError: jest.MockedFunction<(message: string) => void> };
         };
-        gameStatusPublisher: jest.Mocked<GameStatusPublisher>;
-        runningRoundInfoPublisher: jest.Mocked<RunningRoundInfoPublisher>;
-        settleGameRoundConsumer: jest.Mocked<SettleGameRoundConsumer>;
-        bot?: { reset: jest.MockedFunction<() => void> };
-    };
 
     const mockScheduleResponseItem: ScheduleResponseItem = {
         eventID: 12345,
@@ -159,12 +160,20 @@ describe("EventProcessConsumer", () => {
             appConfigs: {
                 oddFeed: {
                     gameId: 123
+                },
+                liveStreamServer: "https://live-stream-server.com",
+                proxyServer: {
+                    enabled: false,
+                    url: ""
                 }
-            },
+            } as any,
             gameStatusPublisher: mockGameStatusPublisher,
             runningRoundInfoPublisher: mockRunningRoundInfoPublisher,
             settleGameRoundConsumer: mockSettleGameRoundConsumer,
-            bot: mockBot
+            bot: mockBot,
+            logService: {
+                logError: jest.fn()
+            }
         };
 
         eventProcessConsumer = new EventProcessConsumer(mockContainer);
@@ -997,6 +1006,15 @@ describe("EventProcessConsumer", () => {
         });
 
         describe("with updated current match", () => {
+            beforeEach(() => {
+                mockedAxios.get.mockResolvedValue({ 
+                    data: { 
+                        timeLine: [1, 2, 3], 
+                        result: ["H", "A", "H"] 
+                    } 
+                });
+            });
+
             it("should call syncEventDetail", async () => {
                 // Arrange
                 const context: ProcessingEventContext = {
@@ -1033,12 +1051,13 @@ describe("EventProcessConsumer", () => {
                 expect(mockRunningRoundInfoPublisher.publishToAllUsers).toHaveBeenCalledWith({
                     videoResult: {
                         video: mockEventDetail.playlist,
-                        timeline: mockEventDetail.goalInfo
+                        timeline: [1, 2, 3],
+                        result: "HAH"
                     }
                 });
             });
 
-            it("should call syncEventDetail with current match eventID", async () => {
+            it("should call getVideoTimelineByVideoName with goalInfo", async () => {
                 // Arrange
                 const context: ProcessingEventContext = {
                     fullEvent: mockEventResponse,
@@ -1053,7 +1072,10 @@ describe("EventProcessConsumer", () => {
                 await eventProcessConsumer.onLiveStream(context);
 
                 // Assert
-                expect(mockOddFeedConsumer.getEvent).toHaveBeenCalledWith({ eventID: 12345 });
+                expect(mockedAxios.get).toHaveBeenCalledWith(
+                    "https://live-stream-server.com/test-goal-info",
+                    { httpsAgent: undefined }
+                );
             });
         });
     });
@@ -1409,6 +1431,67 @@ describe("EventProcessConsumer", () => {
                 "0:over": 1.8,
                 "0:under": 2.2
             });
+        });
+    });
+
+    describe("getVideoTimelineByVideoName", () => {
+        beforeEach(() => {
+            mockedAxios.get.mockResolvedValue({ 
+                data: { 
+                    timeLine: [1, 2, 3], 
+                    result: ["H", "A", "H"],
+                    frame: [10, 20, 30]
+                } 
+            });
+        });
+
+        it("should make axios request with correct URL", async () => {
+            // Arrange
+            const timelineUrl = "test-timeline-url";
+
+            // Act
+            const result = await eventProcessConsumer.getVideoTimelineByVideoName(timelineUrl);
+
+            // Assert
+            expect(mockedAxios.get).toHaveBeenCalledWith(
+                "https://live-stream-server.com/test-timeline-url",
+                { httpsAgent: undefined }
+            );
+            expect(result).toEqual({
+                timeLine: [1, 2, 3],
+                result: ["H", "A", "H"],
+                frame: [10, 20, 30]
+            });
+        });
+
+        it("should handle proxy when enabled", async () => {
+            // Arrange
+            mockContainer.appConfigs.proxyServer.enabled = true;
+            mockContainer.appConfigs.proxyServer.url = "https://proxy-server.com";
+            const timelineUrl = "test-timeline-url";
+
+            // Act
+            await eventProcessConsumer.getVideoTimelineByVideoName(timelineUrl);
+
+            // Assert
+            expect(mockedAxios.get).toHaveBeenCalledWith(
+                "https://live-stream-server.com/test-timeline-url",
+                { httpsAgent: expect.any(Object) }
+            );
+        });
+
+        it("should throw error and log when axios request fails", async () => {
+            // Arrange
+            const timelineUrl = "test-timeline-url";
+            const mockError = new Error("Network error");
+            mockedAxios.get.mockRejectedValue(mockError);
+            mockGameData.roundId = 123;
+
+            // Act & Assert
+            await expect(eventProcessConsumer.getVideoTimelineByVideoName(timelineUrl)).rejects.toThrow("Network error");
+            expect(mockContainer.logService.logError).toHaveBeenCalledWith(
+                "In match 123, failed to get video timeline https://live-stream-server.com/test-timeline-url with error: Error: Network error"
+            );
         });
     });
 });

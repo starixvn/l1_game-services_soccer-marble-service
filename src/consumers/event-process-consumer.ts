@@ -7,6 +7,11 @@ import { getEventOffset } from "../helpers/game-timing";
 import { LOCKBET_OFFSET } from "../constants";
 import SettleGameRoundConsumer from "./settle-game-round-consumer";
 import { Bot } from "../crons";
+import { logger } from "sc-common";
+import AppConfigs from "../app-configs";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import axios from "axios";
+import { retry } from "../helpers";
 
 export type ProcessingEventContext = {
     fullEvent: EventResponse;
@@ -24,6 +29,9 @@ export class EventProcessConsumer {
     gameId: number;
     runningRoundInfoPublisher: RunningRoundInfoPublisher;
     settleGameRoundConsumer: SettleGameRoundConsumer;
+    appConfigs: typeof AppConfigs;
+    logService: typeof logger;
+
     bot: Bot;
     constructor(container: any) {
         this.gameData = container.gameData;
@@ -34,6 +42,8 @@ export class EventProcessConsumer {
         this.runningRoundInfoPublisher = container.runningRoundInfoPublisher;
         this.settleGameRoundConsumer = container.settleGameRoundConsumer;
         this.bot = container.bot;
+        this.appConfigs = container.appConfigs;
+        this.logService = container.logService;
     }
 
     async checkGameStatus() {
@@ -195,16 +205,16 @@ export class EventProcessConsumer {
         if (!updatedCurrentEventDetail) {
             return;
         }
+        const timeline = await this.getVideoTimelineByVideoName(updatedCurrentEventDetail.goalInfo);
         const videoResult = {
             video: updatedCurrentEventDetail.playlist,
-            timeline: updatedCurrentEventDetail.goalInfo
+            timeline: timeline.timeLine,
+            result: timeline.result.join(''),
         }
 
         this.runningRoundInfoPublisher.publishToAllUsers({
             videoResult
         });
-
-
     }
 
     async syncEventDetail(eventID: number) {
@@ -342,4 +352,26 @@ export class EventProcessConsumer {
         procesedEventDetail.resultsAvailableTs = getEventOffset(new Date(eventDetail.resultsAvailableTs));
         return procesedEventDetail;
     }
+
+    async getVideoTimelineByVideoName(timelineUrl: string) {
+        console.log('timelineUrl', timelineUrl);
+        const url = new URL(timelineUrl, this.appConfigs.liveStreamServer);
+
+        const agent = this.appConfigs.proxyServer.enabled ? new HttpsProxyAgent(this.appConfigs.proxyServer.url) : undefined;
+
+        try {
+            const response = await retry(() => axios.get<VideoTimeline>(url.toString(), { httpsAgent: agent }), 3, 100);
+
+            return response.data;
+        } catch (error) {
+            this.logService.logError(`In match ${this.gameData.roundId}, failed to get video timeline ${url} with error: ${error}`);
+            throw error;
+        }
+    }
+}
+
+interface VideoTimeline {
+    timeLine: number[];
+    result: string[];
+    frame: number[];
 }
