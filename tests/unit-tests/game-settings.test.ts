@@ -7,11 +7,11 @@ describe("gameSettings", () => {
     });
 
     it("should have the correct name", () => {
-        expect(gameSettings.name).toBe("MarbleFootball2");
+        expect(gameSettings.name).toBe("SoccerMarble");
     });
 
     it("should have the correct configName", () => {
-        expect(gameSettings.configName).toBe("marblefootball2");
+        expect(gameSettings.configName).toBe("soccermarble");
     });
 
     it("durations should be in the correct order", () => {
