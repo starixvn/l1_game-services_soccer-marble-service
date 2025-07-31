@@ -139,7 +139,9 @@ export class EventProcessConsumer {
     }
 
     async onOddAvailable(context: ProcessingEventContext) {
-        if (context.index == 0) return;
+        if (context.index === 0) {
+            return;
+        }
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         
         await this.syncEventDetail(context.fullEvent.eventID);

@@ -19,7 +19,7 @@ export function isWithinBettingTimeInCurrentEventDetail(gameData: GameData) {
     const currentEventIndex = gameData.oddFeedGames[gameId].currentEventDetailIndex;
 
 
-    const startPlaceBetTs = currentEventIndex == 0
+    const startPlaceBetTs = currentEventIndex === 0
         ? gameData.oddFeedGames[gameId].rounds[gameData.roundId].scheduleStartTs
         : currentMatch.oddsAvailableTs;
 

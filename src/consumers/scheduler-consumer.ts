@@ -26,8 +26,7 @@ export class SchedulerConsumer {
     private callbackWithLog(callback: Function, id: string) {
         return (...args: any[]) => {
             try {
-                const result = callback(...args);
-                return result;
+                return callback(...args);
             } finally {
                 delete this.tasks[id];
             }

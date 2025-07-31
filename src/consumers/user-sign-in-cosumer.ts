@@ -19,7 +19,7 @@ export class UserSignInConsumer extends TableUserSignInConsumer {
             return;
         }
 
-        return super.consume(socketClient, payload);
+        super.consume(socketClient, payload);
     }
 
 }
