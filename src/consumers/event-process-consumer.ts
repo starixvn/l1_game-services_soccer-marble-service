@@ -212,6 +212,8 @@ export class EventProcessConsumer {
             result: timeline.result.join(''),
         }
 
+        this.gameData.videoResult = videoResult;
+
         this.runningRoundInfoPublisher.publishToAllUsers({
             videoResult
         });

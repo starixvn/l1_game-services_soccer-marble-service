@@ -62,6 +62,7 @@ describe("InGameConsumer", () => {
             const userBetPercentage = { home: 66, away: 34, draw: 0 };
 
             gameData.playerBetCount = playerBetCount;
+            gameData.videoResult = undefined;
 
             jest.spyOn(TableInGameConsumer.prototype, "buildPayload").mockResolvedValue(basePayload);
             jest.spyOn(helper, "getUserBetPercentage").mockReturnValue(userBetPercentage);
@@ -74,6 +75,7 @@ describe("InGameConsumer", () => {
             expect(result).toEqual({
                 ...basePayload,
                 userBetPercentage,
+                videoResult: undefined,
             });
         });
     });

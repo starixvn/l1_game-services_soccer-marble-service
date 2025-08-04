@@ -121,7 +121,8 @@ describe("EventProcessConsumer", () => {
             remainingTime: 0,
             dynamicOdds: {},
             betChoicePoints: {},
-            dynamicHedgeBetGroups: [] as Array<Set<string>>
+            dynamicHedgeBetGroups: [] as Array<Set<string>>,
+            videoResult: undefined
         } as Partial<GameData> as GameData;
 
         mockSchedulerConsumer = {
@@ -1031,6 +1032,28 @@ describe("EventProcessConsumer", () => {
 
                 // Assert
                 expect(mockOddFeedConsumer.getEvent).toHaveBeenCalledWith({ eventID: 12345 });
+            });
+
+            it("should store video result in game data", async () => {
+                // Arrange
+                const context: ProcessingEventContext = {
+                    fullEvent: mockEventResponse,
+                    eventDetail: mockEventDetail,
+                    index: 0,
+                    time: new Date()
+                };
+                mockedEventIdHelper.getCurrentMatch.mockReturnValue(mockEventDetail);
+                mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
+
+                // Act
+                await eventProcessConsumer.onLiveStream(context);
+
+                // Assert
+                expect(mockGameData.videoResult).toEqual({
+                    video: mockEventDetail.playlist,
+                    timeline: [1, 2, 3],
+                    result: "HAH"
+                });
             });
 
             it("should publish video result to all users", async () => {

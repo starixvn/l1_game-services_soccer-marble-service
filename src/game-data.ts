@@ -27,6 +27,11 @@ export default class GameData extends TableGameData {
     lastRoundId?: number;
     currentMatch?: { home: string, away: string };
     proceedEvent?: boolean;
+    videoResult?: {
+        video: string;
+        timeline: number[];
+        result: string;
+    };
 }
 
 export type RealPlayer = {
