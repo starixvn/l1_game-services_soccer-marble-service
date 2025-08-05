@@ -1,10 +1,10 @@
 import GameData from "../game-data";
 import { SchedulerConsumer } from "./scheduler-consumer";
-import { EventDetail, EventResponse, MarketSelection, OddFeedConsumer, ScheduleResponseItem } from "./odd-feed-consumer";
+import { EventDetail, EventResponse, Market, MarketSelection, OddFeedConsumer, ScheduleResponseItem } from "./odd-feed-consumer";
 import { extractGameId, extractRoundId, getCurrentMatch } from "../helpers/eventid";
 import { GameStatusPublisher, RunningRoundInfoPublisher } from "../publishers";
 import { getEventOffset } from "../helpers/game-timing";
-import { LOCKBET_OFFSET } from "../constants";
+import { DEFAULT_ODD_LIVE_ODDS, DEFAULT_ODD_PREMATCH_ODDS, LOCKBET_OFFSET, ODD_FEED_TO_BET_CHOICE_MAP } from "../constants";
 import SettleGameRoundConsumer from "./settle-game-round-consumer";
 import { Bot } from "../crons";
 import { logger } from "sc-common";
@@ -144,8 +144,8 @@ export class EventProcessConsumer {
         await this.syncEventDetail(context.fullEvent.eventID);
         this.bot?.reset();
         this.saveMatchToGameData(context.fullEvent);
-        this.publishBetChoiceReady();
         this.publishMatch();
+        this.publishBetChoiceReady();
     }
 
     async onOddAvailable(context: ProcessingEventContext) {
@@ -155,7 +155,7 @@ export class EventProcessConsumer {
         this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex = context.index;
         
         await this.syncEventDetail(context.fullEvent.eventID);
-        this.publishBetChoiceReady();
+        this.publishBetChoiceReady({ isLive: true});
     }
 
     async onLockBet(context: ProcessingEventContext) {
@@ -209,7 +209,7 @@ export class EventProcessConsumer {
         const videoResult = {
             video: updatedCurrentEventDetail.playlist,
             timeline: timeline.timeLine,
-            result: timeline.result.join(''),
+            result: timeline?.result?.join('') ?? '',
         }
 
         this.gameData.videoResult = videoResult;
@@ -239,8 +239,8 @@ export class EventProcessConsumer {
         return null;
     }
 
-    private publishBetChoiceReady() {
-        this.saveBetOptionsToGameData();
+    publishBetChoiceReady({ isLive }: { isLive: boolean} = { isLive: false}) {
+        this.saveBetOptionsToGameData({ isLive });
         this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.publishOdds();
         this.publishBetChoicePoints();
@@ -259,52 +259,125 @@ export class EventProcessConsumer {
         return this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId] ?? null;
     }
 
-    private saveBetOptionsToGameData() {
+    private getCurrentEventMeta() {
         const currentRoundId = this.gameData.oddFeedGames[this.gameId].currentRound;
         if (!currentRoundId) {
-            return;
+            return null;
         }
         const currentRound = this.gameData.oddFeedGames[this.gameId].rounds[currentRoundId];
         if (!currentRound) {
-            return;
+            return null;
         }
         const currentEventDetailIndex = this.gameData.oddFeedGames[this.gameId].currentEventDetailIndex;
         if (currentEventDetailIndex === undefined) {
-            return;
+            return null;
         }
         const currentEventDetail = currentRound.eventDetails[currentEventDetailIndex];
         if (!currentEventDetail) {
+            return null;
+        }
+        return {
+            currentEventDetail,
+            currentEventDetailIndex,
+            currentRound,
+            currentRoundId,
+        }
+    }
+
+    private saveBetOptionsToGameData({ isLive}: { isLive: boolean } = { isLive: false }) {
+        const currentEventMeta = this.getCurrentEventMeta();
+        if (!currentEventMeta) {
             return;
         }
-        const selections: Record<string, MarketSelection> = {}
+
+        const { currentEventDetail, currentEventDetailIndex } = currentEventMeta;
+        
+        let selections: Record<string, MarketSelection> = {}
         const hedgeBetGroups: Array<Set<string>> = [];
+
         for (const market of currentEventDetail.markets) {
-            const hedgeBetGroup = new Set<string>();
-            for (const selection of market.selections) {
-                const selectionUniqueKey = `${currentEventDetailIndex}:${selection.betChoice}`;
-                selections[selectionUniqueKey] = selection;
-                if (!market.hedgeBetExclusion?.includes(selection.betChoice)) {
-                    hedgeBetGroup.add(selectionUniqueKey);
-                }
+            const { selections: marketSelections, hedgeBetGroup } = this.getOddAndHedgeBetGroupsFromMarket({
+                market,
+                currentEventDetailIndex,
+            });
+            selections = {
+                ...selections,
+                ...marketSelections,
             }
-            hedgeBetGroups.push(hedgeBetGroup);
+            if (hedgeBetGroup.size > 0) {
+                hedgeBetGroups.push(hedgeBetGroup);
+            }
         }
+
+        const defaultOdds = isLive
+            ? DEFAULT_ODD_LIVE_ODDS
+            : DEFAULT_ODD_PREMATCH_ODDS;
 
         const odds  = Object.entries(selections)
         .reduce((acc, [key, value]) => {
             acc[key] = value.price ?? 0;
             return acc;
-        }, {} as Record<string, number>);
+        }, { ...defaultOdds } as Record<string, number>);
 
         const points = Object.entries(selections)
         .reduce((acc, [key, value]) => {
             acc[key] = value.point ?? 0;
             return acc;
-        }, {} as Record<string, number>);
+        }, { ...defaultOdds } as Record<string, number>);
 
         this.gameData.dynamicOdds = odds;
         this.gameData.betChoicePoints = points;
         this.gameData.dynamicHedgeBetGroups = hedgeBetGroups;
+
+        console.log('points ', points)
+        console.log('hedge bets', hedgeBetGroups)
+    }
+
+    private getOddAndHedgeBetGroupsFromMarket({
+        market,
+        currentEventDetailIndex,
+    }: {
+        market: Market;
+        currentEventDetailIndex: number;
+    }) {
+        let selections: Record<string, MarketSelection> = {}
+        const hedgeBetGroup = new Set<string>();
+
+        for (const selection of market.selections) {
+            const { selectionMap, key } = this.mapOddFeedSelectionToBetChoice({
+                selection,
+                currentEventDetailIndex,
+            });
+            
+            selections = {
+                ...selections,
+                ...selectionMap,
+            }
+            if (key && !market.hedgeBetExclusion?.includes(selection.betChoice)) {
+                hedgeBetGroup.add(key);
+            }
+        }
+        return {
+            selections,
+            hedgeBetGroup,
+        }
+    }
+
+    private mapOddFeedSelectionToBetChoice({
+        selection,
+        currentEventDetailIndex,
+    }: {
+        selection: MarketSelection;
+        currentEventDetailIndex: number;
+    }) {
+        const selectionUniqueKey = ODD_FEED_TO_BET_CHOICE_MAP[`${currentEventDetailIndex}:${selection.betChoice}`];
+        console.log('got the raw bet ', `${currentEventDetailIndex}:${selection.betChoice}`)
+        if (!selectionUniqueKey)  { return { selectionMap: {}, key: null } };
+
+        return {
+            selectionMap: { [selectionUniqueKey]: selection, },
+            key: selectionUniqueKey,
+        }
     }
 
     private publishOdds() {
@@ -312,6 +385,7 @@ export class EventProcessConsumer {
         if (!allOdds) {
             return;
         }
+        console.log('all bet options', allOdds);
         this.gameStatusPublisher.publishOdds(allOdds);
     }
 

@@ -18,6 +18,40 @@ export const LIVE_BET_CHOICES = {
     evenLive: "evenLive",
 };
 
+export const DEFAULT_ODD_PREMATCH_ODDS = {
+    [PRE_MATCH_BET_CHOICES.home]: 0,
+    [PRE_MATCH_BET_CHOICES.away]: 0,
+    [PRE_MATCH_BET_CHOICES.draw]: 0,
+    [PRE_MATCH_BET_CHOICES.over]: 0,
+    [PRE_MATCH_BET_CHOICES.under]: 0,
+    [PRE_MATCH_BET_CHOICES.odd]: 0,
+    [PRE_MATCH_BET_CHOICES.even]: 0,
+};
+
+export const DEFAULT_ODD_LIVE_ODDS = {  
+    [LIVE_BET_CHOICES.homeLive]: 0,
+    [LIVE_BET_CHOICES.awayLive]: 0,
+    [LIVE_BET_CHOICES.drawLive]: 0,
+    [LIVE_BET_CHOICES.overLive]: 0,
+    [LIVE_BET_CHOICES.underLive]: 0,
+    [LIVE_BET_CHOICES.oddLive]: 0,
+    [LIVE_BET_CHOICES.evenLive]: 0,
+};
+
+export const ODD_FEED_TO_BET_CHOICE_MAP: Record<string, string> = {
+    '0:ft_1x2_home': PRE_MATCH_BET_CHOICES.home,
+    '0:ft_1x2_away': PRE_MATCH_BET_CHOICES.away,
+    '0:ft_1x2_draw': PRE_MATCH_BET_CHOICES.draw,
+    '0:ft_oe_even': PRE_MATCH_BET_CHOICES.even,
+    '0:ft_oe_odd': PRE_MATCH_BET_CHOICES.odd,
+    '0:ft_ou_over': PRE_MATCH_BET_CHOICES.over,
+    '0:ft_ou_under': PRE_MATCH_BET_CHOICES.under,
+    '1:ft_oe_odd': LIVE_BET_CHOICES.oddLive,
+    '1:ft_oe_even': LIVE_BET_CHOICES.evenLive,
+    '1:ft_ou_over': LIVE_BET_CHOICES.overLive,
+    '1:ft_ou_under': LIVE_BET_CHOICES.underLive
+}
+
 export const BET_CHOICES = {
     ...PRE_MATCH_BET_CHOICES,
     ...LIVE_BET_CHOICES,

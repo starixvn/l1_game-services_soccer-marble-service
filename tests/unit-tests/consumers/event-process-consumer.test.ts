@@ -1203,260 +1203,6 @@ describe("EventProcessConsumer", () => {
         });
     });
 
-    describe("bet choice points and odds", () => {
-        it("should save odds to game data", async () => {
-            // Arrange
-            const context: ProcessingEventContext = {
-                fullEvent: mockEventResponse,
-                eventDetail: mockEventDetail,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            expect(mockGameData.dynamicOdds).toEqual({
-                "0:home": 2.0,
-                "0:away": 3.0,
-                "0:draw": 2.5
-            });
-        });
-
-        it("should save points to game data", async () => {
-            // Arrange
-            const context: ProcessingEventContext = {
-                fullEvent: mockEventResponse,
-                eventDetail: mockEventDetail,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            expect(mockGameData.betChoicePoints).toEqual({
-                "0:home": 1.5,
-                "0:away": 2.0,
-                "0:draw": 1.8
-            });
-        });
-
-        it("should publish points to all users", async () => {
-            // Arrange
-            const context: ProcessingEventContext = {
-                fullEvent: mockEventResponse,
-                eventDetail: mockEventDetail,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            expect(mockGameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
-                points: {
-                    "0:home": 1.5,
-                    "0:away": 2.0,
-                    "0:draw": 1.8
-                }
-            });
-        });
-
-        it("should save hedge bet groups to game data", async () => {
-            // Arrange
-            const context: ProcessingEventContext = {
-                fullEvent: mockEventResponse,
-                eventDetail: mockEventDetail,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            expect(mockGameData.dynamicHedgeBetGroups).toHaveLength(1);
-        });
-
-        it("should create hedge bet group excluding specified choices", async () => {
-            // Arrange
-            const context: ProcessingEventContext = {
-                fullEvent: mockEventResponse,
-                eventDetail: mockEventDetail,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = mockEventResponse;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(mockEventResponse);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            const hedgeBetGroup = mockGameData.dynamicHedgeBetGroups![0];
-            expect(hedgeBetGroup.has("0:home")).toBe(true);
-            expect(hedgeBetGroup.has("0:away")).toBe(true);
-            expect(hedgeBetGroup.has("0:draw")).toBe(false);
-        });
-
-        it("should handle market without hedge bet exclusion", async () => {
-            // Arrange
-            const eventDetailWithoutExclusion = {
-                ...mockEventDetail,
-                markets: [{
-                    ...mockEventDetail.markets[0],
-                    hedgeBetExclusion: undefined
-                }]
-            };
-            const eventResponseWithoutExclusion = {
-                ...mockEventResponse,
-                eventDetails: [eventDetailWithoutExclusion]
-            };
-            const context: ProcessingEventContext = {
-                fullEvent: eventResponseWithoutExclusion,
-                eventDetail: eventDetailWithoutExclusion,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = eventResponseWithoutExclusion;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(eventResponseWithoutExclusion);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            const hedgeBetGroup = mockGameData.dynamicHedgeBetGroups![0];
-            expect(hedgeBetGroup.has("0:home")).toBe(true);
-            expect(hedgeBetGroup.has("0:away")).toBe(true);
-            expect(hedgeBetGroup.has("0:draw")).toBe(true);
-        });
-
-        it("should handle market with empty hedge bet exclusion", async () => {
-            // Arrange
-            const eventDetailWithEmptyExclusion = {
-                ...mockEventDetail,
-                markets: [{
-                    ...mockEventDetail.markets[0],
-                    hedgeBetExclusion: []
-                }]
-            };
-            const eventResponseWithEmptyExclusion = {
-                ...mockEventResponse,
-                eventDetails: [eventDetailWithEmptyExclusion]
-            };
-            const context: ProcessingEventContext = {
-                fullEvent: eventResponseWithEmptyExclusion,
-                eventDetail: eventDetailWithEmptyExclusion,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = eventResponseWithEmptyExclusion;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(eventResponseWithEmptyExclusion);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            const hedgeBetGroup = mockGameData.dynamicHedgeBetGroups![0];
-            expect(hedgeBetGroup.has("0:home")).toBe(true);
-            expect(hedgeBetGroup.has("0:away")).toBe(true);
-            expect(hedgeBetGroup.has("0:draw")).toBe(true);
-        });
-
-        it("should handle multiple markets", async () => {
-            // Arrange
-            const eventDetailWithMultipleMarkets = {
-                ...mockEventDetail,
-                markets: [
-                    {
-                        ...mockEventDetail.markets[0],
-                        marketID: 1,
-                        hedgeBetExclusion: ["draw"]
-                    },
-                    {
-                        marketID: 2,
-                        marketNameKey: "total_goals",
-                        marketName: "Total Goals",
-                        hedgeBetExclusion: ["under"],
-                        selections: [
-                            { 
-                                betChoice: "over", 
-                                price: 1.8,
-                                point: 2.5,
-                                settlementStatus: "active",
-                                selectionID: 4,
-                                selectionNameLongKey: "over_2.5",
-                                name: "Over 2.5"
-                            },
-                            { 
-                                betChoice: "under", 
-                                price: 2.2,
-                                point: 2.5,
-                                settlementStatus: "active",
-                                selectionID: 5,
-                                selectionNameLongKey: "under_2.5",
-                                name: "Under 2.5"
-                            }
-                        ]
-                    }
-                ]
-            };
-            const eventResponseWithMultipleMarkets = {
-                ...mockEventResponse,
-                eventDetails: [eventDetailWithMultipleMarkets]
-            };
-            const context: ProcessingEventContext = {
-                fullEvent: eventResponseWithMultipleMarkets,
-                eventDetail: eventDetailWithMultipleMarkets,
-                index: 0,
-                time: new Date()
-            };
-            mockGameData.oddFeedGames[123].currentRound = 456;
-            mockGameData.oddFeedGames[123].currentEventDetailIndex = 0;
-            mockGameData.oddFeedGames[123].rounds[456] = eventResponseWithMultipleMarkets;
-            mockOddFeedConsumer.getEvent.mockResolvedValue(eventResponseWithMultipleMarkets);
-
-            // Act
-            await eventProcessConsumer.onScheduleStart(context);
-
-            // Assert
-            expect(mockGameData.dynamicHedgeBetGroups).toHaveLength(2);
-            expect(mockGameData.dynamicOdds).toEqual({
-                "0:home": 2.0,
-                "0:away": 3.0,
-                "0:draw": 2.5,
-                "0:over": 1.8,
-                "0:under": 2.2
-            });
-        });
-    });
-
     describe("getVideoTimelineByVideoName", () => {
         beforeEach(() => {
             mockedAxios.get.mockResolvedValue({ 
@@ -1515,6 +1261,627 @@ describe("EventProcessConsumer", () => {
             expect(mockContainer.logService.logError).toHaveBeenCalledWith(
                 "In match 123, failed to get video timeline https://live-stream-server.com/test-timeline-url with error: Error: Network error"
             );
+        });
+    });
+
+    describe("publishBetChoiceReady", () => {
+        describe("saving bet option to game data", () => {
+            it("should do nothing without current event meta", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123] = {
+                    rounds: {},
+                    currentRound: undefined,
+                    currentEventDetailIndex: undefined
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({});
+                expect(mockGameData.betChoicePoints).toEqual({});
+                expect(mockGameData.dynamicHedgeBetGroups).toEqual([]);
+            });
+
+            it("should do nothing without current round", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123] = {
+                    rounds: {},
+                    currentRound: undefined,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({});
+                expect(mockGameData.betChoicePoints).toEqual({});
+                expect(mockGameData.dynamicHedgeBetGroups).toEqual([]);
+            });
+
+            it("should do nothing without current event detail index", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: mockEventResponse },
+                    currentRound: 456,
+                    currentEventDetailIndex: undefined
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({});
+                expect(mockGameData.betChoicePoints).toEqual({});
+                expect(mockGameData.dynamicHedgeBetGroups).toEqual([]);
+            });
+
+            it("should map prematch bet choices correctly", () => {
+                // Arrange
+                const eventDetailWithPrematchMarkets = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: ["draw"],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                },
+                                { 
+                                    betChoice: "ft_1x2_away", 
+                                    price: 3.0,
+                                    point: 2.0,
+                                    settlementStatus: "active",
+                                    selectionID: 2,
+                                    selectionNameLongKey: "away_team",
+                                    name: "Away Team"
+                                },
+                                { 
+                                    betChoice: "ft_1x2_draw", 
+                                    price: 2.5,
+                                    point: 1.8,
+                                    settlementStatus: "active",
+                                    selectionID: 3,
+                                    selectionNameLongKey: "draw",
+                                    name: "Draw"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithPrematchMarkets = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithPrematchMarkets]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithPrematchMarkets },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({
+                    home: 2.0,
+                    away: 3.0,
+                    draw: 2.5,
+                    over: 0,
+                    under: 0,
+                    odd: 0,
+                    even: 0
+                });
+                expect(mockGameData.betChoicePoints).toEqual({
+                    home: 1.5,
+                    away: 2.0,
+                    draw: 1.8,
+                    over: 0,
+                    under: 0,
+                    odd: 0,
+                    even: 0
+                });
+            });
+
+            it("should map live bet choices correctly", () => {
+                // Arrange
+                const eventDetailWithLiveMarkets = {
+                    ...mockEventDetail,
+                    eventID: 12346, // Different event ID to avoid conflicts
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_oe",
+                            marketName: "Full Time Odd/Even",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "ft_oe_odd", 
+                                    price: 1.8,
+                                    point: 1.2,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "odd",
+                                    name: "Odd"
+                                },
+                                { 
+                                    betChoice: "ft_oe_even", 
+                                    price: 2.2,
+                                    point: 1.8,
+                                    settlementStatus: "active",
+                                    selectionID: 2,
+                                    selectionNameLongKey: "even",
+                                    name: "Even"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithLiveMarkets = {
+                    ...mockEventResponse,
+                    eventDetails: [mockEventDetail, eventDetailWithLiveMarkets]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithLiveMarkets },
+                    currentRound: 456,
+                    currentEventDetailIndex: 1
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady({ isLive: true });
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({
+                    homeLive: 0,
+                    awayLive: 0,
+                    drawLive: 0,
+                    overLive: 0,
+                    underLive: 0,
+                    oddLive: 1.8,
+                    evenLive: 2.2
+                });
+                expect(mockGameData.betChoicePoints).toEqual({
+                    homeLive: 0,
+                    awayLive: 0,
+                    drawLive: 0,
+                    overLive: 0,
+                    underLive: 0,
+                    oddLive: 1.2,
+                    evenLive: 1.8
+                });
+            });
+
+            it("should not add hedge bet group for excluded bet choice in market", () => {
+                // Arrange
+                const eventDetailWithExcludedHedgeBet = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: ["ft_1x2_draw"],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                },
+                                { 
+                                    betChoice: "ft_1x2_draw", 
+                                    price: 2.5,
+                                    point: 1.8,
+                                    settlementStatus: "active",
+                                    selectionID: 3,
+                                    selectionNameLongKey: "draw",
+                                    name: "Draw"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithExcludedHedgeBet = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithExcludedHedgeBet]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithExcludedHedgeBet },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicHedgeBetGroups).toEqual([
+                    new Set(["home"])
+                ]);
+            });
+
+            it("should not add empty hedge bet group to list", () => {
+                // Arrange
+                const eventDetailWithUnmappedSelections = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "unknown_market",
+                            marketName: "Unknown Market",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "unknown_selection", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "unknown",
+                                    name: "Unknown"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithUnmappedSelections = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithUnmappedSelections]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithUnmappedSelections },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicHedgeBetGroups).toEqual([]);
+            });
+
+            it("should only add bet choice that is in the mapper const", () => {
+                // Arrange
+                const eventDetailWithMixedSelections = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                },
+                                { 
+                                    betChoice: "unknown_selection", 
+                                    price: 3.0,
+                                    point: 2.0,
+                                    settlementStatus: "active",
+                                    selectionID: 2,
+                                    selectionNameLongKey: "unknown",
+                                    name: "Unknown"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithMixedSelections = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithMixedSelections]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithMixedSelections },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameData.dynamicOdds).toEqual({
+                    home: 2.0,
+                    away: 0,
+                    draw: 0,
+                    over: 0,
+                    under: 0,
+                    odd: 0,
+                    even: 0
+                });
+                expect(mockGameData.betChoicePoints).toEqual({
+                    home: 1.5,
+                    away: 0,
+                    draw: 0,
+                    over: 0,
+                    under: 0,
+                    odd: 0,
+                    even: 0
+                });
+            });
+
+            describe("should leave default odd 0 for bet choice that is not in the market", () => {
+                it("prematch", () => {
+                    // Arrange
+                    const eventDetailWithLimitedMarkets = {
+                        ...mockEventDetail,
+                        markets: [
+                            {
+                                marketID: 1,
+                                marketNameKey: "ft_1x2",
+                                marketName: "Full Time 1X2",
+                                hedgeBetExclusion: [],
+                                selections: [
+                                    { 
+                                        betChoice: "ft_1x2_home", 
+                                        price: 2.0,
+                                        point: 1.5,
+                                        settlementStatus: "active",
+                                        selectionID: 1,
+                                        selectionNameLongKey: "home_team",
+                                        name: "Home Team"
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                    const eventResponseWithLimitedMarkets = {
+                        ...mockEventResponse,
+                        eventDetails: [eventDetailWithLimitedMarkets]
+                    };
+                    mockGameData.oddFeedGames[123] = {
+                        rounds: { 456: eventResponseWithLimitedMarkets },
+                        currentRound: 456,
+                        currentEventDetailIndex: 0
+                    };
+
+                    // Act
+                    eventProcessConsumer.publishBetChoiceReady();
+
+                    // Assert
+                    expect(mockGameData.dynamicOdds).toEqual({
+                        home: 2.0,
+                        away: 0,
+                        draw: 0,
+                        over: 0,
+                        under: 0,
+                        odd: 0,
+                        even: 0
+                    });
+                });
+
+                it("live", () => {
+                    // Arrange
+                    const eventDetailWithLimitedLiveMarkets = {
+                        ...mockEventDetail,
+                        markets: [
+                            {
+                                marketID: 1,
+                                marketNameKey: "ft_oe",
+                                marketName: "Full Time Odd/Even",
+                                hedgeBetExclusion: [],
+                                selections: [
+                                    { 
+                                        betChoice: "ft_oe_odd", 
+                                        price: 1.8,
+                                        point: 1.2,
+                                        settlementStatus: "active",
+                                        selectionID: 1,
+                                        selectionNameLongKey: "odd",
+                                        name: "Odd"
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                    const eventResponseWithLimitedLiveMarkets = {
+                        ...mockEventResponse,
+                        eventDetails: [mockEventDetail, eventDetailWithLimitedLiveMarkets]
+                    };
+                    mockGameData.oddFeedGames[123] = {
+                        rounds: { 456: eventResponseWithLimitedLiveMarkets },
+                        currentRound: 456,
+                        currentEventDetailIndex: 1
+                    };
+
+                    // Act
+                    eventProcessConsumer.publishBetChoiceReady({ isLive: true });
+
+                    // Assert
+                    expect(mockGameData.dynamicOdds).toEqual({
+                        homeLive: 0,
+                        awayLive: 0,
+                        drawLive: 0,
+                        overLive: 0,
+                        underLive: 0,
+                        oddLive: 1.8,
+                        evenLive: 0
+                    });
+                });
+            });
+        });
+
+        describe("publish bet choice points", () => {
+            it("should publish bet choice points to all users", () => {
+                // Arrange
+                const eventDetailWithSelections = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithSelections = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithSelections]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithSelections },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
+                    points: {
+                        home: 1.5,
+                        away: 0,
+                        draw: 0,
+                        over: 0,
+                        under: 0,
+                        odd: 0,
+                        even: 0
+                    }
+                });
+            });
+        });
+
+        describe("publish odds", () => {
+            it("should publish odds when dynamic odds exist", () => {
+                // Arrange
+                const eventDetailWithSelections = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithSelections = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithSelections]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithSelections },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameStatusPublisher.publishOdds).toHaveBeenCalledWith({
+                    home: 2.0,
+                    away: 0,
+                    draw: 0,
+                    over: 0,
+                    under: 0,
+                    odd: 0,
+                    even: 0
+                });
+            });
+
+            it("should not publish odds when dynamic odds do not exist", () => {
+                // Arrange
+                mockGameData.oddFeedGames[123] = {
+                    rounds: {},
+                    currentRound: undefined,
+                    currentEventDetailIndex: undefined
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameStatusPublisher.publishOdds).toHaveBeenCalledWith({});
+            });
+        });
+
+        describe("publish start placing bet status", () => {
+            it("should publish start placing bet status", () => {
+                // Arrange
+                const eventDetailWithSelections = {
+                    ...mockEventDetail,
+                    markets: [
+                        {
+                            marketID: 1,
+                            marketNameKey: "ft_1x2",
+                            marketName: "Full Time 1X2",
+                            hedgeBetExclusion: [],
+                            selections: [
+                                { 
+                                    betChoice: "ft_1x2_home", 
+                                    price: 2.0,
+                                    point: 1.5,
+                                    settlementStatus: "active",
+                                    selectionID: 1,
+                                    selectionNameLongKey: "home_team",
+                                    name: "Home Team"
+                                }
+                            ]
+                        }
+                    ]
+                };
+                const eventResponseWithSelections = {
+                    ...mockEventResponse,
+                    eventDetails: [eventDetailWithSelections]
+                };
+                mockGameData.oddFeedGames[123] = {
+                    rounds: { 456: eventResponseWithSelections },
+                    currentRound: 456,
+                    currentEventDetailIndex: 0
+                };
+
+                // Act
+                eventProcessConsumer.publishBetChoiceReady();
+
+                // Assert
+                expect(mockGameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalledTimes(1);
+            });
         });
     });
 });
