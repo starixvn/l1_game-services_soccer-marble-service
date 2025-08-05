@@ -3,6 +3,7 @@ import { initUserSession } from "../../helper/helper";
 import { socketOptionsFunc } from "../../_stubs/test-data";
 import appConfigs from "../../../../build/app-configs.IGT";
 import { dateWithOffset, FLOW, INCOMING, CONFIGURED_DATE } from "../../shared";
+import { ODD_FEED_TO_BET_CHOICE_MAP, PRE_MATCH_BET_CHOICES, LIVE_BET_CHOICES } from "../../../../src/constants";
 
 const socketOptions = socketOptionsFunc(appConfigs.hostingPort);
 
@@ -50,7 +51,7 @@ describe("when placing a bet", () => {
             const handleEndBetCallback = (data) => data.endBet;
             it("endbet", async () => {
                 // Arrange
-                const betChoie = "1:ft_hdp_home"
+                const betChoie = LIVE_BET_CHOICES.oddLive
                 const time = timeStamps.firstHalf.startPlaceBet + 1000 - Date.now();
 
                 // Act
@@ -68,7 +69,7 @@ describe("when placing a bet", () => {
             const handleOwnBetsCallback = (data) => data.ownBets;
             it("ownsBets", async () => {
                 // Arrange
-                const betChoie = "0:ft_hdp_home"
+                const betChoie = PRE_MATCH_BET_CHOICES.home
                 const time = timeStamps.firstHalf.startPlaceBet + 1000 - Date.now();
 
                 // Act
@@ -77,7 +78,7 @@ describe("when placing a bet", () => {
                 // Assert
                 const result = await client.handleGameEvent(handleOwnBetsCallback);
                 console.log(result);
-                expect(result.ownBets).toStrictEqual({ '0:ft_hdp_home': 100 })
+                expect(result.ownBets).toStrictEqual({ [PRE_MATCH_BET_CHOICES.home]: 100 })
             })
         });
 
@@ -96,7 +97,7 @@ describe("when placing a bet", () => {
                 while (true) {
                     const inGameData = await client.handleGameEvent(handleRemainingTimeCallback);
                     if (timeBet.has(inGameData.remainingTime)) {
-                        await placeBetAfterTimeout("0:ft_hdp_home", 100.8, 0, client);
+                        await placeBetAfterTimeout(PRE_MATCH_BET_CHOICES.home, 100.8, 0, client);
                         result = await client.handleGameEvent(handleEndBetCallback);
                         break;
                     }
