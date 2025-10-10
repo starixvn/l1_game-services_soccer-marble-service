@@ -1,10 +1,22 @@
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import GameDefinition from "../game-definition";
+import { extractGameId } from "../helpers/eventid";
+import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { HedgeBetService } from "../features/bet-status/hedge-bet-service";
 
 export default class Bot extends TableGameConfigBot {
     declare gameData: GameData;
     declare definition: GameDefinition;
+
+    betStatusService: BetStatusService;
+    hedgeBetService: HedgeBetService;
+
+    constructor(definition: any, gameData: any, publisher: any, gameManagementApiClientFactory: any, tempBetsRepository: any, betStatusService: BetStatusService, hedgeBetService: HedgeBetService) {
+        super(definition, gameData, publisher, gameManagementApiClientFactory, tempBetsRepository);
+        this.betStatusService = betStatusService;
+        this.hedgeBetService = hedgeBetService;
+    }
 
     override updateBalanceAndPublishBetPayload(botId: string, choice: string, amount: number, balance: number) {
         super.updateBalanceAndPublishBetPayload(botId, choice, amount, balance);
@@ -51,9 +63,11 @@ export default class Bot extends TableGameConfigBot {
     }
 
     getBetChoice(bot: any) {
-        const betChoices = Object.keys(this.gameData.dynamicOdds ?? {}).filter((choice) => this.isBetChoiceValid(choice));
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
+        const betChoices = Object.keys(dynamicOdds ?? {}).filter((choice) => this.isBetChoiceValid(choice, gameId));
         const choice = this.chance.pickone(betChoices);
-        const hedgeBetGroup = this.gameData.dynamicHedgeBetGroups?.find((group) => group.has(choice));
+        const hedgeBetGroup = this.hedgeBetService.hedgeBetGroupsByGameId[gameId]?.find((group) => group.has(choice));
 
         if (hedgeBetGroup) {
             const oppositeChoice = Array.from(hedgeBetGroup).find((c) => c !== choice);
@@ -64,17 +78,17 @@ export default class Bot extends TableGameConfigBot {
     }
 
     filterBetChoicesRatios(betChoiceRatios: { group: string[]; underBetRatio: boolean }[]) {
+        const gameId = extractGameId(this.gameData.roundId).toString();
         const result = [];
 
         for (const betChoiceRatio of betChoiceRatios) {
-            const betOptions = this.filterBetChoice(betChoiceRatio.group);
+            const betOptions = this.filterBetChoice(betChoiceRatio.group, gameId);
 
             if (betOptions.length > 0) {
                 result.push({ group: betOptions, underBetRatio: betChoiceRatio.underBetRatio });
             }
         }
 
-        // Incase all bet choices are over the ratio, return all bet choices
         if (result.every((data) => !data.underBetRatio)) {
             for (const betChoiceRatio of result) {
                 betChoiceRatio.underBetRatio = true;
@@ -84,11 +98,16 @@ export default class Bot extends TableGameConfigBot {
         return result;
     }
 
-    isDuringBetTime = () => true;
+    isDuringBetTime() {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.betStatusService.betStatusByGameId[gameId];
+    };
 
     async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
         const currentAmount = currentBet ? currentBet[choice] ?? 0 : 0;
-        const update = { [choice]: amount + currentAmount, odds: this.gameData.dynamicOdds };
+        const update = { [choice]: amount + currentAmount, odds: dynamicOdds };
         const create = {
             uid: bot.id,
             name: bot.name,
@@ -108,15 +127,16 @@ export default class Bot extends TableGameConfigBot {
         return create.time;
     }
 
-    filterBetChoice(betOptions: string[]) {
-        return betOptions.filter((choice) => this.isBetChoiceValid(choice));
+    filterBetChoice(betOptions: string[], gameId: string) {
+        return betOptions.filter((choice) => this.isBetChoiceValid(choice, gameId));
     }
 
-    private isBetChoiceValid(choice: string) {
-        return this.isOddOfBetChoiceValid(choice);
+    private isBetChoiceValid(choice: string, gameId: string) {
+        return this.isOddOfBetChoiceValid(choice, gameId);
     }
 
-    private isOddOfBetChoiceValid(choice: string) {
-        return this.gameData?.dynamicOdds?.[choice] && this.gameData?.dynamicOdds?.[choice] !== 0;
+    private isOddOfBetChoiceValid(choice: string, gameId: string) {
+        const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
+        return dynamicOdds?.[choice] && dynamicOdds?.[choice] !== 0;
     }
 }

@@ -1,37 +1,15 @@
 import { TableGameData } from "sc-game-base/src/table";
-import { ResultType } from "./models/rounds";
 import { GameConfigs } from "sc-game-base/src/core/game-data";
-import { DEFAULT_TOURNAMENT_CODES } from "./constants";
-import { MatchConfigType } from "./match-configs";
-import { VoiceDurationConfig } from "./helpers/voices";
-import { EventResponse } from "./consumers/odd-feed-consumer";
 export default class GameData extends TableGameData {
     declare realPlayers: { [playerId: string]: RealPlayer };
-    declare result: ResultType;
-    declare gameConfigs: GameConfigs & { tournamentConfig: typeof DEFAULT_TOURNAMENT_CODES; videoStreamConfig: VideoStreamConfig };
-    matchConfig: MatchConfigType;
+    declare gameConfigs: GameConfigs;
     constructor() {
         super(0);
         this.playerBetCount = {};
-        this.matchConfig = {} as MatchConfigType;
     }
     playerBetCount: Record<string, string[]> = {};
-    liveStreamServer = "";
-    oddFeedGames: OddFeedGames = {};
-    dynamicOdds?: Record<string, number>;
-    dynamicHedgeBetGroups?: Set<string>[];
-    betChoicePoints?: Record<string, number>;
-    voiceConfig?: VoiceDurationConfig;
-    oddFeedAccessToken?: string;
-    gameId?: number;
     lastRoundId?: number;
-    currentMatch?: { home: string, away: string };
     proceedEvent?: boolean;
-    videoResult?: {
-        video: string;
-        timeline: number[];
-        result: string;
-    };
 }
 
 export type RealPlayer = {
@@ -40,33 +18,3 @@ export type RealPlayer = {
     session: any;
     socketClient: any;
 };
-
-type VideoStreamConfig = {
-    videoInfos: VideoInfo[];
-};
-
-type VideoInfo = {
-    videoName: string;
-    numberOfVideos: number;
-};
-
-export type OddFeedConfig = {
-    baseUrl: string;
-    operator: {
-        operatorId: string;
-        password: string;
-    },
-    gameId: number;
-};
-
-export type OddFeedRounds = {
-    [roundId: number]: EventResponse
-}
-
-export type OddFeedGames = {
-    [gameId: number]: {
-        rounds: OddFeedRounds;
-        currentRound?: number;
-        currentEventDetailIndex?: number;
-    }
-}

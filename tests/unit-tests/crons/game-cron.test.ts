@@ -79,7 +79,6 @@ describe("GameCron", () => {
         it("should set liveStreamServer, cacheConsumer, and currentEventService from container", () => {
             // Arrange
             const container = {
-                appConfigs: { liveStreamServer: "rtmp://live" },
                 gameData: {},
                 cacheConsumer: { tag: "cache" },
                 currentEventService: { tag: "current" },
@@ -89,7 +88,6 @@ describe("GameCron", () => {
             const instance = new GameCron(container) as any;
 
             // Assert
-            expect(instance.gameData.liveStreamServer).toBe("rtmp://live");
             expect(instance.cacheConsumer).toBe(container.cacheConsumer);
             expect(instance.currentEventService).toBe(container.currentEventService);
         });

@@ -21,7 +21,6 @@ import {
     userBetData,
     promotions as promotionData,
     userBetLogData,
-    pfResults,
 } from "./test-data";
 import appConfigs from "../../../build/app-configs.IGT";
 

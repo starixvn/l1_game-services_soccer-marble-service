@@ -36,6 +36,7 @@ const eventsSampleData = (date) =>  ({
     "eventID": 8594229587181,
     "eventNameAKey": "clb_por",
     "eventNameBKey": "clb_psg",
+    "operatorGameId": "158",
     "theme": "2001",
     "eventDetails": [
       {
@@ -395,6 +396,7 @@ const scheduleSampleData = (date) => ([
     {
       "eventID": 8594229587183,
       "eventNameAKey": "clb_por",
+      "operatorGameId": "158",
       "eventNameBKey": "clb_rma",
       "theme": "2001",
       "scheduleStartTs": dateWithOffset(date, FLOW.scheduleStart + INCOMING).toISOString(),

@@ -1,5 +1,8 @@
 import Bot from "../../../src/crons/bot";
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
+jest.mock("../../../src/helpers/eventid", () => ({
+    extractGameId: jest.fn(() => 10),
+}));
 import {
     gameManagementApiClientFactory,
     publisher,
@@ -21,6 +24,8 @@ describe("Bot", () => {
     let mockGameData: any;
     let mockGameDefinition: any;
     let mockChance: any;
+    let betStatusService: any;
+    let hedgeBetService: any;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -32,23 +37,34 @@ describe("Bot", () => {
                 away: [],
                 draw: [],
             },
-            dynamicOdds: {
-                home: 1.5,
-                away: 2.0,
-                draw: 3.0,
-                homeLive: 1.8,
-                awayLive: 2.2,
-            },
-            dynamicHedgeBetGroups: [
-                new Set(["home", "away"]),
-                new Set(["homeLive", "awayLive"]),
-                new Set(["home", "awayLive"]),
-                new Set(["away", "homeLive"]),
-            ],
             gameConfigs: {
                 bot_maxbet: 1000,
             },
             players: {},
+        };
+
+        betStatusService = {
+            betStatusByGameId: { "10": true },
+            dynamicOddsByGameId: {
+                "10": {
+                    home: 1.5,
+                    away: 2.0,
+                    draw: 3.0,
+                    homeLive: 1.8,
+                    awayLive: 2.2,
+                },
+            },
+        };
+
+        hedgeBetService = {
+            hedgeBetGroupsByGameId: {
+                "10": [
+                    new Set(["home", "away"]),
+                    new Set(["homeLive", "awayLive"]),
+                    new Set(["home", "awayLive"]),
+                    new Set(["away", "homeLive"]),
+                ],
+            },
         };
 
         mockGameDefinition = {
@@ -85,7 +101,7 @@ describe("Bot", () => {
             return this;
         });
 
-        botInstance = new Bot(mockGameDefinition, mockGameData, publisher, gameManagementApiClientFactory, tempBetsRepository);
+        botInstance = new Bot(mockGameDefinition, mockGameData, publisher, gameManagementApiClientFactory, tempBetsRepository, betStatusService, hedgeBetService);
 
         // Mock the helper function
     });
@@ -300,7 +316,7 @@ describe("Bot", () => {
 
         it("should return choice when dynamicHedgeBetGroups is undefined", () => {
             // Arrange
-            mockGameData.dynamicHedgeBetGroups = undefined;
+            hedgeBetService.hedgeBetGroupsByGameId["10"] = undefined as any;
             const bot = { choices: ["home", "away"] };
             mockChance.pickone.mockReturnValue("home");
 
@@ -313,7 +329,7 @@ describe("Bot", () => {
 
         it("should return choice when dynamicOdds is undefined", () => {
             // Arrange
-            mockGameData.dynamicOdds = undefined;
+            betStatusService.dynamicOddsByGameId = {};
             const bot = { choices: ["home", "away"] };
             mockChance.pickone.mockReturnValue("home");
 
@@ -326,7 +342,7 @@ describe("Bot", () => {
 
         it("should filter out choices with zero odds", () => {
             // Arrange
-            mockGameData.dynamicOdds = {
+            betStatusService.dynamicOddsByGameId["10"] = {
                 home: 1.5,
                 away: 0, // Zero odds
                 draw: 3.0,
@@ -433,7 +449,7 @@ describe("Bot", () => {
                 {
                     $set: {
                         home: 100,
-                        odds: mockGameData.dynamicOdds,
+                        odds: betStatusService.dynamicOddsByGameId["10"],
                     },
                     $setOnInsert: {
                         uid: "bot123",
@@ -474,7 +490,7 @@ describe("Bot", () => {
                 {
                     $set: {
                         home: 150,
-                        odds: mockGameData.dynamicOdds,
+                        odds: betStatusService.dynamicOddsByGameId["10"],
                     },
                     $setOnInsert: {
                         uid: "bot123",
@@ -498,14 +514,14 @@ describe("Bot", () => {
         it("should filter out choices with invalid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            mockGameData.dynamicOdds = {
+            betStatusService.dynamicOddsByGameId["10"] = {
                 home: 1.5,
                 away: 0, // Invalid odds
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions);
+            const result = botInstance.filterBetChoice(betOptions, "10");
 
             // Assert
             expect(result).toEqual(["home", "draw"]);
@@ -514,14 +530,14 @@ describe("Bot", () => {
         it("should filter out choices with undefined odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            mockGameData.dynamicOdds = {
+            betStatusService.dynamicOddsByGameId["10"] = {
                 home: 1.5,
                 // away is undefined
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions);
+            const result = botInstance.filterBetChoice(betOptions, "10");
 
             // Assert
             expect(result).toEqual(["home", "draw"]);
@@ -530,14 +546,14 @@ describe("Bot", () => {
         it("should return empty array when all choices have invalid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            mockGameData.dynamicOdds = {
+            betStatusService.dynamicOddsByGameId["10"] = {
                 home: 0,
                 away: 0,
                 draw: 0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions);
+            const result = botInstance.filterBetChoice(betOptions, "10");
 
             // Assert
             expect(result).toEqual([]);
@@ -546,14 +562,14 @@ describe("Bot", () => {
         it("should return all choices when all have valid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            mockGameData.dynamicOdds = {
+            betStatusService.dynamicOddsByGameId["10"] = {
                 home: 1.5,
                 away: 2.0,
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions);
+            const result = botInstance.filterBetChoice(betOptions, "10");
 
             // Assert
             expect(result).toEqual(["home", "away", "draw"]);

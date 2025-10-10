@@ -20,7 +20,9 @@ export const run = async () => {
     const gameData = new GameData(gameSettings.durations.wholeRound);
     stubUserService(appConfigs);
     subGameManagementService(appConfigs, definition);
-    const container = new ContainerRegistry().register(appConfigs, definition, gameData);
+    const containerRegistry = new ContainerRegistry();
+    const container = containerRegistry.register(appConfigs, definition, gameData);
+    containerRegistry.init();
     const app = new Core.BaseGameApp(gameSettings.name, appConfigs);
     await app.run();
     await app.startGame(container);

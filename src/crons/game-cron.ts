@@ -24,7 +24,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
     constructor(container: any) {
         super(container);
 
-        this.gameData.liveStreamServer = this.appConfigs.liveStreamServer;
         this.cacheConsumer = container.cacheConsumer;
         this.currentEventService = container.currentEventService;
     }

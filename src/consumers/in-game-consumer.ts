@@ -44,7 +44,6 @@ export default class InGameConsumer extends TableInGameConsumer {
         return {
             ...payload,
             userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
-            videoResult: this.gameData.videoResult,
         };
     }
 

@@ -113,10 +113,8 @@ describe("InGameConsumer", () => {
             const mockRealPlayer = { UID: "test-player-123" };
             const mockSuperPayload = { existingProperty: "value" };
             const mockUserBetPercentage = { home: 50, away: 30, draw: 20 };
-            const mockVideoResult = { video: "test-video", timeline: [1, 2, 3], result: "home" };
 
             mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
-            mockGameData.videoResult = mockVideoResult;
             (mockBetStatusService as any).dynamicOddsByGameId = { "10": { home: 1.5, away: 2.0 } };
             (mockGameData as any).roundId = 1 as any; // value ignored by mocked extractGameId
 
@@ -135,7 +133,6 @@ describe("InGameConsumer", () => {
             expect(result).toEqual({
                 ...mockSuperPayload,
                 userBetPercentage: mockUserBetPercentage,
-                videoResult: mockVideoResult,
             });
         });
     });

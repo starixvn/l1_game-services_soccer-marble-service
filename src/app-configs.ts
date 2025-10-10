@@ -81,13 +81,6 @@ const appConfigs = {
         operatorId: "6875f954cc6dcd65194eee11",
         password: "sQFb1yiHjGZ3A7TmJNv5J",
     },
-    oddFeed: {
-        baseUrl: "https://mg-odds-feed-local.lumigame.com",
-        operator:{
-            "operatorId": "6875f954cc6dcd65194eee11",
-            "password": "sQFb1yiHjGZ3A7TmJNv5J"
-          },
-    }
 };
 
 export default appConfigs;
