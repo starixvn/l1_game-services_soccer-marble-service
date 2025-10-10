@@ -76,12 +76,9 @@ export default {
     cache: {
         ttl: 1000 * 60 * 5,
     },
-    oddFeed: {
-        baseUrl: "https://mg-odds-feed-local.lumigame.com",
-        operator:{
-            "operatorId": "6875f954cc6dcd65194eee11",
-            "password": "sQFb1yiHjGZ3A7TmJNv5J"
-          },
-        gameId: 2001
-    }
+    oddsFeedAPI: {
+        url: "https://mg-odds-feed-local.lumigame.com",
+        operatorId: "6875f954cc6dcd65194eee11",
+        password: "sQFb1yiHjGZ3A7TmJNv5J",
+    },
 };
