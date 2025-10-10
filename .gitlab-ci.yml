@@ -1,8 +1,8 @@
 variables:
   SMOKE_PRODUCT_NAME: 104
   ENABLE_NODEJS_INTEGRATION_TEST: "true"
-  NODEJS_INTEGRATION_TEST_IMAGE_VERSION: hub.lumigame.com/base/node:20.9.0-alpine-24h1.1
-  NODEJS_IMAGE: hub.lumigame.com/base/node:20.9.0-alpine-24h1.1
+  NODEJS_INTEGRATION_TEST_IMAGE_VERSION: hub.lumigame.com/base/node:22-alpine-25h2
+  NODEJS_IMAGE: hub.lumigame.com/base/node:22-alpine-25h2
   NODEJS_INTEGRATION_TEST_DB_IMAGE_VERSION: hub.lumigame.com/docker-hub/library/mongo:4.4.8
 
 include:
