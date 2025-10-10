@@ -1,5 +1,5 @@
 jest.mock("odds-feed-client/dependency-injection", () => ({ init: jest.fn(), register: jest.fn() }));
-import { registerFeatures, oddsFeedFilter, initFeatures } from "../../../src/features/container-registry";
+import { registerFeatures, oddsFeedFilter, initFeatures, disposer } from "../../../src/features/container-registry";
 import gameSettings from "../../../src/game-settings";
 
 describe("features/container-registry", () => {
@@ -61,6 +61,14 @@ describe("features/container-registry", () => {
             expect(betStatusService.initEvent).toHaveBeenCalled();
             expect(checkStatusService.initEvent).toHaveBeenCalled();
             expect(resultService.initEvent).toHaveBeenCalled();
+        });
+    });
+
+    describe("disposer", () => {
+        it("should dispose the service", () => {
+            const service = { dispose: jest.fn() };
+            disposer(service);
+            expect(service.dispose).toHaveBeenCalled();
         });
     });
 });

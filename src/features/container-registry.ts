@@ -29,20 +29,20 @@ export function registerFeatures(diContainer: DiContainer) {
         key: 'currentEventService',
         registerType: 'class',
         value: CurrentEventService,
-        disposer: service => service.dispose(),
+        disposer,
     });
     diContainer.register({
         key: 'delayHandlingService',
         registerType: 'class',
         value: DelayHandlingService,
-        disposer: service => service.dispose(),
+        disposer,
     });
 
     diContainer.register({
         key: 'betStatusService',
         registerType: 'class',
         value: BetStatusService,
-        disposer: service => service.dispose(),
+        disposer,
     });
     diContainer.register({
         key: 'hedgeBetService',
@@ -53,16 +53,20 @@ export function registerFeatures(diContainer: DiContainer) {
         key: 'checkStatusService',
         registerType: 'class',
         value: CheckStatusService,
-        disposer: service => service.dispose(),
+        disposer,
     });
 
     diContainer.register({
         key: 'resultService',
         registerType: 'class',
         value: ResultService,
-        disposer: service => service.dispose(),
+        disposer,
     });
 };
+
+export function disposer(service: any) {
+    service.dispose();
+}
 
 export function oddsFeedFilter(event: MarbleEvent) {
     return event.operatorGameId === gameSettings.id.toString();
