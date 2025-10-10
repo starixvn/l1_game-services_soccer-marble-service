@@ -1,4 +1,4 @@
-import { Scheduler, OddsFeedEventSource, EventDetail, Event, EventDetailNotification, OddsFeedEventName } from "odds-feed-client";
+import { Scheduler, OddsFeedEventSource, EventDetailNotification, OddsFeedEventName } from "odds-feed-client";
 import SettleGameRoundConsumer from "../../consumers/settle-game-round-consumer";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { EventDetailSettlementResult, ResultAndSettlementResult } from "../../models/rounds";

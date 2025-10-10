@@ -1,4 +1,4 @@
-import { asClass, asValue, AwilixContainer, createContainer } from "awilix";
+import { asClass, asValue, AwilixContainer } from "awilix";
 import { Table } from "sc-game-base";
 import {
     InGameConsumer,
@@ -14,7 +14,7 @@ import PlaceBetConsumer from "./consumers/place-bet-consumer";
 import GameStatusPublisher from "./publishers/game-status-publisher";
 import CacheConsumer from "./consumers/cache-consumer";
 import RoundIdConsumer from "./consumers/round-id-consumer";
-import { UserSignInConsumer } from "./consumers/user-sign-in-cosumer";
+import { UserSignInConsumer } from "./consumers/user-sign-in-consumer";
 import { DiContainer } from "odds-feed-client/container";
 import { AwilixDIContainer } from "odds-feed-client/awilix";
 import { initFeatures, registerFeatures } from "./features/container-registry";

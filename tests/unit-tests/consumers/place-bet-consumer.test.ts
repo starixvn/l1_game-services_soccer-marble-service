@@ -394,7 +394,7 @@ describe("PlaceBetConsumer", () => {
             it("should fail validation when bet amount exceeds max bet per choice", () => {
                 // Arrange
                 const betChoice = BET_CHOICES.home;
-                const amount = 3100; // Exceeds the hardcoded 3000 limit
+                const amount = 1100; // Exceeds the maxBetPerChoice (1000)
                 const freeBet = false;
 
                 // Act
@@ -402,16 +402,16 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 3000 });
+                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 1000 });
             });
 
             it("should fail validation when bet amount plus existing bet exceeds max bet per choice", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
-                    [BET_CHOICES.home]: 2500,
+                    [BET_CHOICES.home]: 900,
                 };
                 const betChoice = BET_CHOICES.home;
-                const amount = 600; // 2500 + 600 = 3100 > 3000
+                const amount = 200; // 900 + 200 = 1100 > 1000
                 const freeBet = false;
 
                 // Act
@@ -419,16 +419,16 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[1].failure).toBe(true);
-                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 3000 });
+                expect(result[1].notice).toEqual({ errorCode: "SB1910", maxBet: 1000 });
             });
 
             it("should pass validation when bet amount is within limits", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
-                    [BET_CHOICES.home]: 1000,
+                    [BET_CHOICES.home]: 800,
                 };
                 const betChoice = BET_CHOICES.home;
-                const amount = 500; // 1000 + 500 = 1500 < 3000
+                const amount = 100; // 800 + 100 = 900 < 1000
                 const freeBet = false;
 
                 // Act
@@ -493,7 +493,7 @@ describe("PlaceBetConsumer", () => {
             it("should fail validation when bet amount exceeds max bet", () => {
                 // Arrange
                 const betChoice = BET_CHOICES.home;
-                const amount = 3100; // Exceeds the hardcoded 3000 limit
+                const amount = 1100; // Exceeds maxBet (1000)
                 const freeBet = false;
 
                 // Act
@@ -501,16 +501,16 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[3].failure).toBe(true);
-                expect(result[3].notice).toEqual({ errorCode: "SB1911", maxBet: 3000 });
+                expect(result[3].notice).toEqual({ errorCode: "SB1911", maxBet: 1000 });
             });
 
             it("should fail validation when total bet amount exceeds max bet", () => {
                 // Arrange
                 mockGameData.ingame.testPlayer.betTracks = {
-                    [BET_CHOICES.home]: 2000,
+                    [BET_CHOICES.home]: 950,
                 };
                 const betChoice = LIVE_BET_CHOICES.homeLive;
-                const amount = 1100; // 2000 + 1100 = 3100 > 3000
+                const amount = 100; // 950 + 100 = 1050 > 1000
                 const freeBet = false;
 
                 // Act
@@ -518,7 +518,7 @@ describe("PlaceBetConsumer", () => {
 
                 // Assert
                 expect(result[4].failure).toBe(true);
-                expect(result[4].notice).toEqual({ errorCode: "SB1911", maxBet: 3000 });
+                expect(result[4].notice).toEqual({ errorCode: "SB1911", maxBet: 1000 });
             });
         });
     });

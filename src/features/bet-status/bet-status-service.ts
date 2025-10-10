@@ -4,7 +4,7 @@ import { extractGameId } from "../../helpers/eventid";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { HedgeBetService } from "./hedge-bet-service";
 import GameData from "../../game-data";
-import { BetConfig, MarbleEvent, MarbleEventDetail, Market } from "../shared-types";
+import { BetConfig, MarbleEvent, Market } from "../shared-types";
 
 interface BetStatusServiceContainer {
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;

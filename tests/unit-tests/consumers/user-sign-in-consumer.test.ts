@@ -1,4 +1,4 @@
-import { UserSignInConsumer } from "../../../src/consumers/user-sign-in-cosumer";
+import { UserSignInConsumer } from "../../../src/consumers/user-sign-in-consumer";
 import { TableUserSignInConsumer } from "sc-game-base/src/table/event-consumers";
 
 describe("UserSignInConsumer", () => {

@@ -50,16 +50,8 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
         const { betTracks } = this.gameData.ingame[player.profile.name] ?? { betTracks: {} };
         const totalAmount = Object.values(betTracks as Record<string, number>).reduce((total, amount) => total + (amount ?? 0), 0) + amount;
         const minBet = Math.max(player.profile.minBet, settings.minBet);
-        const maxBet = 3000 //Math.min(player.profile.maxBet, settings.maxBet);
-        const maxBetPerChoice = 3000 //this.getMaxBetPerChoice(player, betChoice, settings);
-
-        console.log("amount ", amount);
-        console.log("maxBetPerChoice", maxBetPerChoice);
-        console.log("betTracks", betTracks);
-        console.log("totalAmount", totalAmount);
-        console.log("minBet", minBet);
-        console.log("maxBet", maxBet);
-        console.log("freeBet", freeBet);
+        const maxBet = Math.min(player.profile.maxBet, settings.maxBet);
+        const maxBetPerChoice = maxBet;
 
         return [
             {
@@ -88,10 +80,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: string }[] {
         const configs = this.gameData.gameConfigs;
         const gameId = extractGameId(roundId).toString();
-
-        console.log("config enabled ", configs.enabled);
-        console.log("round id mismatch", roundId !== this.betStatusService.currentRoundId);
-        console.log("bet status by game id", this.betStatusService.betStatusByGameId[gameId]);
 
         return [
             {
