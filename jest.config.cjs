@@ -3,11 +3,11 @@ module.exports = async () => {
         rootDir: "./",
         verbose: true,
         transform: {
-            "^.+\\.ts?$": "ts-jest",
+            "^.+\\.ts?$": ['ts-jest', { useESM: true }],
             "^.+\\.js?$": "babel-jest",
         },
         transformIgnorePatterns: [
-            "node_modules/(?!(sc-base-database|sc-common|sc-game-base|sc-base-apis|sc-api-client|jest-auto-fixture|nanoid|crypto-random-string|sc-game-service-integration-utils|sc-game-management-client|prom-client)/.*)",
+            "node_modules/(?!(sc-base-database|odds-feed-client|sc-common|sc-game-base|sc-base-apis|sc-api-client|jest-auto-fixture|nanoid|crypto-random-string|sc-game-service-integration-utils|sc-game-management-client|prom-client)/.*)",
         ],
         preset: "ts-jest",
         testEnvironment: "node",
