@@ -61,7 +61,7 @@ export const ODDS_TYPE = {
     ...BET_CHOICES,
 };
 
-export const BET_CHOICE_ENUM = {
+export const BET_CHOICE_MAPPER = {
     [PRE_MATCH_BET_CHOICES.home]: 1,
     [PRE_MATCH_BET_CHOICES.away]: 2,
     [PRE_MATCH_BET_CHOICES.draw]: 3,
@@ -130,6 +130,6 @@ export type BetChoiceSelection = {
     [K in keyof typeof BET_CHOICES]: string;
 };
 
-export const LOCKBET_OFFSET = -3000;
+export const LOCKBET_OFFSET = 0;
 
-export const EVENT_OFFSET = 0;
+export const EVENT_OFFSET = 10000;

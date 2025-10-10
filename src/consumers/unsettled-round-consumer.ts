@@ -1,17 +1,14 @@
 import { UnsettledRoundConsumer as UnsettledRoundConsumerBase } from "sc-game-base/src/core/event-consumers";
 import GameData from "../game-data";
 import SettleGameRoundConsumer from "./settle-game-round-consumer";
-import { EventProcessConsumer } from "./event-process-consumer";
 import { createEventId } from "../helpers/eventid";
 
 export default class UnsettledRoundConsumer extends UnsettledRoundConsumerBase {
     declare settleGameRoundConsumer: SettleGameRoundConsumer;
     declare gameData: GameData;
-    declare eventProcessConsumer: EventProcessConsumer;
 
     constructor(container: any) {
         super(container);
-        this.eventProcessConsumer = container.eventProcessConsumer;
     }
 
     async proceed(): Promise<void> {
@@ -26,7 +23,8 @@ export default class UnsettledRoundConsumer extends UnsettledRoundConsumerBase {
         const unsettledRounds = [...new Set(unsettledBets.map((bet: any) => bet.roundId))];
         return Promise.all(unsettledRounds.map(async (roundId) => {
             const eventId = createEventId(gameId, Number(roundId));
-            return this.eventProcessConsumer.syncForSettle(eventId);
+            // TODO: Replace with appropriate settlement logic
+            return Promise.resolve();
         }));
     }
 

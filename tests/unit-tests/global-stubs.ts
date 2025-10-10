@@ -1,4 +1,4 @@
-import { stub } from "jest-auto-stub";
+import { mock as stub } from "jest-mock-extended";
 import mongoose from "mongoose";
 import { logger } from "sc-common";
 import { Core } from "sc-game-base";
@@ -7,7 +7,6 @@ import { GameStatusPublisher } from "../../src/publishers";
 import {
     ProvablyFairConsumer,
     RoundIdConsumer,
-    RoundResultConsumer,
     SettleGameRoundConsumer,
     UnsettledRoundConsumer,
 } from "sc-game-base/src/core/event-consumers";
@@ -66,7 +65,6 @@ const cacheConsumer: CacheConsumer = stub<CacheConsumer>();
 const settleGameConsumer: SettleGameRoundConsumer = stub<SettleGameRoundConsumer>();
 const gameStatusPublisher: GameStatusPublisher = stub<GameStatusPublisher>();
 const runningRoundInfoPublisher: RunningRoundInfoPublisher = stub<RunningRoundInfoPublisher>();
-const roundResultConsumer: RoundResultConsumer = stub<RoundResultConsumer>();
 const roundIdConsumer: RoundIdConsumer = stub<RoundIdConsumer>();
 const provablyFairConsumer: ProvablyFairConsumer = stub<ProvablyFairConsumer>();
 const unsettledRoundConsumer: UnsettledRoundConsumer = stub<UnsettledRoundConsumer>();
@@ -98,7 +96,6 @@ export {
     resultsRepository,
     roundIdConsumer,
     roundQuery,
-    roundResultConsumer,
     roundResultPublisher,
     roundsRepository,
     runningRoundInfoPublisher,

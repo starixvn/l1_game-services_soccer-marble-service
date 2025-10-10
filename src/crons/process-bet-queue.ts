@@ -2,7 +2,8 @@ import { TableProcessBetQueue } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import { helpers } from "sc-common";
 import GameDefinition from "../game-definition";
-import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
+import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { extractGameId } from "../helpers/eventid";
 
 type BetPayload = {
     amount: number;
@@ -11,11 +12,18 @@ type BetPayload = {
     clientSeed: Date;
     freeBet?: boolean;
     mode?: string;
+    index: number;
 };
 
 export default class ProcessBetQueue extends TableProcessBetQueue {
     declare gameData: GameData;
     declare definition: GameDefinition;
+    betStatusService: BetStatusService;
+
+    constructor(container: any) {
+        super(container);
+        this.betStatusService = container.betStatusService;
+    }
 
     adjustTotalBets(player: any, bet: BetPayload, rate: number) {
         super.adjustTotalBets(player, bet, rate);
@@ -32,19 +40,22 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: { errorCode: string } }[] {
+        const gameId = extractGameId(roundId).toString();
+
         return [
             {
                 failure: roundId !== this.gameData.roundId,
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
             {
-                failure: !isWithinBettingTimeInCurrentEventDetail(this.gameData),
+                failure: !this.betStatusService.betStatusByGameId[gameId],
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
         ];
     }
 
     async upsertBet(player: any, roundId: number, bet: BetPayload, rate: number) {
+        const gameId = extractGameId(roundId).toString();
         const newBet: Record<string, any> = {
             uid: player.UID,
             name: player.profile.name,
@@ -52,12 +63,15 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             freeBet: bet.freeBet,
             roundId,
             clientSeed: bet.clientSeed,
+            index: bet.index,
         };
-        const existingBetFilter = { uid: player.UID, roundId, freeBet: bet.freeBet };
+        const existingBetFilter = { uid: player.UID, roundId, freeBet: bet.freeBet, index: bet.index };
         const existingBetIncrement = {
             [bet.betChoice]: bet.amount,
             totalAmount: bet.amount,
         };
+
+        console.log("upsert bet", existingBetFilter, existingBetIncrement, newBet);
 
         if (player.session) {
             newBet.siteId = player.session.siteId;
@@ -67,9 +81,10 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             newBet.operatorId = player.session.operatorId;
             newBet.playerId = player.session.playerId;
         }
+        const odds = this.betStatusService.dynamicOddsByGameId[gameId];
 
-        const oddsUpdate = this.gameData.dynamicOdds ? 
-            Object.entries(this.gameData.dynamicOdds).reduce((acc, [key, value]) => {
+        const oddsUpdate = odds ? 
+            Object.entries(odds).reduce((acc, [key, value]) => {
                 acc[`odds.${key}`] = value;
                 return acc;
             }, {} as Record<string, any>) : {};

@@ -14,9 +14,10 @@ const run = async () => {
         resultHelper.generateRawResultForHash,
     );
 
-    const gameData = new GameData(0);
-
-    const container = new ContainerRegistry().register(appConfigs, definition, gameData);
+    const gameData = new GameData();
+    const containerRegistry = new ContainerRegistry();
+    const container = containerRegistry.register(appConfigs, definition, gameData);
+    containerRegistry.init();
 
     const app = new Core.BaseGameApp(gameSettings.name, appConfigs);
 

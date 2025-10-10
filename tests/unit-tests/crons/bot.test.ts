@@ -1,6 +1,5 @@
 import Bot from "../../../src/crons/bot";
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
-import * as gameTimingHelper from "../../../src/helpers/game-timing";
 import {
     gameManagementApiClientFactory,
     publisher,
@@ -8,7 +7,6 @@ import {
 } from "../global-stubs";
 
 jest.mock("sc-game-base/src/table/crons");
-jest.mock("../../../src/helpers/game-timing");
 jest.mock("sc-common", () => ({
     helpers: {
         arrayHelper: {
@@ -17,7 +15,6 @@ jest.mock("sc-common", () => ({
     },
 }));
 
-const mockedGameTimingHelper = gameTimingHelper as jest.Mocked<typeof gameTimingHelper>;
 
 describe("Bot", () => {
     let botInstance: Bot;
@@ -91,7 +88,6 @@ describe("Bot", () => {
         botInstance = new Bot(mockGameDefinition, mockGameData, publisher, gameManagementApiClientFactory, tempBetsRepository);
 
         // Mock the helper function
-        mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
     });
 
     describe("updateBalanceAndPublishBetPayload", () => {
@@ -407,33 +403,7 @@ describe("Bot", () => {
             expect(result[1].underBetRatio).toBe(true);
         });
     });
-
-    describe("isDuringBetTime", () => {
-        it("should return true when within betting time", () => {
-            // Arrange
-            mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(true);
-
-            // Act
-            const result = botInstance.isDuringBetTime();
-
-            // Assert
-            expect(result).toBe(true);
-            expect(mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail).toHaveBeenCalledWith(mockGameData);
-        });
-
-        it("should return false when not within betting time", () => {
-            // Arrange
-            mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail.mockReturnValue(false);
-
-            // Act
-            const result = botInstance.isDuringBetTime();
-
-            // Assert
-            expect(result).toBe(false);
-            expect(mockedGameTimingHelper.isWithinBettingTimeInCurrentEventDetail).toHaveBeenCalledWith(mockGameData);
-        });
-    });
-
+    
     describe("insertOrUpdateBet", () => {
         beforeEach(() => {
             botInstance.tempBetsRepository = {

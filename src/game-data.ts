@@ -10,8 +10,8 @@ export default class GameData extends TableGameData {
     declare result: ResultType;
     declare gameConfigs: GameConfigs & { tournamentConfig: typeof DEFAULT_TOURNAMENT_CODES; videoStreamConfig: VideoStreamConfig };
     matchConfig: MatchConfigType;
-    constructor(remainingTime: number) {
-        super(remainingTime);
+    constructor() {
+        super(0);
         this.playerBetCount = {};
         this.matchConfig = {} as MatchConfigType;
     }

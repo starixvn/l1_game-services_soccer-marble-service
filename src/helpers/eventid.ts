@@ -1,5 +1,3 @@
-import GameData from "../game-data";
-
 const SHIFT_BITS = 32n;
 const MASK_32_BITS = 0xffffffffn;
 
@@ -22,18 +20,3 @@ export const extractGameId = (eventId: number) => {
 export const extractRoundId = (eventId: number) => {
   return Number(BigInt(eventId) & MASK_32_BITS);
 };
-
-export function getCurrentMatch(gameData: GameData, gameId?: number) {
-  if (!gameId) {
-    return null;
-  }
-  const currentRoundId = gameData.oddFeedGames[gameId].currentRound;
-  const currentEventDetailIndex = gameData.oddFeedGames[gameId].currentEventDetailIndex;
-  if (!currentRoundId) {
-      return null;
-  }
-  if (currentEventDetailIndex === undefined) {
-      return null;
-  }
-  return gameData.oddFeedGames[gameId].rounds[currentRoundId].eventDetails[currentEventDetailIndex] ?? null;
-}

@@ -1,10 +1,8 @@
-import { asClass, asValue, AwilixContainer } from "awilix";
+import { asClass, asValue, AwilixContainer, createContainer } from "awilix";
 import { Table } from "sc-game-base";
 import {
     InGameConsumer,
     UserDisconnectConsumer,
-    RoundResultConsumer,
-    UnsettledRoundConsumer,
     SettleGameRoundConsumer,
 } from "./consumers";
 
@@ -15,16 +13,23 @@ import { HistoryQuery } from "./query-apis";
 import PlaceBetConsumer from "./consumers/place-bet-consumer";
 import GameStatusPublisher from "./publishers/game-status-publisher";
 import CacheConsumer from "./consumers/cache-consumer";
-import { EventProcessConsumer } from "./consumers/event-process-consumer";
-import { OddFeedConsumer } from "./consumers/odd-feed-consumer";
-import { SchedulerConsumer } from "./consumers/scheduler-consumer";
 import RoundIdConsumer from "./consumers/round-id-consumer";
 import { UserSignInConsumer } from "./consumers/user-sign-in-cosumer";
+import { DiContainer } from "odds-feed-client/container";
+import { AwilixDIContainer } from "odds-feed-client/awilix";
+import { initFeatures, registerFeatures } from "./features/container-registry";
 
 export default class ContainerRegistry extends Table.TableContainerRegistry {
+
+    private readonly oddFeedDiContainer: DiContainer;
+    constructor() {
+        super();
+        this.oddFeedDiContainer = new AwilixDIContainer(this.container);
+    }
+
     register(appConfigs: any, definition: any, gameData: any): AwilixContainer<any> {
         super.register(appConfigs, definition, gameData);
-
+        registerFeatures(this.oddFeedDiContainer);
         return this.container;
     }
 
@@ -56,14 +61,9 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
         this.container.register({
             userDisconnectConsumer: asClass(UserDisconnectConsumer).singleton(),
             inGameConsumer: asClass(InGameConsumer).singleton(),
-            roundResultConsumer: asClass(RoundResultConsumer).singleton().proxy(),
-            unsettledRoundConsumer: asClass(UnsettledRoundConsumer).singleton().proxy(),
             settleGameRoundConsumer: asClass(SettleGameRoundConsumer).singleton().proxy(),
             placeBetConsumer: asClass(PlaceBetConsumer).singleton(),
             cacheConsumer: asClass(CacheConsumer).singleton().proxy(),
-            eventProcessConsumer: asClass(EventProcessConsumer).singleton().proxy(),
-            oddFeedConsumer: asClass(OddFeedConsumer).singleton().proxy(),
-            schedulerConsumer: asClass(SchedulerConsumer).singleton().proxy(),
             roundIdConsumer: asClass(RoundIdConsumer).singleton(),
             userSignInConsumer: asClass(UserSignInConsumer).singleton(),
         });
@@ -84,5 +84,9 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
         this.container.register({
             historyQuery: asClass(HistoryQuery).singleton(),
         });
+    }
+
+    init() {
+        initFeatures(this.oddFeedDiContainer);
     }
 }

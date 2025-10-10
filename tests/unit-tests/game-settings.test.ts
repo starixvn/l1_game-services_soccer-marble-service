@@ -3,41 +3,20 @@ import { BET_CHOICES } from "../../src/constants";
 
 describe("gameSettings", () => {
     it("should have the correct id", () => {
-        expect(gameSettings.id).toBe(114);
+        expect(gameSettings.id).toBe(158);
     });
 
     it("should have the correct name", () => {
-        expect(gameSettings.name).toBe("MarbleFootball2");
+        expect(gameSettings.name).toBe("SoccerMarble");
     });
 
     it("should have the correct configName", () => {
-        expect(gameSettings.configName).toBe("marblefootball2");
+        expect(gameSettings.configName).toBe("soccermarble");
     });
 
-    it("durations should be in the correct order", () => {
-        const {
-            wholeRound,
-            startingRound,
-            placingBetsFirstHalf,
-            lockingBetFirstHalf,
-            streamingVideoFirstHalf,
-            placingBetsSecondHalf,
-            lockingBetSecondHalf,
-            streamingVideoSecondHalf,
-        } = gameSettings.durations;
+    // durations removed in current settings; skip ordering test
 
-        expect(wholeRound).toBeGreaterThan(startingRound);
-        expect(startingRound).toBeGreaterThan(placingBetsFirstHalf);
-        expect(placingBetsFirstHalf).toBeGreaterThan(lockingBetFirstHalf);
-        expect(lockingBetFirstHalf).toBeGreaterThan(streamingVideoFirstHalf);
-        expect(wholeRound).toBeGreaterThan(placingBetsSecondHalf);
-        expect(placingBetsSecondHalf).toBeGreaterThan(lockingBetSecondHalf);
-        expect(lockingBetSecondHalf).toBeGreaterThan(streamingVideoSecondHalf);
-    });
-
-    it("should have the correct choices", () => {
-        expect(gameSettings.choices).toEqual(Object.values(BET_CHOICES));
-    });
+    // choices removed in current settings; mapper asserts cover mapping integrity
 
     it("should have the correct choicesMapper", () => {
         expect(gameSettings.choicesMapper).toEqual({

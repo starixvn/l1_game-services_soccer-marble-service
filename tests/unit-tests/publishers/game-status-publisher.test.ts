@@ -1,28 +1,39 @@
-import { stub } from "jest-auto-stub";
 import GameStatusPublisher from "../../../src/publishers/game-status-publisher";
-import GameData from "../../../src/game-data";
 
 describe("GameStatusPublisher", () => {
-    let publisher: GameStatusPublisher;
-    const gameData = stub<GameData>();
+    let publisher: GameStatusPublisher & any;
 
     beforeEach(() => {
-        publisher = new GameStatusPublisher("marblefootball2", gameData);
+        publisher = Object.create(GameStatusPublisher.prototype) as any;
         publisher.publishToAllUsers = jest.fn();
     });
 
-    describe("publishOdds", () => {
-        it("should publish odds to all users with correct format", () => {
-            const testOdds = {
-                team1: 1.5,
-                team2: 2.8,
-            };
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
 
-            publisher.publishOdds(testOdds);
+    it("should publish odds to all users", () => {
+        const odds = { home: 2.0, away: 3.0 };
+        publisher.publishOdds(odds);
+        expect(publisher.publishToAllUsers).toHaveBeenCalledWith({ odds });
+    });
 
-            expect(publisher.publishToAllUsers).toHaveBeenCalledWith({
-                odds: testOdds,
-            });
-        });
+    it("should publish points to all users", () => {
+        const points = { home: 1, away: 2 };
+        publisher.publishBetChoicePoints(points);
+        expect(publisher.publishToAllUsers).toHaveBeenCalledWith({ points });
+    });
+
+    it("should publish current index to all users", () => {
+        publisher.publishCurrentIndex(3);
+        expect(publisher.publishToAllUsers).toHaveBeenCalledWith({ currentIndex: 3 });
+    });
+
+    it("should publish match to all users", () => {
+        const event = { eventNameAKey: "Team A", eventNameBKey: "Team B" } as any;
+        publisher.publishMatch(event);
+        expect(publisher.publishToAllUsers).toHaveBeenCalledWith({ match: { home: "Team A", away: "Team B" } });
     });
 });
+
+

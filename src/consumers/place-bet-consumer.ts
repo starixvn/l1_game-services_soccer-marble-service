@@ -2,13 +2,35 @@ import { Core } from "sc-game-base";
 import GameDefinition from "../game-definition";
 import { helpers } from "sc-common";
 import GameData from "../game-data";
-import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
+import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { HedgeBetService } from "../features/bet-status/hedge-bet-service";
+import { BaseEventPublisher } from "sc-game-base/src/core/event-publishers";
+import { extractGameId } from "../helpers/eventid";
 
 export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetConsumer {
     declare definition: GameDefinition;
     declare gameData: GameData;
 
+    private readonly hedgeBetService: HedgeBetService;
+    private readonly betStatusService: BetStatusService;
+
+    constructor(
+        definition: GameDefinition,
+        gameData: GameData,
+        publisher: BaseEventPublisher,
+        hedgeBetService: HedgeBetService,
+        betStatusService: BetStatusService
+    ) {
+        super(definition, gameData, publisher);
+        this.hedgeBetService = hedgeBetService;
+        this.betStatusService = betStatusService;
+    }
+
     composeBetChoiceValidationCriteria(betChoice: string) {
+
+        console.log("bet choice", betChoice);
+        console.log("is bet choice odd zero", this.isBetChoiceOddZero(betChoice));
+
         return [
             {
                 failure: this.isBetChoiceOddZero(betChoice),
@@ -25,11 +47,19 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
     ): { failure: boolean; notice: string }[] {
         const settings = this.gameData.currencyGroupGames.find((x) => x.groupId.toString() === player.session.currencyGroupId) as any;
         const configs = this.gameData.gameConfigs;
-        const { betTracks } = this.gameData.ingame[player.profile.name] || { betTracks: {} };
-        const totalAmount = this.definition.choices.reduce((total, choice) => total + (betTracks[choice] || 0), 0) + amount;
+        const { betTracks } = this.gameData.ingame[player.profile.name] ?? { betTracks: {} };
+        const totalAmount = Object.values(betTracks as Record<string, number>).reduce((total, amount) => total + (amount ?? 0), 0) + amount;
         const minBet = Math.max(player.profile.minBet, settings.minBet);
-        const maxBet = Math.min(player.profile.maxBet, settings.maxBet);
-        const maxBetPerChoice = this.getMaxBetPerChoice(player, betChoice, settings);
+        const maxBet = 3000 //Math.min(player.profile.maxBet, settings.maxBet);
+        const maxBetPerChoice = 3000 //this.getMaxBetPerChoice(player, betChoice, settings);
+
+        console.log("amount ", amount);
+        console.log("maxBetPerChoice", maxBetPerChoice);
+        console.log("betTracks", betTracks);
+        console.log("totalAmount", totalAmount);
+        console.log("minBet", minBet);
+        console.log("maxBet", maxBet);
+        console.log("freeBet", freeBet);
 
         return [
             {
@@ -57,6 +87,11 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: string }[] {
         const configs = this.gameData.gameConfigs;
+        const gameId = extractGameId(roundId).toString();
+
+        console.log("config enabled ", configs.enabled);
+        console.log("round id mismatch", roundId !== this.betStatusService.currentRoundId);
+        console.log("bet status by game id", this.betStatusService.betStatusByGameId[gameId]);
 
         return [
             {
@@ -64,46 +99,87 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet),
             },
             {
-                failure: roundId !== this.gameData.roundId,
+                failure: roundId !== this.betStatusService.currentRoundId,
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet, { gameRoundId: roundId }),
             },
             {
-                failure: !isWithinBettingTimeInCurrentEventDetail(this.gameData),
+                failure: !this.betStatusService.betStatusByGameId[gameId],
                 notice: this.getNoticeObj(helpers.noticeHelper.placeBetNextRound),
             },
         ];
     }
 
     composeHedgeBetValidationCriteria(betChoice: string, player: any): { failure: boolean; notice: string }[] {
-        const { betTracks } = this.gameData.ingame[player.profile.name] || { betTracks: {} };
-        const hedgeBetGroups = this.gameData.dynamicHedgeBetGroups?.filter((group) => group.has(betChoice)) ?? [];
-        const invalidGroup = hedgeBetGroups.find((group) =>
-            Object.keys(betTracks).some((betKey) => betTracks[betKey] && group.has(betKey) && betKey !== betChoice)
-        );
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        
+        const invalidGroup = this.hedgeBetService.verifyHedgeBetRestriction({
+            gameId,
+            player: player.profile.name,
+            betChoice,
+        });
+
+        console.log("hedge bet criteria", invalidGroup, invalidGroup.size > 0);
 
         return [
             {
-                failure: !!invalidGroup,
+                failure: invalidGroup.size > 0,
                 notice: this.getNoticeObj(helpers.noticeHelper.disallowHedgeBet, { hedgeBetGroup: Array.from(invalidGroup?.values() ?? []) }),
             },
         ];
     }
 
+    override consume(player: any, payload: any): void {
+        const index = this.betStatusService.getBetStatus().currentIndex;
+        console.log("consuming bets ");
+        Object.assign(payload, {
+            amount: payload.amount >> 0,
+            freeBet: payload.freeBet ?? false,
+            roundId: payload.roundId ?? this.gameData.roundId,
+            mode: payload.m ?? this.DisplayMode.Landscape,
+            receivedTime: new Date(),
+            index,
+        });
 
-    private getMaxBetPerChoice(player: any, betChoice: string, settings?: any) {
-        const maxBet = Math.min(player.profile.maxBet, settings.maxBet);
-        const maxBetByOdds = this.getMaxBetByOdds(betChoice, maxBet);
-        return Math.min(maxBet, maxBetByOdds);
+        const { amount, betChoice, freeBet, roundId } = payload;
+        const name = player.profile.name;
+        if (!this.validateRequestParams(payload, player) || !this.validateBetRequest(player, betChoice, amount, freeBet, roundId)) {
+            console.log("bet invalid, skipping");
+            return;
+        }
+
+        console.log("bet valid, processing to queue");
+
+        if (!this.gameData.ingame[name]) {
+            const newPlayer = {
+                name: player.profile.name,
+                currency: player.session.currencyName,
+                system: player.session.system,
+                betTracks: {},
+                betQueue: [],
+                clientSeed: payload.clientSeed,
+                operatorId: player.session.operatorId,
+            };
+
+            this.gameData.ingame[name] = newPlayer;
+        }
+
+        this.adjustBetTracks(player.profile.name, payload);
+        this.gameData.ingame[name].betQueue.push({ player, payload })
     }
 
-    private getMaxBetByOdds(betChoice: string, maxBet: number) {
-        const odds = this.gameData?.dynamicOdds;
-        const betChoiceOdds = odds?.[betChoice] ?? 1;
-        return Math.round(maxBet / Math.abs(betChoiceOdds - 1));
+    override adjustBetTracks(playerName: string, bet: any): void {
+        super.adjustBetTracks(playerName, bet);
+        const gameId = extractGameId(bet.roundId).toString();
+        this.hedgeBetService.trackHedgeBetRestriction({
+            gameId,
+            player: playerName,
+            betChoice: bet.betChoice,
+        });
     }
 
     private isBetChoiceOddZero(betChoice: string) {
-        const odds = this.gameData?.dynamicOdds?.[betChoice] ?? 0;
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        const odds = this.betStatusService.dynamicOddsByGameId[gameId]?.[betChoice] ?? 0;
         return odds === 0;
     }
 }

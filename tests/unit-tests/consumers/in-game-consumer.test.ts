@@ -1,139 +1,218 @@
-import { stub } from "jest-auto-stub";
-import { TableInGameConsumer } from "sc-game-base/src/table/event-consumers";
+import { Table } from "sc-game-base";
+import InGameConsumer from "../../../src/consumers/in-game-consumer";
 import GameData from "../../../src/game-data";
-import { InGameConsumer } from "../../../src/consumers";
-import GameDefinition from "../../../src/game-definition";
-import { gameManagementApiClientFactory, publisher, roundQuery } from "../global-stubs";
-import * as helper from "../../../src/helpers/bet-percentage";
+import { BetStatusService } from "../../../src/features/bet-status/bet-status-service";
+import { CurrentEventService } from "../../../src/features/current-event/current-event-service";
+import { getUserBetPercentage } from "../../../src/helpers/bet-percentage";
+jest.mock("../../../src/helpers/eventid", () => ({
+    extractGameId: jest.fn(() => 10),
+}));
+import {
+    gameManagementApiClientFactory,
+    publisher,
+    roundQuery,
+} from "../global-stubs";
+import { mock as stub } from "jest-mock-extended";
+
+// Mock the getUserBetPercentage helper
+jest.mock("../../../src/helpers/bet-percentage", () => ({
+    getUserBetPercentage: jest.fn(),
+}));
+
+const mockedGetUserBetPercentage = jest.mocked(getUserBetPercentage);
 
 describe("InGameConsumer", () => {
-    let consumer: InGameConsumer;
-    const definition = stub<GameDefinition>();
-    definition.durations = {
-        wholeRound: 121,
-        startingRound: 118,
-        placingBetsFirstHalf: 115,
-        lockingBetFirstHalf: 99,
-        streamingVideoFirstHalf: 94,
-        placingBetsSecondHalf: 63,
-        lockingBetSecondHalf: 47,
-        streamingVideoSecondHalf: 42,
-        lockingBet: 0,
-        placingBets: 0,
-    };
-    const gameData = stub<GameData>();
-    const getBalance = jest.fn();
+    let inGameConsumer: InGameConsumer;
+    let mockGameData: GameData;
+    let mockDefinition: any;
+    let mockGetBalance: any;
+    let mockBetStatusService: BetStatusService;
+    let mockCurrentEventService: CurrentEventService;
 
     beforeEach(() => {
-        consumer = new InGameConsumer(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
+        // Create mocks
+        mockGameData = stub<GameData>();
+        mockDefinition = stub<any>();
+        mockGetBalance = jest.fn();
+        mockBetStatusService = stub<BetStatusService>();
+        mockCurrentEventService = stub<CurrentEventService>();
+
+        // Create the instance
+        inGameConsumer = new InGameConsumer(
+            mockDefinition,
+            mockGameData,
+            roundQuery,
+            publisher,
+            mockGetBalance,
+            gameManagementApiClientFactory,
+            mockBetStatusService,
+            mockCurrentEventService
+        );
     });
 
-    it("should inherit from TableInGameConsumer", () => {
-        // Assert
-        expect(consumer instanceof TableInGameConsumer).toBeTruthy();
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe("constructor", () => {
+        it("should initialize with the provided dependencies", () => {
+            // Assert
+            expect(inGameConsumer.gameData).toBe(mockGameData);
+            expect(inGameConsumer.betStatusService).toBe(mockBetStatusService);
+            expect(inGameConsumer.currentEventService).toBe(mockCurrentEventService);
+        });
+
+        it("should extend TableInGameConsumer", () => {
+            // Assert
+            expect(inGameConsumer).toBeInstanceOf(Table.EventConsumers.TableInGameConsumer);
+        });
     });
 
     describe("consume", () => {
-        it("should call super.consume and publishOddsToPlayer", async () => {
+        it("should call super.consume and all publisher methods", async () => {
             // Arrange
-            const realPlayer = { UID: "player123" };
-            const superConsumeSpy = jest.spyOn(TableInGameConsumer.prototype, "consume").mockResolvedValue();
-            const publishOddsToPlayerSpy = jest.spyOn(consumer, "publishOddsToPlayer").mockReturnValue(undefined);
-            const publishBetChoicePointsToPlayerSpy = jest.spyOn(consumer, "publishBetChoicePointsToPlayer").mockReturnValue(undefined);
-            const publishMatchToPlayerSpy = jest.spyOn(consumer, "publishMatchToPlayer").mockReturnValue(undefined);
+            const mockRealPlayer = { UID: "test-player-123" };
+            const superConsumeSpy = jest
+                .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "consume")
+                .mockResolvedValue();
+            
+            const publishOddsSpy = jest.spyOn(inGameConsumer, "publishOddsToPlayer").mockImplementation();
+            const publishBetChoicePointsSpy = jest.spyOn(inGameConsumer, "publishBetChoicePointsToPlayer").mockImplementation();
+            const publishMatchSpy = jest.spyOn(inGameConsumer, "publishMatchToPlayer").mockImplementation();
 
             // Act
-            await consumer.consume(realPlayer);
+            await inGameConsumer.consume(mockRealPlayer);
 
             // Assert
-            expect(superConsumeSpy).toHaveBeenCalledWith(realPlayer);
-            expect(publishOddsToPlayerSpy).toHaveBeenCalledWith("player123");
-            expect(publishBetChoicePointsToPlayerSpy).toHaveBeenCalledWith("player123");
-            expect(publishMatchToPlayerSpy).toHaveBeenCalledWith("player123");
+            expect(superConsumeSpy).toHaveBeenCalledWith(mockRealPlayer);
+            expect(publishOddsSpy).toHaveBeenCalledWith("test-player-123");
+            expect(publishBetChoicePointsSpy).toHaveBeenCalledWith("test-player-123");
+            expect(publishMatchSpy).toHaveBeenCalledWith("test-player-123");
+        });
+
+        it("should handle errors gracefully without throwing", async () => {
+            // Arrange
+            const mockRealPlayer = { UID: "test-player-123" };
+            const superConsumeSpy = jest
+                .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "consume")
+                .mockResolvedValue();
+            
+            jest.spyOn(inGameConsumer, "publishOddsToPlayer").mockImplementation(() => {
+                throw new Error("Test error");
+            });
+
+            // Act & Assert
+            await expect(inGameConsumer.consume(mockRealPlayer)).resolves.not.toThrow();
+            expect(superConsumeSpy).toHaveBeenCalledWith(mockRealPlayer);
         });
     });
 
     describe("buildPayload", () => {
-        it("should build payload with userBetPercentage", async () => {
+        it("should build payload with userBetPercentage (based on dynamicOdds keys) and videoResult", async () => {
             // Arrange
-            const realPlayer = { id: "player1" };
-            const basePayload = { some: "payload" };
-            const playerBetCount = { home: ["111", "113"], away: ["112"] };
-            const userBetPercentage = { home: 66, away: 34, draw: 0 };
+            const mockRealPlayer = { UID: "test-player-123" };
+            const mockSuperPayload = { existingProperty: "value" };
+            const mockUserBetPercentage = { home: 50, away: 30, draw: 20 };
+            const mockVideoResult = { video: "test-video", timeline: [1, 2, 3], result: "home" };
 
-            gameData.playerBetCount = playerBetCount;
-            gameData.videoResult = undefined;
+            mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
+            mockGameData.videoResult = mockVideoResult;
+            (mockBetStatusService as any).dynamicOddsByGameId = { "10": { home: 1.5, away: 2.0 } };
+            (mockGameData as any).roundId = 1 as any; // value ignored by mocked extractGameId
 
-            jest.spyOn(TableInGameConsumer.prototype, "buildPayload").mockResolvedValue(basePayload);
-            jest.spyOn(helper, "getUserBetPercentage").mockReturnValue(userBetPercentage);
+            const superBuildPayloadSpy = jest
+                .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "buildPayload")
+                .mockResolvedValue(mockSuperPayload);
+
+            mockedGetUserBetPercentage.mockReturnValue(mockUserBetPercentage);
 
             // Act
-            const result = await consumer.buildPayload(realPlayer);
+            const result = await inGameConsumer.buildPayload(mockRealPlayer);
 
             // Assert
-            expect(helper.getUserBetPercentage).toHaveBeenCalledWith(playerBetCount);
+            expect(superBuildPayloadSpy).toHaveBeenCalledWith(mockRealPlayer);
+            expect(mockedGetUserBetPercentage).toHaveBeenCalledWith(mockGameData.playerBetCount, ["home", "away"]);
             expect(result).toEqual({
-                ...basePayload,
-                userBetPercentage,
-                videoResult: undefined,
+                ...mockSuperPayload,
+                userBetPercentage: mockUserBetPercentage,
+                videoResult: mockVideoResult,
             });
         });
     });
 
     describe("publishOddsToPlayer", () => {
-        it("should publish odds to user", () => {
+        it("should publish odds to the specified player", () => {
             // Arrange
-            const UID = "player123";
-            const dynamicOdds = { home: 2.0, away: 1.8, draw: 3.2 };
-            gameData.dynamicOdds = dynamicOdds;
+            const testUID = "test-player-123";
+            const mockOdds = { home: 1.5, away: 2.0, draw: 3.0 };
+            const mockBetStatus = { odds: mockOdds, points: {}, currentIndex: 0 };
+
+            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
 
             // Act
-            consumer.publishOddsToPlayer(UID);
+            inGameConsumer.publishOddsToPlayer(testUID);
 
             // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { odds: dynamicOdds });
-        });
-
-        it("should handle undefined dynamicOdds", () => {
-            // Arrange
-            const UID = "player123";
-            gameData.dynamicOdds = undefined;
-
-            // Act
-            consumer.publishOddsToPlayer(UID);
-
-            // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { odds: undefined });
+            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
+            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { odds: mockOdds });
         });
     });
 
     describe("publishBetChoicePointsToPlayer", () => {
-        it("should publish bet choice points to user", () => {
+        it("should publish points to the specified player", () => {
             // Arrange
-            const UID = "player123";
-            const betChoicePoints = { home: 1, away: 2 };
-            gameData.betChoicePoints = betChoicePoints;
+            const testUID = "test-player-456";
+            const mockPoints = { home: 10, away: 20, draw: 30 };
+            const mockBetStatus = { odds: {}, points: mockPoints, currentIndex: 0 };
+
+            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
 
             // Act
-            consumer.publishBetChoicePointsToPlayer(UID);
+            inGameConsumer.publishBetChoicePointsToPlayer(testUID);
 
             // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { points: betChoicePoints });
+            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
+            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { points: mockPoints });
         });
     });
 
     describe("publishMatchToPlayer", () => {
-        it("should publish match to user", () => {
+        it("should publish match data to the specified player", () => {
             // Arrange
-            const UID = "player123";
-            const match = { home: "A", away: "B" };
-            gameData.currentMatch = match;
+            const testUID = "test-player-789";
+            const mockCurrentEvent = {
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+            };
+
+            (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
             // Act
-            consumer.publishMatchToPlayer(UID);
+            inGameConsumer.publishMatchToPlayer(testUID);
 
             // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(UID, { match });
+            expect(mockCurrentEventService.getCurrentEvent).toHaveBeenCalled();
+            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, {
+                match: { home: "Team A", away: "Team B" }
+            });
+        });
+    });
+
+    describe("publishCurrentIndexToPlayer", () => {
+        it("should publish current index to the specified player", () => {
+            // Arrange
+            const testUID = "test-player-101";
+            const mockCurrentIndex = 2;
+            const mockBetStatus = { odds: {}, points: {}, currentIndex: mockCurrentIndex };
+
+            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
+
+            // Act
+            inGameConsumer.publishCurrentIndexToPlayer(testUID);
+
+            // Assert
+            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
+            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { currentIndex: mockCurrentIndex });
         });
     });
 });

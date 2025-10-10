@@ -1,21 +1,10 @@
-import { BET_CHOICE_ENUM, BET_CHOICES } from "./constants";
+import { BET_CHOICE_MAPPER, BET_CHOICES } from "./constants";
 
 export default {
-    id: 114,
-    name: "MarbleFootball2",
-    configName: "marblefootball2",
-    durations: {
-        wholeRound: 126,
-        startingRound: 116,
-        placingBetsFirstHalf: 110,
-        lockingBetFirstHalf: 93,
-        streamingVideoFirstHalf: 92,
-        placingBetsSecondHalf: 52,
-        lockingBetSecondHalf: 35,
-        streamingVideoSecondHalf: 34,
-    },
-    choices: Object.values(BET_CHOICES),
-    choicesMapper: BET_CHOICE_ENUM,
+    id: 158,
+    name: "SoccerMarble",
+    configName: "soccermarble",
+    choicesMapper: BET_CHOICE_MAPPER,
     hedgeBetGroups: [
         ["ft_hdp_home", "ft_hdp_away"],
         ["h1_hdp_home", "h1_hdp_away"],

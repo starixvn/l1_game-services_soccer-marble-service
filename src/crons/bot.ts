@@ -1,7 +1,6 @@
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import GameDefinition from "../game-definition";
-import { isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 
 export default class Bot extends TableGameConfigBot {
     declare gameData: GameData;
@@ -85,7 +84,7 @@ export default class Bot extends TableGameConfigBot {
         return result;
     }
 
-    isDuringBetTime = () => isWithinBettingTimeInCurrentEventDetail(this.gameData);
+    isDuringBetTime = () => true;
 
     async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
         const currentAmount = currentBet ? currentBet[choice] ?? 0 : 0;

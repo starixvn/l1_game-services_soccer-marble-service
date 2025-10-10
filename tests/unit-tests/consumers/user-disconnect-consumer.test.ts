@@ -1,7 +1,7 @@
 import UserDisconnectConsumer from "../../../src/consumers/user-disconnect-consumer";
 import { Socket } from "socket.io";
 import { Core } from "sc-game-base";
-import { stub } from "jest-auto-stub";
+import { mock as stub } from "jest-mock-extended";
 import GameData from "../../../src/game-data";
 
 describe("UserDisconnectConsumer", () => {

@@ -1,50 +1,69 @@
 import { TableInGameConsumer } from "sc-game-base/src/table/event-consumers";
 import GameData from "../game-data";
 import { getUserBetPercentage } from "../helpers/bet-percentage";
-import GameDefinition from "../game-definition";
-import {
-} from "../helpers/game-timing";
+import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { CurrentEventService } from "../features/current-event/current-event-service";
+import { extractGameId } from "../helpers/eventid";
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;
-    declare definition: GameDefinition;
-
+    betStatusService: BetStatusService;
+    currentEventService: CurrentEventService;
     constructor(
-        definition: GameDefinition,
+        definition: any,
         gameData: GameData,
         roundQuery: any,
         publisher: any,
         getBalance: any,
-        gameManagementApiClientFactory: any
+        gameManagementApiClientFactory: any,
+        betStatusService: BetStatusService,
+        currentEventService: CurrentEventService
     ) {
         super(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
-    }
+        this.betStatusService = betStatusService;
+        this.currentEventService = currentEventService;
+        }
 
     override async consume(realPlayer: any): Promise<void> {
         await super.consume(realPlayer);
-        this.publishOddsToPlayer(realPlayer.UID);
-        this.publishBetChoicePointsToPlayer(realPlayer.UID);
-        this.publishMatchToPlayer(realPlayer.UID);
+
+        try {
+
+            this.publishOddsToPlayer(realPlayer.UID);
+            this.publishBetChoicePointsToPlayer(realPlayer.UID);
+            this.publishMatchToPlayer(realPlayer.UID);
+        }   catch (error) {
+            console.log("error", error);
+        }
     }
 
     override async buildPayload(realPlayer: any) {
         const payload = await super.buildPayload(realPlayer);
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        const betChoices = Object.keys(this.betStatusService.dynamicOddsByGameId[gameId]);
         return {
             ...payload,
-            userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount),
+            userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
             videoResult: this.gameData.videoResult,
         };
     }
 
     publishOddsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { odds: this.gameData.dynamicOdds });
+        this.publisher.publishToUser(UID, { odds: this.betStatusService.getBetStatus().odds });
     }
 
     publishBetChoicePointsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { points: this.gameData.betChoicePoints });
+        this.publisher.publishToUser(UID, { points: this.betStatusService.getBetStatus().points });
     }
 
     publishMatchToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { match: this.gameData.currentMatch });
+        const currentEvent = this.currentEventService.getCurrentEvent();
+        const home = currentEvent.eventNameAKey;
+        const away = currentEvent.eventNameBKey;
+        this.publisher.publishToUser(UID, { match: { home, away } });
+    }
+
+    publishCurrentIndexToPlayer(UID: string): void {
+        this.publisher.publishToUser(UID, { currentIndex: this.betStatusService.getBetStatus().currentIndex });
     }
 }

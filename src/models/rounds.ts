@@ -1,52 +1,47 @@
 import mongoose from "mongoose";
 import { MODEL_NAME_PREFIX } from "../constants";
 
-export type ResultType = {
-    home: number;
-    away: number;
-};
-
-const resultSchema = new mongoose.Schema<ResultType>(
-    {
-        home: { type: Number },
-        away: { type: Number },
-    },
-    { _id: false },
-);
-
-export type MatchType = {
-    home: string;
-    away: string;
-};
-
-const matchSchema = new mongoose.Schema<MatchType>(
-    {
-        home: { type: String },
-        away: { type: String },
-    },
-    { _id: false },
-);
-
-export type SettlementResultType = {
+export type EventDetailSettlementResult = {
     [key: string]: boolean;
+}
+
+export type EventDetailResult = {
+    finalScore: string;
+    goalSequence: string;
+    playlist: string;
+    phase: number;
 };
+
+export type Result = Record<number, EventDetailResult>;
+export type SettlementResult = Record<number, EventDetailSettlementResult>;
+
+export type ResultAndSettlementResult = {
+    result: Result;
+    settlementResult: SettlementResult;
+}
+
+const eventDetailResultSchema = new mongoose.Schema<EventDetailResult>(
+    {
+        finalScore: { type: String },
+        goalSequence: { type: String },
+        playlist: { type: String },
+        phase: { type: Number },
+    },
+    { _id: false },
+);
 
 export interface IRound {
     id: number;
-    result: ResultType;
-    settlementResult: SettlementResultType;
-    match: MatchType;
+    result: Result;
+    settlementResult: SettlementResult;
     time: Date;
     exchangeRateId: number;
 }
 
 const RoundSchema = new mongoose.Schema<IRound>({
     id: { type: Number, required: true },
-    result: resultSchema,
-    settlementResult: {
-        type: Map,
-        of: Boolean
-    },
+    result: { type: Map, of: eventDetailResultSchema },
+    settlementResult: { type: Map, of: mongoose.Schema.Types.Mixed },
     time: { type: Date, default: () => new Date() },
     exchangeRateId: { type: Number, required: true },
 });

@@ -5,12 +5,10 @@ import AppConfigs from "../app-configs";
 import GameStatusPublisher from "../publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../publishers/running-round-info-publisher";
 import CacheConsumer from "../consumers/cache-consumer";
-import { EventProcessConsumer } from "../consumers/event-process-consumer";
 import RoundIdConsumer from "../consumers/round-id-consumer";
-import { isOddFeedAvailable, isWithinBettingTimeInCurrentEventDetail } from "../helpers/game-timing";
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
+import { CurrentEventService } from "../features/current-event/current-event-service";
 
-const COUNTER_INTERVAL = 60;
 
 export default class GameCron extends Table.Crons.TableGameCron {
     declare gameData: GameData;
@@ -19,21 +17,19 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare gameStatusPublisher: GameStatusPublisher;
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
     declare roundIdConsumer: RoundIdConsumer;
-    eventPullCounter = COUNTER_INTERVAL;
-    eventProcessConsumer: EventProcessConsumer;
 
     cacheConsumer: CacheConsumer;
+    currentEventService: CurrentEventService;
 
     constructor(container: any) {
         super(container);
 
         this.gameData.liveStreamServer = this.appConfigs.liveStreamServer;
         this.cacheConsumer = container.cacheConsumer;
-        this.eventProcessConsumer = container.eventProcessConsumer;
+        this.currentEventService = container.currentEventService;
     }
 
     public override async start() {
-        this.eventProcessConsumer.init();
         await this.roundIdConsumer.queryLastRound();
         await this.updateExchangeRates();
         await this.unsettledRoundConsumer.proceed();
@@ -45,18 +41,12 @@ export default class GameCron extends Table.Crons.TableGameCron {
         if (this.gameData.proceedEvent) {
             this.gameData.proceedEvent = false;
             await this.checkGameStatus();
-            await this.eventProcessConsumer.proceed();
         }
-        const remainingTime = this.eventProcessConsumer.updateRemainingTime();
-        console.log('remainingTime ', remainingTime);
-        if (isWithinBettingTimeInCurrentEventDetail(this.gameData)) {
-            this.bot && (await this.bot.run())
-        }
-        this.eventPullCounter++;
     }
 
     override async checkGameStatus() {
         const { configName } = this.definition;
+        console.log("checkGameStatus");
 
         const newGameConfigs = await getOrDefault(
             this.gameManagementApiClient.gameConfigs.getGameConfigs(configName),
@@ -65,6 +55,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
         if (!newGameConfigs) {
             this.logService.logError(`Cannot get game configs of ${this.definition.name}.`);
+            console.log("Cannot get game configs of", this.definition.name);
         }
 
         const previouslyDisabled = this.gameData.disabled;
@@ -77,8 +68,10 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.assignNewGameConfigs(newGameConfigs);
 
         this.gameData.disabled = configuredlyDisabled || this.gameData.delayStartTime > 0 || this.oddFeedNotAvailable();
+        console.log("this.gameData.disabled", this.gameData.disabled);
 
         await this.getSettingForNewRound();
+
 
         if (this.gameData.gameConfigs.exchangeReload) {
             await this.updateExchangeRates();
@@ -88,8 +81,43 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
         this.handleGameStatus(previouslyDisabled);
     }
+    
+    async handleGameStatus(previouslyDisabled: boolean) {
+        const { configName } = this.definition;
+
+        if (this.gameData.disabled) {
+            const { durations } = this.definition;
+
+            const notification = await getOrDefault(this.gameManagementApiClient.notification.getUmMessages(configName), {});
+
+            this.gameData.umMessages = notification;
+
+            this.gameData.remainingTime = durations.wholeRound;
+            this.gameStatusPublisher.publishDisableGameStatus();
+        } else if (previouslyDisabled) {
+            console.log("enable game");
+            await this.enableGame();
+        } else {
+            console.log("start game");
+            this.gameStatusPublisher.publishStartGame();
+        }
+    }
 
     private oddFeedNotAvailable() {
-        return !isOddFeedAvailable(this.gameData);
+        const currentEventId = this.gameData.roundId;
+
+        if (!currentEventId) {
+            return true;
+        }
+
+        const currentEvent = this.currentEventService.eventByEventId[currentEventId];
+        if (!currentEvent) {
+            return true;
+        }
+
+        const timeNow = Date.now();
+        const currEventEndTime = new Date(currentEvent?.eventDetails[currentEvent.eventDetails.length - 1].resultsAvailableTs).getTime();
+        return timeNow > currEventEndTime;
     }
+
 }

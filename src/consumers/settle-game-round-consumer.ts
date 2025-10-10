@@ -1,25 +1,19 @@
 import { Table } from "sc-game-base";
 import GameData from "../game-data";
-import { SettlementResultType } from "../models/rounds";
-import { EventResponse } from "./odd-feed-consumer";
+import { Result, SettlementResult } from "../models/rounds";
+
+
+type SettleArg = {
+    roundId: number;
+    result: Result;
+    settlementResult: SettlementResult;
+}
+
 
 export default class SettleGameRoundConsumer extends Table.EventConsumers.TableSettleGameRoundConsumer {
     declare gameData: GameData;
 
-    override async settleRound() {
-        await super.settleRound();
-    }
-
-    async settleSpecificRound(roundId: number) {
-        console.log("SETTLING ROUND", roundId);
-        const gameId = this.gameData.gameId;
-        if (!gameId)  {
-            return
-        };
-        const round = this.gameData.oddFeedGames[gameId]?.rounds[roundId];
-        const result = this.getResultFromRound(round);
-        
-        const settlementResult = this.definition.settle(round);
+    async settleSpecificRound({ roundId, result, settlementResult }: SettleArg) {
         const { exchangeRates } = this.gameData;
 
 
@@ -48,27 +42,13 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
 
             await this.settleBets(finish);
             this.roundResultPublisher.publishWinners(roundId, this.gameData.winningPlayers);
-            delete this.gameData.oddFeedGames[gameId].rounds[roundId];
         }
     }
 
-    getResultFromRound(round: EventResponse) {
-        let home = 0
-        let away = 0
-        round.eventDetails.forEach((eventDetail, index) => {
-            const currentHome = eventDetail.result.split(":")[0]
-            const currentAway = eventDetail.result.split(":")[1]
-            home += parseInt(currentHome)
-            away += parseInt(currentAway)
-        })
-        return { home, away }
-    }
-
-    override calculateBetResult(settlementResult: SettlementResultType, bet: any, odds: Record<string, number>) {
-
+    override calculateBetResult(settlementResult: SettlementResult, bet: any, odds: Record<string, number>) {
         const betData = bet._doc ?? bet;
-        
-        const betResult = Object.entries(settlementResult).reduce(
+        const index = betData.index;
+        const betResult = Object.entries(settlementResult[index]).reduce(
             (result, [choice, win]) => {
                 const betAmount = betData[choice] ?? 0;
                 const originalOdds = odds[choice] ?? 1;
