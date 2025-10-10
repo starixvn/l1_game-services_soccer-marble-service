@@ -1,4 +1,4 @@
-type HedgeBetRestriction = Record<string, Set<string>>; // restriction[playerId]
+type HedgeBetRestriction = Record<string, Set<string>>;
 
 type HedgeBetInputArgs = {
     gameId?: string;
@@ -7,7 +7,7 @@ type HedgeBetInputArgs = {
 }
 
 export class HedgeBetService {
-    private readonly hedgeBetRestriction: Record<string, HedgeBetRestriction> = {}; // restriction[gameId][playerId];
+    private readonly hedgeBetRestriction: Record<string, HedgeBetRestriction> = {};
     
     readonly hedgeBetGroupsByGameId: Record<string, Set<string>[]> = {};
     updateHedgeBetGroups(gameId: string, hedgeBetGroups: Set<string>[]) {
