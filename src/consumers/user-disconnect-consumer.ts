@@ -1,11 +1,14 @@
-import { Socket } from "socket.io";
 import GameData from "../game-data";
 import { Core } from "sc-game-base";
 
 export default class UserDisconnectConsumer extends Core.BaseEventConsumers.UserDisconnectConsumer {
     declare gameData: GameData;
 
-    consume(socketClient: Socket) {
+    consume(
+        socketClient: Parameters<
+            Core.BaseEventConsumers.UserDisconnectConsumer["consume"]
+        >[0]
+    ) {
         const realPlayer = this.gameData.realPlayers[socketClient.id];
 
         if (realPlayer) {

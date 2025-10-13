@@ -81,6 +81,10 @@ const appConfigs = {
         operatorId: "6875f954cc6dcd65194eee11",
         password: "sQFb1yiHjGZ3A7TmJNv5J",
     },
+    trackingApiSettings: {
+        baseUrl: "https://l1-proxy3.lumigame.com/user-tracking-api",
+    },
+
 };
 
 export default appConfigs;

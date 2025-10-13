@@ -32,15 +32,15 @@ describe("UserSignInConsumer", () => {
             const currentEventService = { tag: "svc" } as any;
 
             // Act
-            const instance = new UserSignInConsumer(
+            const instance = new UserSignInConsumer({
                 definition,
                 gameData,
-                publisher,
+                userSignInPublisher: publisher,
                 playGamePermissionValidator,
                 appConfigs,
-                { instance: jest.fn().mockReturnValue({}) },
+                gameManagementApiClientFactory: { instance: jest.fn().mockReturnValue({}) },
                 currentEventService,
-            );
+            } as any);
 
             // Assert
             expect(instance.currentEventService).toBe(currentEventService);

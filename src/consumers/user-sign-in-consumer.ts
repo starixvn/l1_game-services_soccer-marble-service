@@ -1,7 +1,5 @@
-import { TableGameDefinition, TableGameData } from "sc-game-base/src/table";
 import { TableUserSignInConsumer } from "sc-game-base/src/table/event-consumers";
 import { TableUserSignInPublisher } from "sc-game-base/src/table/event-publishers";
-import { Socket } from "socket.io";
 import GameData from "../game-data";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 
@@ -10,12 +8,13 @@ export class UserSignInConsumer extends TableUserSignInConsumer {
     declare userSignInPublisher: TableUserSignInPublisher;
     currentEventService: CurrentEventService;
 
-    constructor(definition: TableGameDefinition, gameData: TableGameData, userSignInPublisher: TableUserSignInPublisher, playGamePermissionValidator: any, appConfigs: any, gameManagementApiClientFactory: any, currentEventService: CurrentEventService) {
-        super(definition, gameData, userSignInPublisher, playGamePermissionValidator, appConfigs, gameManagementApiClientFactory);
-        this.currentEventService = currentEventService;
+    constructor(container: any)
+    {
+        super(container);
+        this.currentEventService = container.currentEventService;
     }
 
-    override async consume(socketClient: Socket, payload: any): Promise<void> {
+    override async consume(socketClient: any, payload: any): Promise<void> {
         if (this.oddFeedNotAvailable()) {
             this.userSignInPublisher.publishUmNotice(socketClient, this.gameData.umMessages);
             return;

@@ -1,12 +1,11 @@
 import UserDisconnectConsumer from "../../../src/consumers/user-disconnect-consumer";
-import { Socket } from "socket.io";
 import { Core } from "sc-game-base";
 import { mock as stub } from "jest-mock-extended";
 import GameData from "../../../src/game-data";
 
 describe("UserDisconnectConsumer", () => {
     let userDisconnectConsumer: UserDisconnectConsumer;
-    let mockSocketClient: Socket;
+    let mockSocketClient: Parameters<Core.BaseEventConsumers.UserDisconnectConsumer["consume"]>[0];
     const gameData = stub<GameData>();
 
     beforeEach(() => {
@@ -14,7 +13,7 @@ describe("UserDisconnectConsumer", () => {
 
         mockSocketClient = {
             id: "socket-id",
-        } as Socket;
+        } as any;
     });
 
     it("should delete the player from gameData if realPlayer exists", () => {
