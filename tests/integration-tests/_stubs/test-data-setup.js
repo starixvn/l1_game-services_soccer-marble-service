@@ -10,6 +10,7 @@ import {
     createGameConfig,
     createPartnerConfig,
     normalUser,
+    initDB
 } from "sc-game-service-integration-utils";
 
 import { bets, rounds, betLogs } from "../../../build/models";
@@ -25,12 +26,17 @@ import {
 import appConfigs from "../../../build/app-configs.IGT";
 
 const connectDatabase = async () => {
-    await middlewares.database.configureDatabase(mongoose, appConfigs.database);
+    try {
+        await initDB(appConfigs.database);
+        await clearAllData();
 
-    await clearAllData();
+    } catch (error) {
+        console.error(error);
+    }
 };
 
 const clearAllData = async () => {
+    await middlewares.database.configureDatabase(mongoose, appConfigs.database);
     const collections = await mongoose.connection.db.collections();
 
     for (const collection of collections) {

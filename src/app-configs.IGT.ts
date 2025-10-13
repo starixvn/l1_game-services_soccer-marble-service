@@ -15,12 +15,12 @@ export default Object.assign(appConfigs, {
         env: "DEV",
     },
     database: {
-        url: "mongodb://0.0.0.0:27017",
+        url: "mongodb://127.0.0.1:27017/",
         options: {
             dbName: "marble-football2-test-db",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            auto_reconnect: true,
+           
         },
     },
     oddsFeedAPI: {

@@ -29,7 +29,7 @@ export default {
             dbName: "marble-football-test-db",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            auto_reconnect: true,
+           
         },
     },
     sentry: {
