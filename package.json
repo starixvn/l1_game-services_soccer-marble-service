@@ -58,7 +58,7 @@
         "jest-junit": "16.0.0",
         "jest-sonar-reporter": "2.0.0",
         "nodemon": "^3.0.3",
-        "sc-game-service-integration-utils": "2.3.3-beta2",
+        "sc-game-service-integration-utils": "2.3.3-beta3",
         "ts-jest": "29.4.0",
         "tsx": "4.20.3",
         "typescript": "5.9.2"

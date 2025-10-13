@@ -29,4 +29,7 @@ export default Object.assign(appConfigs, {
         password: "asdsadadda",
     },
     disableCors: true,
+    trackingApiSettings: {
+        baseUrl: "https://l1-proxy3.lumigame.com/user-tracking-api",
+    },
 });

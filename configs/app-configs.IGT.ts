@@ -72,4 +72,7 @@ export default {
         operatorId: "asdsadaddad",
         password: "asdsadadda",
     },
+    trackingApiSettings: {
+        baseUrl: "https://l1-proxy3.lumigame.com/user-tracking-api",
+    },
 };
