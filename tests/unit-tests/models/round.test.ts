@@ -35,7 +35,7 @@ describe("Round", () => {
             const error = actual.validateSync();
 
             // Assert
-            expect(error.message).toBe(
+            expect(error?.message).toBe(
                 `soccermarble_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
             );
         });
