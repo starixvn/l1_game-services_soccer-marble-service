@@ -80,6 +80,6 @@ export default {
         password: "sQFb1yiHjGZ3A7TmJNv5J",
     },
     trackingApiSettings: {
-        baseUrl: "https://l1-proxy3.lumigame.com/user-tracking-api",
+        baseUrl: "http://l1-user-tracking-api-local3-service:5000",
     },
 };

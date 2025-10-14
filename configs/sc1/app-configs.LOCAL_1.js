@@ -81,4 +81,7 @@ export default {
         operatorId: "6875f954cc6dcd65194eee11",
         password: "sQFb1yiHjGZ3A7TmJNv5J",
     },
+    trackingApiSettings: {
+        baseUrl: "http://l1-user-tracking-api-local1-service:5000",
+    },
 };
