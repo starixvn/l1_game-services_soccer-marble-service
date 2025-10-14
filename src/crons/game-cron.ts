@@ -4,7 +4,6 @@ import GameDefinition from "../game-definition";
 import AppConfigs from "../app-configs";
 import GameStatusPublisher from "../publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../publishers/running-round-info-publisher";
-import CacheConsumer from "../consumers/cache-consumer";
 import RoundIdConsumer from "../consumers/round-id-consumer";
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
@@ -18,13 +17,10 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
     declare roundIdConsumer: RoundIdConsumer;
 
-    cacheConsumer: CacheConsumer;
     currentEventService: CurrentEventService;
 
     constructor(container: any) {
         super(container);
-
-        this.cacheConsumer = container.cacheConsumer;
         this.currentEventService = container.currentEventService;
     }
 

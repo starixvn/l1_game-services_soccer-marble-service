@@ -82,7 +82,4 @@ export default {
     trackingApiSettings: {
         baseUrl: "http://l1-user-tracking-api-local3-service:5000",
     },
-    cache: {
-        ttl: 1000 * 60 * 5,
-    },
 };

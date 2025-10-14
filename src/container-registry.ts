@@ -12,7 +12,6 @@ import { RunningRoundInfoPublisher } from "./publishers";
 import { HistoryQuery } from "./query-apis";
 import PlaceBetConsumer from "./consumers/place-bet-consumer";
 import GameStatusPublisher from "./publishers/game-status-publisher";
-import CacheConsumer from "./consumers/cache-consumer";
 import RoundIdConsumer from "./consumers/round-id-consumer";
 import { UserSignInConsumer } from "./consumers/user-sign-in-consumer";
 import { DiContainer } from "odds-feed-client/container";
@@ -63,7 +62,6 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
             inGameConsumer: asClass(InGameConsumer).singleton(),
             settleGameRoundConsumer: asClass(SettleGameRoundConsumer).singleton().proxy(),
             placeBetConsumer: asClass(PlaceBetConsumer).singleton(),
-            cacheConsumer: asClass(CacheConsumer).singleton().proxy(),
             roundIdConsumer: asClass(RoundIdConsumer).singleton(),
             userSignInConsumer: asClass(UserSignInConsumer).singleton().proxy(),
         });
