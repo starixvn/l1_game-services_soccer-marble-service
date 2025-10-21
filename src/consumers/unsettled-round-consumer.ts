@@ -21,7 +21,6 @@ export default class UnsettledRoundConsumer extends UnsettledRoundConsumerBase {
         const unsettledBets = await this.getUnsettledBets();
         const unsettledRound = [...new Set<number>(unsettledBets.map((bet: { roundId: number }) => bet.roundId))];
         return unsettledRound.map((roundId: number) => {
-            console.log(`Scheduling event for roundId: ${roundId}`);
             this.oddsFeedCron.scheduleEvent({ eventID: roundId});
         });
     }
