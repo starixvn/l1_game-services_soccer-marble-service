@@ -80,7 +80,6 @@ export class BetStatusService {
     }
 
     public handleEventDetailUpcoming({ event, index }: EventDetailNotification<MarbleEvent>) {
-        // ALL schedule that is happen BEFORE the timestamp in the odd feed response should schedule on upcoming
         this.scheduleLockBet({ event, index });
     }
 
@@ -93,6 +92,7 @@ export class BetStatusService {
         this.betStatusByGameId[gameId] = false;
         this.currentRoundId = event.eventID;
         this.schedulePlaceBet({ event, index: 0 });
+
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
@@ -130,11 +130,6 @@ export class BetStatusService {
     }
 
     private scheduleLockBet({ event, index }: EventDetailNotification<MarbleEvent>) {
-
-        if (index === 0) {
-            return;
-        }
-
         const rawLockBetTime = event.eventDetails[index].scheduleStartTs;
         const configuredLockBetTime =
             new Date(rawLockBetTime).getTime() -

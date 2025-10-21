@@ -84,7 +84,6 @@ const appConfigs = {
     trackingApiSettings: {
         baseUrl: "https://l1-proxy3.lumigame.com/user-tracking-api",
     },
-
 };
 
 export default appConfigs;

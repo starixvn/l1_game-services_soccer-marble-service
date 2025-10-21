@@ -4,6 +4,7 @@ import {
     InGameConsumer,
     UserDisconnectConsumer,
     SettleGameRoundConsumer,
+    UnsettledRoundConsumer,
 } from "./consumers";
 
 import { Bot, GameCron, ProcessBetQueue } from "./crons";
@@ -64,6 +65,7 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
             placeBetConsumer: asClass(PlaceBetConsumer).singleton(),
             roundIdConsumer: asClass(RoundIdConsumer).singleton(),
             userSignInConsumer: asClass(UserSignInConsumer).singleton().proxy(),
+            unsettledRoundConsumer: asClass(UnsettledRoundConsumer).singleton().proxy(),
         });
     }
 

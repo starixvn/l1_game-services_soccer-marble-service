@@ -71,8 +71,6 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             totalAmount: bet.amount,
         };
 
-        console.log("upsert bet", existingBetFilter, existingBetIncrement, newBet);
-
         if (player.session) {
             newBet.siteId = player.session.siteId;
             newBet.currency = player.session.currencyName;

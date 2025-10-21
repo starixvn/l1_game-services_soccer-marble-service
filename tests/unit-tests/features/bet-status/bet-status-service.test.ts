@@ -119,14 +119,6 @@ describe("BetStatusService", () => {
         });
     });
 
-    describe("handleEventDetailUpcoming index=0", () => {
-        it("should not schedule lock bet when index is 0", () => {
-            const event = { eventID: 2, eventDetails: [{}, { scheduleStartTs: new Date() }] } as any;
-            service.handleEventDetailUpcoming({ event, index: 0 });
-            expect(scheduler.schedule).not.toHaveBeenCalled();
-        });
-    });
-
     describe("odd/point/group extraction edge cases", () => {
         it("getOddFromEventDetail should return {} when eventDetail missing", () => {
             const odds = (service as any).getOddFromEventDetail({ event: { eventDetails: [] }, index: 1 });

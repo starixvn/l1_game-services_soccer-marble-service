@@ -28,9 +28,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     composeBetChoiceValidationCriteria(betChoice: string) {
 
-        console.log("bet choice", betChoice);
-        console.log("is bet choice odd zero", this.isBetChoiceOddZero(betChoice));
-
         return [
             {
                 failure: this.isBetChoiceOddZero(betChoice),
@@ -106,7 +103,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
             betChoice,
         });
 
-        console.log("hedge bet criteria", invalidGroup, invalidGroup.size > 0);
 
         return [
             {
@@ -118,7 +114,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     override consume(player: any, payload: any): void {
         const index = this.betStatusService.getBetStatus().currentIndex;
-        console.log("consuming bets ");
         Object.assign(payload, {
             amount: payload.amount >> 0,
             freeBet: payload.freeBet ?? false,
@@ -134,8 +129,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
             console.log("bet invalid, skipping");
             return;
         }
-
-        console.log("bet valid, processing to queue");
 
         if (!this.gameData.ingame[name]) {
             const newPlayer = {

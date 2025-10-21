@@ -70,8 +70,7 @@ export class ResultService {
 
         this.resultByEventId[event.eventID] = result;
 
-        console.log("result", result);
-        console.log("settlementResult", result.settlementResult);
+        console.log(`Settling roundId in the result service: ${event.eventID}`);
 
         this.settleGameRoundConsumer.settleSpecificRound({
             roundId: event.eventID,

@@ -28,7 +28,6 @@ export class CheckStatusService {
     }
 
     handleEventStart({ event }: EventNotification) {
-        console.log("handleEventStart for event", event.eventID);
         this.checkStatus();
     }
 

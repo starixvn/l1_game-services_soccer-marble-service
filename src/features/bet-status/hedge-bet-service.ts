@@ -38,9 +38,6 @@ export class HedgeBetService {
         bannedBetChoices.forEach((choice) => {
             this.hedgeBetRestriction[gameId][player].add(choice);
         });
-
-        const hedgeBetRestriction = this.hedgeBetRestriction[gameId][player];
-        console.log("hedgeBetRestriction", hedgeBetRestriction);
     }
 
     verifyHedgeBetRestriction({ gameId, player, betChoice }: HedgeBetInputArgs) {
@@ -51,7 +48,6 @@ export class HedgeBetService {
         const hedgeBetGroups = this.hedgeBetGroupsByGameId[gameId];
         const hedgeBetGroup = hedgeBetGroups?.find((group) => group.has(betChoice)) ?? new Set();
 
-        console.log("hedgeBetGroup", hedgeBetGroup);
 
         const hedgeBetRestriction = this.hedgeBetRestriction[gameId][player];
         return hedgeBetRestriction?.has(betChoice) 
