@@ -25,6 +25,16 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
         this.betStatusService = container.betStatusService;
     }
 
+    dequeueBets() {
+        console.log("dequeueBets", this.gameData.ingame);
+        super.dequeueBets();
+    }
+
+    override async proceedBet(player: any, payload: BetPayload): Promise<void> {
+        console.log("proceedBet", player, payload);
+        super.proceedBet(player, payload);
+    }
+
     adjustTotalBets(player: any, bet: BetPayload, rate: number) {
         super.adjustTotalBets(player, bet, rate);
         this.adjustPlayerBetCount(player, bet.betChoice);
@@ -55,6 +65,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     async upsertBet(player: any, roundId: number, bet: BetPayload, rate: number) {
+        console.log("upsertBet", player, roundId, bet, rate);
         const gameId = extractGameId(roundId).toString();
         const newBet: Record<string, any> = {
             uid: player.UID,

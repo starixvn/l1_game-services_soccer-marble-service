@@ -95,8 +95,16 @@ export default class GameCron extends Table.Crons.TableGameCron {
         } else {
             console.log("start game");
             this.gameStatusPublisher.publishStartGame();
+            this.resetForNewRound();
+            this.bot?.reset();
         }
     }
+
+    override resetForNewRound() {
+        super.resetForNewRound();
+        this.gameData.playerBetCount = {};
+    }
+
 
     private oddFeedNotAvailable() {
         const currentEventId = this.gameData.roundId;

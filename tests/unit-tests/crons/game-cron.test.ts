@@ -5,6 +5,7 @@ jest.mock("sc-game-base", () => ({
                 constructor(container: any) {
                     Object.assign(this, container);
                 }
+                resetForNewRound() {}
             },
         },
     },
@@ -50,6 +51,7 @@ describe("GameCron", () => {
         cron.getDelayStartTime = jest.fn().mockReturnValue(0);
         cron.oddFeedNotAvailable = jest.fn().mockReturnValue(false);
         cron.bot = { run: jest.fn().mockResolvedValue(undefined) };
+        cron.bot.reset = jest.fn();
         cron.gameManagementApiClient = {
             gameConfigs: {
                 getGameConfigs: jest.fn().mockResolvedValue({}),
@@ -166,8 +168,22 @@ describe("GameCron", () => {
 
         it("should publish start game when not disabled and not previously disabled", async () => {
             cron.gameData.disabled = false;
+            cron.gameData.playerBetCount = { somePlayer: 2 };
             await cron.handleGameStatus(false);
             expect(cron.gameStatusPublisher.publishStartGame).toHaveBeenCalled();
+            expect(cron.gameData.playerBetCount).toEqual({});
+            expect(cron.bot.reset).toHaveBeenCalled();
+        });
+    });
+
+    describe("resetForNewRound", () => {
+        it("should clear playerBetCount", () => {
+            // Arrange
+            cron.gameData.playerBetCount = { p1: 1 };
+            // Act
+            cron.resetForNewRound();
+            // Assert
+            expect(cron.gameData.playerBetCount).toEqual({});
         });
     });
 

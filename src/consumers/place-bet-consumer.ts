@@ -146,6 +146,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
         this.adjustBetTracks(player.profile.name, payload);
         this.gameData.ingame[name].betQueue.push({ player, payload })
+        console.log("bet placed", payload);
     }
 
     override adjustBetTracks(playerName: string, bet: any): void {
