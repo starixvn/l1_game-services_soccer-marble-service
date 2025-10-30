@@ -16,6 +16,7 @@ const Schema = new mongoose.Schema({
     playerId: { type: String },
     operatorId: { type: String, required: true },
     roundId: { type: Number, default: 0, required: true },
+    index: { type: Number },
 });
 
 const modelName = `${MODEL_NAME_PREFIX}_betlogs`;

@@ -19,6 +19,7 @@ const bet = {
     currency: { type: String, required: false },
     rate: { type: Number, required: false },
     paid: { type: Boolean, default: false },
+    index: { type: Number },
 };
 
 const bets = mongoose.model(
