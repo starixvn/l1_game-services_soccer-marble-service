@@ -113,40 +113,46 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
     }
 
     override consume(player: any, payload: any): void {
-        const index = this.betStatusService.getBetStatus().currentIndex;
-        Object.assign(payload, {
-            amount: payload.amount >> 0,
-            freeBet: payload.freeBet ?? false,
-            roundId: payload.roundId ?? this.gameData.roundId,
-            mode: payload.m ?? this.DisplayMode.Landscape,
-            receivedTime: new Date(),
-            index,
-        });
+        try {
+            const index = this.betStatusService.getBetStatus().currentIndex;
+            Object.assign(payload, {
+                amount: payload.amount >> 0,
+                freeBet: payload.freeBet ?? false,
+                roundId: payload.roundId ?? this.gameData.roundId,
+                mode: payload.m ?? this.DisplayMode.Landscape,
+                receivedTime: new Date(),
+                index,
+            });
 
-        const { amount, betChoice, freeBet, roundId } = payload;
-        const name = player.profile.name;
-        if (!this.validateRequestParams(payload, player) || !this.validateBetRequest(player, betChoice, amount, freeBet, roundId)) {
-            console.log("bet invalid, skipping");
+            const { amount, betChoice, freeBet, roundId } = payload;
+            const name = player.profile.name;
+            if (!this.validateRequestParams(payload, player) || !this.validateBetRequest(player, betChoice, amount, freeBet, roundId)) {
+                console.log("bet invalid, skipping");
+                return;
+            }
+
+            if (!this.gameData.ingame[name]) {
+                const newPlayer = {
+                    name: player.profile.name,
+                    currency: player.session.currencyName,
+                    system: player.session.system,
+                    betTracks: {},
+                    betQueue: [],
+                    clientSeed: payload.clientSeed,
+                    operatorId: player.session.operatorId,
+                };
+
+                this.gameData.ingame[name] = newPlayer;
+            }
+
+            this.adjustBetTracks(player.profile.name, payload);
+            this.gameData.ingame[name].betQueue.push({ player, payload })
+            console.log("bet placed", payload);
+        } catch (error) {
+            console.error("consume error", error);
             return;
         }
-
-        if (!this.gameData.ingame[name]) {
-            const newPlayer = {
-                name: player.profile.name,
-                currency: player.session.currencyName,
-                system: player.session.system,
-                betTracks: {},
-                betQueue: [],
-                clientSeed: payload.clientSeed,
-                operatorId: player.session.operatorId,
-            };
-
-            this.gameData.ingame[name] = newPlayer;
-        }
-
-        this.adjustBetTracks(player.profile.name, payload);
-        this.gameData.ingame[name].betQueue.push({ player, payload })
-        console.log("bet placed", payload);
+        
     }
 
     override adjustBetTracks(playerName: string, bet: any): void {
