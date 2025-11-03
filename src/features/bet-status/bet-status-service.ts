@@ -1,4 +1,4 @@
-import { Event, EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, Scheduler, SystemNotification } from "odds-feed-client";
+import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, Scheduler } from "odds-feed-client";
 import { GameStatusPublisher } from "../../publishers";
 import { extractGameId } from "../../helpers/eventid";
 import { DelayHandlingService } from "../delay/delay-handling-service";
