@@ -1,4 +1,5 @@
-import { EventNotification, OddsFeedEventName, OddsFeedEventSource } from "odds-feed-client";
+import { Event, OddsFeedEventName } from "odds-feed-client";
+import { MarbleEvent } from "../shared-types";
 
 type DelayConfig = {
     globalDelayInMillisecond?: number;
@@ -8,69 +9,38 @@ type DelayConfig = {
     eventDetailResultAvailableDelayInMillisecond?: number;
 }
 
-export interface DelayHandlingServiceContainer {
-    oddsFeedEventSource: OddsFeedEventSource;
+export interface MarbleEventWithDelayConfig extends MarbleEvent {
+    config?: {
+        delay?: DelayConfig;
+    }
 }
 
 interface DelayOptions {
     oddFeedEventType?: OddsFeedEventName;
 }
+
 export class DelayHandlingService {
 
-    private readonly _delayConfigByEventId: Record<number, DelayConfig> = {};
-    private readonly oddsFeedEventSource: OddsFeedEventSource;
-    private readonly boundHandleEventUpcoming: (notification: EventNotification) => void;
-
-    constructor(container: DelayHandlingServiceContainer) {
-        this.oddsFeedEventSource = container.oddsFeedEventSource;
-        this.boundHandleEventUpcoming = this.handleEventUpcoming.bind(this);
-    }
-
-    public initEvent() {
-        this.oddsFeedEventSource.eventOn(
-            OddsFeedEventName.EventUpcoming,
-            this.boundHandleEventUpcoming
-        )
-    }
-
-    public getDelayConfig(eventId: number): DelayConfig | undefined {
-        return this._delayConfigByEventId[eventId];
-    }
-
-    public getDelayedTime({ eventId, time }: { eventId: number, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
-        const config = this._delayConfigByEventId[eventId];
+    public getDelayedTime({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
+        const config = (event as MarbleEventWithDelayConfig).config?.delay;
         if (!config) {
             return time;
         }
         const globalDelayInMillisecond = config.globalDelayInMillisecond ?? 0;
-        const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config, eventId }, { oddFeedEventType });
+        const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config }, { oddFeedEventType });
         return new Date(time.getTime() + globalDelayInMillisecond + eventTypeDelayMilliseconds);
     }
 
-    public getDelayedTimeWithVideoDelay({ eventId, time }: { eventId: number, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
-        const config = this._delayConfigByEventId[eventId];
+    public getDelayedTimeWithVideoDelay({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
+        const config = (event as MarbleEventWithDelayConfig).config?.delay;
         if (!config) {
             return time;
         }
         const videoDelayInMillisecond = config.videoDelayInMillisecond ?? 0;
-        return new Date(this.getDelayedTime({ eventId, time }, { oddFeedEventType }).getTime() + videoDelayInMillisecond);
+        return new Date(this.getDelayedTime({ event, time }, { oddFeedEventType }).getTime() + videoDelayInMillisecond);
     }
 
-    public handleEventUpcoming({ event }: EventNotification) {
-        const config = (event as any).config?.delay as DelayConfig;
-        if (config) {
-            this._delayConfigByEventId[event.eventID] = config;
-        }
-    }
-
-    public dispose() {
-        this.oddsFeedEventSource.eventOff(
-            OddsFeedEventName.EventUpcoming,
-            this.boundHandleEventUpcoming
-        )
-    }
-
-    private getDelayConfigByEventType({ config, eventId }: { config: DelayConfig, eventId: number }, { oddFeedEventType }: DelayOptions): number {
+    private getDelayConfigByEventType({ config }: { config: DelayConfig }, { oddFeedEventType }: DelayOptions): number {
 
         if (!oddFeedEventType) {
             return 0;

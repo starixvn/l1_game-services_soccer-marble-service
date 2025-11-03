@@ -1,4 +1,6 @@
-import { BetStatusService } from "../../../../src/features/bet-status/bet-status-service";
+import { BetStatusService, MarbleEventWithBetConfig } from "../../../../src/features/bet-status/bet-status-service";
+import { EventDetailNotification, EventNotification, OddsFeedEventName } from "odds-feed-client";
+import { MarbleEvent } from "../../../../src/features/shared-types";
 
 jest.mock("../../../../src/helpers/eventid", () => ({
     extractGameId: jest.fn(() => 7),
@@ -6,12 +8,23 @@ jest.mock("../../../../src/helpers/eventid", () => ({
 
 describe("BetStatusService", () => {
     let service: BetStatusService & any;
-    let oddsFeedEventSource: any;
-    let gameStatusPublisher: any;
-    let delayHandlingService: any;
-    let scheduler: any;
-    let hedgeBetService: any;
-    let gameData: any;
+    let oddsFeedEventSource: {
+        eventOn: jest.Mock;
+        eventOff: jest.Mock;
+        eventDetailOn: jest.Mock;
+        eventDetailOff: jest.Mock;
+    };
+    let gameStatusPublisher: {
+        publishStartPlacingBetStatus: jest.Mock;
+        publishEndPlacingBetStatus: jest.Mock;
+        publishOdds: jest.Mock;
+        publishBetChoicePoints: jest.Mock;
+        publishCurrentIndex: jest.Mock;
+    };
+    let delayHandlingService: { getDelayedTime: jest.Mock };
+    let scheduler: { schedule: jest.Mock };
+    let hedgeBetService: { resetHedgeBetRestriction: jest.Mock; updateHedgeBetGroups: jest.Mock };
+    let gameData: { roundId: number; playerBetCount: Record<string, unknown> };
 
     beforeEach(() => {
         oddsFeedEventSource = {
@@ -19,8 +32,6 @@ describe("BetStatusService", () => {
             eventOff: jest.fn(),
             eventDetailOn: jest.fn(),
             eventDetailOff: jest.fn(),
-            cleanupOn: jest.fn(),
-            cleanupOff: jest.fn(),
         };
         gameStatusPublisher = {
             publishStartPlacingBetStatus: jest.fn(),
@@ -30,7 +41,7 @@ describe("BetStatusService", () => {
             publishCurrentIndex: jest.fn(),
         };
         delayHandlingService = {
-            getDelayedTime: jest.fn((_t: any) => new Date()),
+            getDelayedTime: jest.fn(({ time }: { time: Date }) => time),
         };
         scheduler = {
             schedule: jest.fn(),
@@ -48,7 +59,7 @@ describe("BetStatusService", () => {
             scheduler,
             hedgeBetService,
             gameData,
-        }) as any;
+        } as any) as any;
     });
 
     afterEach(() => {
@@ -58,116 +69,206 @@ describe("BetStatusService", () => {
     describe("initEvent/dispose", () => {
         it("should register and unregister all listeners", () => {
             service.initEvent();
-            expect(oddsFeedEventSource.eventOn).toHaveBeenCalled();
-            expect(oddsFeedEventSource.eventDetailOn).toHaveBeenCalled();
-            expect(oddsFeedEventSource.cleanupOn).toHaveBeenCalled();
+
+            expect(oddsFeedEventSource.eventOn).toHaveBeenCalledWith(OddsFeedEventName.EventStart, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOn).toHaveBeenCalledWith(OddsFeedEventName.EventDetailOddsAvailable, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOn).toHaveBeenCalledWith(OddsFeedEventName.EventDetailUpComing, expect.any(Function));
 
             service.dispose();
-            expect(oddsFeedEventSource.eventOff).toHaveBeenCalled();
-            expect(oddsFeedEventSource.eventDetailOff).toHaveBeenCalled();
-            expect(oddsFeedEventSource.cleanupOff).toHaveBeenCalled();
+
+            expect(oddsFeedEventSource.eventOff).toHaveBeenCalledWith(OddsFeedEventName.EventStart, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOff).toHaveBeenCalledWith(OddsFeedEventName.EventDetailOddsAvailable, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOff).toHaveBeenCalledWith(OddsFeedEventName.EventDetailUpComing, expect.any(Function));
         });
     });
 
     describe("handleEventStart", () => {
         it("should set state and schedule initial place bet", () => {
-            const event = { eventID: 999, scheduleStartTs: new Date() } as any;
-            service.handleEventStart({ event });
+            const scheduleStart = Date.parse("2025-01-01T00:00:00Z");
+            const event = {
+                eventID: 999,
+                scheduleStartTs: scheduleStart,
+                eventDetails: [{ oddsAvailableTs: scheduleStart }],
+                config: {
+                    bet: {
+                        delayPlaceBetByOddsAvailableByMilliseconds: 500,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            const expected = new Date(scheduleStart + 500 + 100);
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 100));
+
+            service.handleEventStart({ event } as EventNotification<MarbleEvent>);
+
             expect(service.betStatusByGameId["7"]).toBe(false);
             expect(service.currentRoundId).toBe(999);
-            expect(scheduler.schedule).toHaveBeenCalled();
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function));
         });
     });
 
     describe("handleEventDetailOddAvailable", () => {
         it("should not schedule when index is 0", () => {
-            const event = { eventID: 1, eventDetails: [] } as any;
-            service.handleEventDetailOddAvailable({ event, index: 0 });
+            const event = { eventID: 1, eventDetails: [] } as unknown as MarbleEvent;
+
+            service.handleEventDetailOddAvailable({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
             expect(scheduler.schedule).not.toHaveBeenCalled();
         });
 
         it("should schedule when index > 0", () => {
-            const event = { eventID: 1, eventDetails: [{}, { oddsAvailableTs: new Date() }, { oddsAvailableTs: new Date() }] } as any;
-            service.handleEventDetailOddAvailable({ event, index: 2 });
-            expect(scheduler.schedule).toHaveBeenCalled();
-        });
-    });
+            const base = Date.parse("2025-01-01T00:05:00Z");
+            const event = {
+                eventID: 1,
+                eventDetails: [{}, { oddsAvailableTs: base + 2000 }, { oddsAvailableTs: base + 4000 }],
+                config: {
+                    bet: {
+                        delayPlaceBetByOddsAvailableByMilliseconds: 250,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            const expected = new Date(base + 4000 + 250 + 50);
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 50));
 
-    describe("handleEventUpcoming / handleCleanupEventUpcoming", () => {
-        it("should store bet config from event and delete on cleanup", () => {
-            const event = { eventID: 42, config: { bet: { delayPlaceBetByOddsAvailableByMilliseconds: 500, lockBetTimeBeforeScheduleStartByMilliseconds: 2000 } } } as any;
-            service.handleEventUpcoming({ event });
-            // @ts-ignore access private map for test
-            expect((service as any).betConfigByEventId[42]).toEqual({
-                delayPlaceBetByOddsAvailableByMilliseconds: 500,
-                lockBetTimeBeforeScheduleStartByMilliseconds: 2000,
-            });
+            service.handleEventDetailOddAvailable({ event, index: 2 } as EventDetailNotification<MarbleEvent>);
 
-            service.handleCleanupEventUpcoming({ eventID: 42 } as any);
-            // @ts-ignore
-            expect((service as any).betConfigByEventId[42]).toBeUndefined();
-        });
-
-        it("should allow missing config without throwing", () => {
-            const event = { eventID: 43 } as any;
-            expect(() => service.handleEventUpcoming({ event })).not.toThrow();
-            // @ts-ignore
-            expect((service as any).betConfigByEventId[43]).toEqual({
-                delayPlaceBetByOddsAvailableByMilliseconds: undefined,
-                lockBetTimeBeforeScheduleStartByMilliseconds: undefined,
-            });
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function));
         });
     });
 
     describe("odd/point/group extraction edge cases", () => {
-        it("getOddFromEventDetail should return {} when eventDetail missing", () => {
+        it("should return empty odds when event detail missing", () => {
             const odds = (service as any).getOddFromEventDetail({ event: { eventDetails: [] }, index: 1 });
+
             expect(odds).toEqual({});
         });
 
-        it("getOddFromEventDetail should default price to 0", () => {
-            const event = { eventDetails: [ { markets: [ { selections: [ { betChoice: "home" } ] } ] } ] } as any;
+        it("should default odds to zero when price missing", () => {
+            const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "home" }] }] }] } as unknown as MarbleEvent;
             const odds = (service as any).getOddFromEventDetail({ event, index: 0 });
+
             expect(odds).toEqual({ home: 0 });
         });
 
-        it("getPointFromEventDetail should return {} when eventDetail missing", () => {
-            const points = (service as any).getPointFromEventDetail({ event: { eventDetails: [] }, index: 5 });
+        it("should return empty points when event detail missing", () => {
+            const points = (service as any).getPointFromEventDetail({ event: { eventDetails: [] }, index: 2 });
+
             expect(points).toEqual({});
         });
 
-        it("getPointFromEventDetail should default point to 0", () => {
-            const event = { eventDetails: [ { markets: [ { selections: [ { betChoice: "away" } ] } ] } ] } as any;
+        it("should default points to zero when value missing", () => {
+            const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "away" }] }] }] } as unknown as MarbleEvent;
             const points = (service as any).getPointFromEventDetail({ event, index: 0 });
+
             expect(points).toEqual({ away: 0 });
         });
 
-        it("getHedgeBetGroups should return [] when eventDetail missing", () => {
+        it("should return empty hedge bet groups when event detail missing", () => {
             const groups = (service as any).getHedgeBetGroups({ event: { eventDetails: [] }, index: 0 });
+
             expect(groups).toEqual([]);
         });
     });
+
     describe("handleEventDetailUpcoming", () => {
         it("should schedule lock bet with ignorePast option when index > 0", () => {
-            const event = { eventID: 2, eventDetails: [{}, { scheduleStartTs: new Date() }] } as any;
-            service.handleEventDetailUpcoming({ event, index: 1 });
+            const lockTime = Date.parse("2025-01-01T00:10:00Z");
+            const event = {
+                eventID: 2,
+                eventDetails: [{}, { scheduleStartTs: lockTime }],
+                config: {
+                    bet: {
+                        lockBetTimeBeforeScheduleStartByMilliseconds: 1000,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 25));
+
+            service.handleEventDetailUpcoming({ event, index: 1 } as EventDetailNotification<MarbleEvent>);
+
             expect(scheduler.schedule).toHaveBeenCalled();
-            const args = (scheduler.schedule as jest.Mock).mock.calls.pop();
-            expect(args[2]).toEqual({ ignorePast: true });
+            const [time, handler, options] = (scheduler.schedule as jest.Mock).mock.calls[0];
+            expect(time.getTime()).toBe(lockTime - 1000 + 25);
+            expect(typeof handler).toBe("function");
+            expect(options).toEqual({ ignorePast: true });
+        });
+    });
+
+    describe("getTimeToPlaceBet", () => {
+        it("should compute place bet time using delay handling service for event start", () => {
+            const base = Date.parse("2025-01-01T00:00:00Z");
+            const event = {
+                eventID: 7,
+                scheduleStartTs: base,
+                eventDetails: [{ oddsAvailableTs: base }],
+                config: {
+                    bet: {
+                        delayPlaceBetByOddsAvailableByMilliseconds: 500,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 123));
+
+            const result = service.getTimeToPlaceBet({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledWith({ event, time: new Date(base + 500) }, { oddFeedEventType: OddsFeedEventName.EventStart });
+            expect(result.getTime()).toBe(base + 500 + 123);
+        });
+
+        it("should compute place bet time using detail odds available timestamp", () => {
+            const base = Date.parse("2025-01-01T00:05:00Z");
+            const event = {
+                eventID: 7,
+                scheduleStartTs: base,
+                eventDetails: [{ oddsAvailableTs: base }, { oddsAvailableTs: base + 3000 }],
+                config: {
+                    bet: {
+                        delayPlaceBetByOddsAvailableByMilliseconds: 0,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 50));
+
+            const result = service.getTimeToPlaceBet({ event, index: 1 } as EventDetailNotification<MarbleEvent>);
+
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledWith({ event, time: new Date(base + 3000) }, { oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable });
+            expect(result.getTime()).toBe(base + 3000 + 50);
+        });
+    });
+
+    describe("getTimeToLockBet", () => {
+        it("should compute lock bet time using delay handling service", () => {
+            const lockBase = Date.parse("2025-01-01T00:15:00Z");
+            const event = {
+                eventID: 7,
+                eventDetails: [{ scheduleStartTs: lockBase }],
+                config: {
+                    bet: {
+                        lockBetTimeBeforeScheduleStartByMilliseconds: 2000,
+                    },
+                },
+            } as unknown as MarbleEventWithBetConfig;
+            delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 75));
+
+            const result = service.getTimeToLockBet({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledWith({ event, time: new Date(lockBase - 2000) }, { oddFeedEventType: OddsFeedEventName.EventDetailStart });
+            expect(result.getTime()).toBe(lockBase - 2000 + 75);
         });
     });
 
     describe("publishBetChoiceLocked", () => {
         it("should update status and publish end placing bet", () => {
             service.betStatusByGameId["7"] = true;
-            service.publishBetChoiceLocked({ event: { eventID: 7 }, index: 1 });
+
+            service.publishBetChoiceLocked({ event: { eventID: 7 } as MarbleEvent, index: 1 } as unknown as EventDetailNotification<MarbleEvent>);
+
             expect(service.betStatusByGameId["7"]).toBe(false);
             expect(gameStatusPublisher.publishEndPlacingBetStatus).toHaveBeenCalled();
         });
     });
 
     describe("handleBetChoiceReady", () => {
-        it("should populate odds, points, groups and publish", () => {
+        it("should populate betting data and publish updates", () => {
             const event = {
                 eventID: 7,
                 eventDetails: [
@@ -179,9 +280,9 @@ describe("BetStatusService", () => {
                         ],
                     },
                 ],
-            } as any;
+            } as unknown as MarbleEvent;
 
-            service.handleBetChoiceReady({ event, index: 1 });
+            service.handleBetChoiceReady({ event, index: 1 } as unknown as EventDetailNotification<MarbleEvent>);
 
             expect(service.betEventDetailIndexByGameId["7"]).toBe(1);
             expect(service.betStatusByGameId["7"]).toBe(true);
@@ -198,13 +299,14 @@ describe("BetStatusService", () => {
     });
 
     describe("getBetStatus", () => {
-        it("should return points, odds, and currentIndex by current game id", () => {
+        it("should return betting status for current game", () => {
             service.dynamicOddsByGameId["7"] = { home: 2 };
-            service.betChoicePointsByGameId["7"] = { home: 1 } as any;
-            service.currentOddIndexByGameId["7"] = 3 as any;
+            service.betChoicePointsByGameId["7"] = { home: 1 };
+            service.currentOddIndexByGameId["7"] = 3;
             gameData.roundId = 12345;
 
             const status = service.getBetStatus();
+
             expect(status).toEqual({ points: { home: 1 }, odds: { home: 2 }, currentIndex: 3 });
         });
     });

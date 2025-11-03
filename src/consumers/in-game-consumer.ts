@@ -4,11 +4,14 @@ import { getUserBetPercentage } from "../helpers/bet-percentage";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { extractGameId } from "../helpers/eventid";
+import { GameFlowService } from "../features/game-flow/game-flow-service";
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;
     betStatusService: BetStatusService;
     currentEventService: CurrentEventService;
+    gameFlowService: GameFlowService;
+
     constructor(
         definition: any,
         gameData: GameData,
@@ -17,12 +20,14 @@ export default class InGameConsumer extends TableInGameConsumer {
         getBalance: any,
         gameManagementApiClientFactory: any,
         betStatusService: BetStatusService,
-        currentEventService: CurrentEventService
+        currentEventService: CurrentEventService,
+        gameFlowService: GameFlowService
     ) {
         super(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
         this.betStatusService = betStatusService;
         this.currentEventService = currentEventService;
-        }
+        this.gameFlowService = gameFlowService;
+    }
 
     override async consume(realPlayer: any): Promise<void> {
         await super.consume(realPlayer);
@@ -32,6 +37,8 @@ export default class InGameConsumer extends TableInGameConsumer {
             this.publishOddsToPlayer(realPlayer.UID);
             this.publishBetChoicePointsToPlayer(realPlayer.UID);
             this.publishMatchToPlayer(realPlayer.UID);
+            this.publishCurrentGameFlowToPlayer(realPlayer.UID);
+
         }   catch (error) {
             console.log("error", error);
         }
@@ -64,5 +71,11 @@ export default class InGameConsumer extends TableInGameConsumer {
 
     publishCurrentIndexToPlayer(UID: string): void {
         this.publisher.publishToUser(UID, { currentIndex: this.betStatusService.getBetStatus().currentIndex });
+    }
+    
+    publishCurrentGameFlowToPlayer(UID: string): void {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        const payload = this.gameFlowService.getCurrentGameFlow(gameId);
+        this.publisher.publishToUser(UID, payload);
     }
 }

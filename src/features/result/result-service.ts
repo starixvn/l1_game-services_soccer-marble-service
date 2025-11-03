@@ -45,7 +45,7 @@ export class ResultService {
             return;
         }
         
-        const timeToSettle = this.delayHandlingService.getDelayedTime({ eventId: event.eventID, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
+        const timeToSettle = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
             oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
         });
 

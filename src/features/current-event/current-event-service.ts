@@ -93,7 +93,7 @@ export class CurrentEventService {
     }
 
     public handleEventStart({ event }: EventNotification) {
-        const whenToSetCurrentEvent = this.delayHandlingService.getDelayedTime({ eventId: event.eventID, time: new Date(event.scheduleStartTs) }, {
+        const whenToSetCurrentEvent = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
             oddFeedEventType: OddsFeedEventName.EventStart,
         });
         this.scheduler.schedule(whenToSetCurrentEvent, this.handleEventIndexReset.bind(this, { event }));
@@ -104,7 +104,7 @@ export class CurrentEventService {
             return;
         }
 
-        const delayedTime = this.delayHandlingService.getDelayedTime({ eventId: event.eventID, time: new Date(event.eventDetails[index].oddsAvailableTs) }, {
+        const delayedTime = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].oddsAvailableTs) }, {
             oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable,
         });
         this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }));

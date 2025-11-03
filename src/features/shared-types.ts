@@ -1,14 +1,6 @@
 import { Event, EventDetail } from "odds-feed-client";
 
-export interface BetConfig {
-    delayPlaceBetByOddsAvailableByMilliseconds?: number;
-    lockBetTimeBeforeScheduleStartByMilliseconds?: number;
-}
-
 export interface MarbleEvent extends Event {
-    config?: {
-        bet?: BetConfig;
-    }
     eventDetails: MarbleEventDetail[];
 }
 

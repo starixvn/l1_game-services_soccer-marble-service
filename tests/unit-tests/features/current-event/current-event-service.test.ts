@@ -1,4 +1,5 @@
 import { CurrentEventService } from "../../../../src/features/current-event/current-event-service";
+import { OddsFeedEventName } from "odds-feed-client";
 
 jest.mock("../../../../src/helpers/eventid", () => ({
     extractGameId: jest.fn(() => 7),
@@ -22,7 +23,7 @@ describe("CurrentEventService", () => {
             cleanupOff: jest.fn(),
         };
         delayHandlingService = {
-            getDelayedTime: jest.fn((_t: any) => new Date()),
+            getDelayedTime: jest.fn(({ time }: { time: Date }) => new Date(time.getTime() + 123)),
         };
         scheduler = { schedule: jest.fn() };
         gameData = { roundId: undefined };
@@ -57,13 +58,21 @@ describe("CurrentEventService", () => {
 
     describe("handleEventStart", () => {
         it("should schedule and on callback reset current event and publish match", () => {
-            const event = { eventID: 123, scheduleStartTs: new Date(), eventDetails: [{}] } as any;
-            service.handleEventStart({ event });
-            expect(scheduler.schedule).toHaveBeenCalled();
+            const scheduleStartTs = Date.parse("2025-01-01T00:00:00Z");
+            const event = { eventID: 123, scheduleStartTs, eventDetails: [{}] } as any;
 
-            // simulate scheduled callback (handleEventIndexReset)
+            service.handleEventStart({ event });
+
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledTimes(1);
+            const [delayArgs, delayOptions] = (delayHandlingService.getDelayedTime as jest.Mock).mock.calls[0];
+            expect(delayArgs.event).toBe(event);
+            expect(delayArgs.time.getTime()).toBe(scheduleStartTs);
+            expect(delayOptions).toEqual({ oddFeedEventType: OddsFeedEventName.EventStart });
+
+            expect(scheduler.schedule).toHaveBeenCalledTimes(1);
             const [when, cb] = (scheduler.schedule as jest.Mock).mock.calls[0];
-            expect(when instanceof Date).toBe(true);
+            expect(when.getTime()).toBe(scheduleStartTs + 123);
+
             (cb as Function)();
 
             expect(service._currentEventDetailIndexByGameId["7"]).toBe(0);
@@ -79,13 +88,22 @@ describe("CurrentEventService", () => {
             const event = { eventID: 1, eventDetails: [] } as any;
             service.handleEventDetailOddAvailable({ event, index: 0 });
             expect(scheduler.schedule).not.toHaveBeenCalled();
+            expect(delayHandlingService.getDelayedTime).not.toHaveBeenCalled();
         });
 
         it("should schedule index change when index > 0 and update on callback", () => {
-            const event = { eventID: 1, eventDetails: [{}, { oddsAvailableTs: new Date() }] } as any;
-            service.handleEventDetailOddAvailable({ event, index: 1 });
-            expect(scheduler.schedule).toHaveBeenCalled();
+            const oddsAvailableTs = Date.parse("2025-01-01T00:05:00Z");
+            const event = { eventID: 1, eventDetails: [{}, { oddsAvailableTs }] } as any;
 
+            service.handleEventDetailOddAvailable({ event, index: 1 });
+
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledTimes(1);
+            const [delayArgs, delayOptions] = (delayHandlingService.getDelayedTime as jest.Mock).mock.calls[0];
+            expect(delayArgs.event).toBe(event);
+            expect(delayArgs.time.getTime()).toBe(oddsAvailableTs);
+            expect(delayOptions).toEqual({ oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable });
+
+            expect(scheduler.schedule).toHaveBeenCalledTimes(1);
             const [, cb] = (scheduler.schedule as jest.Mock).mock.calls.pop();
             (cb as Function)();
             expect(service._currentEventDetailIndexByGameId["7"]).toBe(1);

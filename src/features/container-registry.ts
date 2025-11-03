@@ -8,6 +8,7 @@ import { BetStatusService } from "./bet-status/bet-status-service";
 import { HedgeBetService } from "./bet-status/hedge-bet-service";
 import { CheckStatusService } from "./check-status/check-status-service";
 import { ResultService } from "./result/result-service";
+import { GameFlowService } from "./game-flow/game-flow-service";
 
 
 export interface DelayHandlerContainer {
@@ -62,10 +63,16 @@ export function registerFeatures(diContainer: DiContainer) {
         value: ResultService,
         disposer,
     });
+    diContainer.register({
+        key: 'gameFlowService',
+        registerType: 'class',
+        value: GameFlowService,
+        disposer,
+    });
 };
 
 export function disposer(service: any) {
-    service.dispose();
+    service.dispose?.();
 }
 
 export function oddsFeedFilter(event: MarbleEvent) {
@@ -74,9 +81,9 @@ export function oddsFeedFilter(event: MarbleEvent) {
 
 export function initFeatures(container: DiContainer) {
     init(container);
-    container.resolve<DelayHandlingService>('delayHandlingService').initEvent();
     container.resolve<CurrentEventService>('currentEventService').initEvent();
     container.resolve<BetStatusService>('betStatusService').initEvent();
     container.resolve<CheckStatusService>('checkStatusService').initEvent();
     container.resolve<ResultService>('resultService').initEvent();
+    container.resolve<GameFlowService>('gameFlowService').init();
 }

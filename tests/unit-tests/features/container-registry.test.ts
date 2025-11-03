@@ -11,13 +11,14 @@ describe("features/container-registry", () => {
 
             registerFeatures(di);
 
-            // Expect multiple registrations
+            // Assert
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'currentEventService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'delayHandlingService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'betStatusService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'hedgeBetService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'checkStatusService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'resultService', registerType: 'class' }));
+            expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'gameFlowService', registerType: 'class' }));
         });
     });
 
@@ -34,21 +35,21 @@ describe("features/container-registry", () => {
     });
 
     describe("initFeatures", () => {
-        it("should initEvent on all resolved services", () => {
-            const delayHandlingService = { initEvent: jest.fn() };
+        it("should init all resolved services", () => {
             const currentEventService = { initEvent: jest.fn() };
             const betStatusService = { initEvent: jest.fn() };
             const checkStatusService = { initEvent: jest.fn() };
             const resultService = { initEvent: jest.fn() };
+            const gameFlowService = { init: jest.fn() };
 
             const container = {
                 resolve: jest.fn((key: string) => {
                     switch (key) {
-                        case 'delayHandlingService': return delayHandlingService;
                         case 'currentEventService': return currentEventService;
                         case 'betStatusService': return betStatusService;
                         case 'checkStatusService': return checkStatusService;
                         case 'resultService': return resultService;
+                        case 'gameFlowService': return gameFlowService;
                         default: return undefined;
                     }
                 }),
@@ -56,11 +57,11 @@ describe("features/container-registry", () => {
 
             initFeatures(container);
 
-            expect(delayHandlingService.initEvent).toHaveBeenCalled();
             expect(currentEventService.initEvent).toHaveBeenCalled();
             expect(betStatusService.initEvent).toHaveBeenCalled();
             expect(checkStatusService.initEvent).toHaveBeenCalled();
             expect(resultService.initEvent).toHaveBeenCalled();
+            expect(gameFlowService.init).toHaveBeenCalled();
         });
     });
 

@@ -1,10 +1,15 @@
-import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, Scheduler, SystemNotification } from "odds-feed-client";
+import { Event, EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, Scheduler, SystemNotification } from "odds-feed-client";
 import { GameStatusPublisher } from "../../publishers";
 import { extractGameId } from "../../helpers/eventid";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { HedgeBetService } from "./hedge-bet-service";
 import GameData from "../../game-data";
-import { BetConfig, MarbleEvent, Market } from "../shared-types";
+import { MarbleEvent, Market } from "../shared-types";
+
+export interface BetConfig {
+    delayPlaceBetByOddsAvailableByMilliseconds?: number;
+    lockBetTimeBeforeScheduleStartByMilliseconds?: number;
+}
 
 interface BetStatusServiceContainer {
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
@@ -15,7 +20,11 @@ interface BetStatusServiceContainer {
     gameData: GameData;
 }
 
-
+export interface MarbleEventWithBetConfig extends MarbleEvent {
+    config?: {
+        bet?: BetConfig;
+    }
+}
 
 export class BetStatusService {
 
@@ -26,13 +35,10 @@ export class BetStatusService {
     private readonly hedgeBetService: HedgeBetService;
     private readonly gameData: GameData;
 
-    private readonly betConfigByEventId: Record<number, BetConfig> = {};
     private readonly currentOddIndexByGameId: Record<string, number> = {};
  
     private readonly boundHandleEventStart: (notification: EventNotification<MarbleEvent>) => void;
     private readonly boundHandleEventDetailOddAvailable: (notification: EventDetailNotification<MarbleEvent>) => void;
-    private readonly boundHandleEventUpcoming: (notification: EventNotification<MarbleEvent>) => void;
-    private readonly boundHandleEventCleanup: (notification: SystemNotification) => void;
     private readonly boundHandleEventDetailUpcoming: (notification: EventDetailNotification<MarbleEvent>) => void;
 
     constructor(container: BetStatusServiceContainer) {
@@ -45,10 +51,9 @@ export class BetStatusService {
 
         this.boundHandleEventStart = this.handleEventStart.bind(this);
         this.boundHandleEventDetailOddAvailable = this.handleEventDetailOddAvailable.bind(this);
-        this.boundHandleEventUpcoming = this.handleEventUpcoming.bind(this);
-        this.boundHandleEventCleanup = this.handleCleanupEventUpcoming.bind(this);
         this.boundHandleEventDetailUpcoming = this.handleEventDetailUpcoming.bind(this);
     }
+
     public readonly betStatusByGameId: Record<string, boolean> = {};
     public readonly betEventDetailIndexByGameId: Record<string, number> = {};
     public readonly betChoicePointsByGameId: Record<string, Record<string, number>> = {};
@@ -59,40 +64,24 @@ export class BetStatusService {
     public initEvent() {
         this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.boundHandleEventStart);
         this.oddsFeedEventSource.eventDetailOn(OddsFeedEventName.EventDetailOddsAvailable, this.boundHandleEventDetailOddAvailable);
-        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventUpcoming, this.boundHandleEventUpcoming);
-        this.oddsFeedEventSource.cleanupOn(this.boundHandleEventCleanup);
         this.oddsFeedEventSource.eventDetailOn(OddsFeedEventName.EventDetailUpComing, this.boundHandleEventDetailUpcoming);
     }
 
     public dispose() {
         this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventStart, this.boundHandleEventStart);
         this.oddsFeedEventSource.eventDetailOff(OddsFeedEventName.EventDetailOddsAvailable, this.boundHandleEventDetailOddAvailable);
-        this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventUpcoming, this.boundHandleEventUpcoming);
-        this.oddsFeedEventSource.cleanupOff(this.boundHandleEventCleanup);
         this.oddsFeedEventSource.eventDetailOff(OddsFeedEventName.EventDetailUpComing, this.boundHandleEventDetailUpcoming);
-    }
-
-    public handleEventUpcoming({ event }: EventNotification<MarbleEvent>) {
-        this.betConfigByEventId[event.eventID] = {
-            delayPlaceBetByOddsAvailableByMilliseconds: event.config?.bet?.delayPlaceBetByOddsAvailableByMilliseconds,
-            lockBetTimeBeforeScheduleStartByMilliseconds: event.config?.bet?.lockBetTimeBeforeScheduleStartByMilliseconds,
-        };
     }
 
     public handleEventDetailUpcoming({ event, index }: EventDetailNotification<MarbleEvent>) {
         this.scheduleLockBet({ event, index });
     }
 
-    public handleCleanupEventUpcoming({ eventID }: SystemNotification) {
-        delete this.betConfigByEventId[eventID];
-    }
-
-    public handleEventStart({ event }: EventNotification<MarbleEvent>) {
+    public handleEventStart({ event }: EventNotification<MarbleEventWithBetConfig>) {
         const gameId = extractGameId(event.eventID).toString();
         this.betStatusByGameId[gameId] = false;
         this.currentRoundId = event.eventID;
         this.schedulePlaceBet({ event, index: 0 });
-
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
@@ -112,32 +101,57 @@ export class BetStatusService {
         }
     }
 
-    private schedulePlaceBet({ event, index }: EventDetailNotification<MarbleEvent>) {
+    getTimeToPlaceBet({ event, index }: EventDetailNotification) {
+        const eventWithBetConfig = event as MarbleEventWithBetConfig;
         const rawPlaceBetTime = index === 0
-            ? event.scheduleStartTs
-            : event.eventDetails[index].oddsAvailableTs;
-        const oddFeedEventType = index === 0 ? OddsFeedEventName.EventStart : OddsFeedEventName.EventDetailOddsAvailable;
+            ? eventWithBetConfig.scheduleStartTs
+            : eventWithBetConfig.eventDetails[index].oddsAvailableTs;
 
-        const configuredPlaceBetTime =
-            new Date(rawPlaceBetTime).getTime() +
-            (this.betConfigByEventId[event.eventID]?.delayPlaceBetByOddsAvailableByMilliseconds ?? 0);
+        const oddFeedEventType = index === 0 
+            ? OddsFeedEventName.EventStart 
+            : OddsFeedEventName.EventDetailOddsAvailable;
 
-        const timeToPlaceBet = this.delayHandlingService.getDelayedTime({ eventId: event.eventID, time: new Date(configuredPlaceBetTime) }, {
+        const delayPlaceBet = 
+            eventWithBetConfig
+            .config
+            ?.bet
+            ?.delayPlaceBetByOddsAvailableByMilliseconds 
+            ?? 0;
+
+        const timePlaceBet = 
+            new Date(rawPlaceBetTime + delayPlaceBet);
+
+        return this.delayHandlingService.getDelayedTime({ event, time: timePlaceBet }, {
             oddFeedEventType,
         });
+    }
+
+    getTimeToLockBet({ event, index }: EventDetailNotification) {
+        const rawLockBetTime = event.eventDetails[index].scheduleStartTs;
+        const eventWithBetConfig = event as MarbleEventWithBetConfig;
+        const lockBetDelay = 
+            eventWithBetConfig
+            .config
+            ?.bet
+            ?.lockBetTimeBeforeScheduleStartByMilliseconds 
+            ?? 0;
+        const configuredLockBetTime =
+            new Date(rawLockBetTime).getTime() -
+            lockBetDelay;
+            
+        return this.delayHandlingService.getDelayedTime({ event, time: new Date(configuredLockBetTime) }, {
+            oddFeedEventType: OddsFeedEventName.EventDetailStart,
+        });
+    }
+
+    private schedulePlaceBet({ event, index }: EventDetailNotification<MarbleEvent>) {
+        const timeToPlaceBet = this.getTimeToPlaceBet({ event, index });
 
         this.scheduler.schedule(timeToPlaceBet, this.handleBetChoiceReady.bind(this, { event, index }));
     }
 
     private scheduleLockBet({ event, index }: EventDetailNotification<MarbleEvent>) {
-        const rawLockBetTime = event.eventDetails[index].scheduleStartTs;
-        const configuredLockBetTime =
-            new Date(rawLockBetTime).getTime() -
-            (this.betConfigByEventId[event.eventID]?.lockBetTimeBeforeScheduleStartByMilliseconds ?? 0);
-            
-        const timeToLockBet = this.delayHandlingService.getDelayedTime({ eventId: event.eventID, time: new Date(configuredLockBetTime) }, {
-            oddFeedEventType: OddsFeedEventName.EventDetailStart,
-        });
+        const timeToLockBet = this.getTimeToLockBet({ event, index });
 
         this.scheduler.schedule(timeToLockBet, this.publishBetChoiceLocked.bind(this, { event, index }), {
             ignorePast: true
