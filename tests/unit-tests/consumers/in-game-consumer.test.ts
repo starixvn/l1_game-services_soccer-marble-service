@@ -65,7 +65,6 @@ describe("InGameConsumer", () => {
             expect(inGameConsumer.gameData).toBe(mockGameData);
             expect(inGameConsumer.betStatusService).toBe(mockBetStatusService);
             expect(inGameConsumer.currentEventService).toBe(mockCurrentEventService);
-            expect(inGameConsumer.gameFlowService).toBe(mockGameFlowService);
         });
 
         it("should extend TableInGameConsumer", () => {
@@ -85,7 +84,6 @@ describe("InGameConsumer", () => {
             const publishOddsSpy = jest.spyOn(inGameConsumer, "publishOddsToPlayer").mockImplementation();
             const publishBetChoicePointsSpy = jest.spyOn(inGameConsumer, "publishBetChoicePointsToPlayer").mockImplementation();
             const publishMatchSpy = jest.spyOn(inGameConsumer, "publishMatchToPlayer").mockImplementation();
-            const publishGameFlowSpy = jest.spyOn(inGameConsumer, "publishCurrentGameFlowToPlayer").mockImplementation();
 
             // Act
             await inGameConsumer.consume(mockRealPlayer);
@@ -95,7 +93,6 @@ describe("InGameConsumer", () => {
             expect(publishOddsSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
             expect(publishBetChoicePointsSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
             expect(publishMatchSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
-            expect(publishGameFlowSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
         });
 
         it("should handle errors gracefully without throwing", async () => {
@@ -218,22 +215,6 @@ describe("InGameConsumer", () => {
             // Assert
             expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
             expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { currentIndex: mockCurrentIndex });
-        });
-    });
-
-    describe("publishCurrentGameFlowToPlayer", () => {
-        it("should publish current game flow payload to the specified player", () => {
-            // Arrange
-            const testUID = "test-player-202";
-            mockGameData.roundId = 123 as any;
-            (mockGameFlowService.getCurrentGameFlow as jest.Mock).mockReturnValue({ gameFlow: GameFlow.Start });
-
-            // Act
-            inGameConsumer.publishCurrentGameFlowToPlayer(testUID);
-
-            // Assert
-            expect(mockGameFlowService.getCurrentGameFlow).toHaveBeenCalled();
-            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { gameFlow: GameFlow.Start });
         });
     });
 });
