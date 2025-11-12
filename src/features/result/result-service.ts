@@ -49,7 +49,9 @@ export class ResultService {
             oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
         });
 
-        this.scheduler.schedule(timeToSettle, this.getResultAndSettle.bind(this, { event, index }));
+        this.scheduler.schedule(timeToSettle, this.getResultAndSettle.bind(this, { event, index }), {
+            overrideNow: event.now,
+        });
     }
 
     getResultAndSettle({ event }: EventDetailNotification<MarbleEvent>) {

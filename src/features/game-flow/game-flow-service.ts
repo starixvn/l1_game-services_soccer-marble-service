@@ -57,7 +57,9 @@ export class GameFlowService {
             this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
                 oddFeedEventType: OddsFeedEventName.EventStart,
             });
-        this.scheduler.schedule(timeStart, this.handleStartGame.bind(this, { event }));
+        this.scheduler.schedule(timeStart, this.handleStartGame.bind(this, { event }), {
+            overrideNow: event.now,
+        });
     }
     
     handleEventDetailResultAvailable({ event, index }: EventDetailNotification) {
@@ -68,7 +70,9 @@ export class GameFlowService {
             this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
                 oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
             });
-        this.scheduler.schedule(timeResult, this.handleResult.bind(this, { event, index }));
+        this.scheduler.schedule(timeResult, this.handleResult.bind(this, { event, index }), {
+            overrideNow: event.now,
+        });
     }
 
     handleResult({ event }: EventDetailNotification ) {

@@ -96,7 +96,9 @@ export class CurrentEventService {
         const whenToSetCurrentEvent = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
             oddFeedEventType: OddsFeedEventName.EventStart,
         });
-        this.scheduler.schedule(whenToSetCurrentEvent, this.handleEventIndexReset.bind(this, { event }));
+        this.scheduler.schedule(whenToSetCurrentEvent, this.handleEventIndexReset.bind(this, { event }), {
+            overrideNow: event.now,
+        });
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification) {
@@ -107,7 +109,9 @@ export class CurrentEventService {
         const delayedTime = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].oddsAvailableTs) }, {
             oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable,
         });
-        this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }));
+        this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }), {
+            overrideNow: event.now,
+        });
     }
 
     public handleEventIndexReset({ event }: EventNotification) {

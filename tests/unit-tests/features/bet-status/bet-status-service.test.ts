@@ -85,6 +85,7 @@ describe("BetStatusService", () => {
     describe("handleEventStart", () => {
         it("should set state and schedule initial place bet", () => {
             const scheduleStart = Date.parse("2025-01-01T00:00:00Z");
+            const now = new Date(scheduleStart);
             const event = {
                 eventID: 999,
                 scheduleStartTs: scheduleStart,
@@ -94,6 +95,7 @@ describe("BetStatusService", () => {
                         delayPlaceBetByOddsAvailableByMilliseconds: 500,
                     },
                 },
+                now,
             } as unknown as MarbleEventWithBetConfig;
             const expected = new Date(scheduleStart + 500 + 100);
             delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 100));
@@ -102,7 +104,10 @@ describe("BetStatusService", () => {
 
             expect(service.betStatusByGameId["7"]).toBe(false);
             expect(service.currentRoundId).toBe(999);
-            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function));
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
+                overrideNow: now,
+                ignorePast: true,
+            });
         });
     });
 
@@ -117,6 +122,7 @@ describe("BetStatusService", () => {
 
         it("should schedule when index > 0", () => {
             const base = Date.parse("2025-01-01T00:05:00Z");
+            const now = new Date(base);
             const event = {
                 eventID: 1,
                 eventDetails: [{}, { oddsAvailableTs: base + 2000 }, { oddsAvailableTs: base + 4000 }],
@@ -125,13 +131,17 @@ describe("BetStatusService", () => {
                         delayPlaceBetByOddsAvailableByMilliseconds: 250,
                     },
                 },
+                now,
             } as unknown as MarbleEventWithBetConfig;
             const expected = new Date(base + 4000 + 250 + 50);
             delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 50));
 
             service.handleEventDetailOddAvailable({ event, index: 2 } as EventDetailNotification<MarbleEvent>);
 
-            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function));
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
+                overrideNow: now,
+                ignorePast: true,
+            });
         });
     });
 
@@ -172,6 +182,7 @@ describe("BetStatusService", () => {
     describe("handleEventDetailUpcoming", () => {
         it("should schedule lock bet with ignorePast option when index > 0", () => {
             const lockTime = Date.parse("2025-01-01T00:10:00Z");
+            const now = new Date(lockTime);
             const event = {
                 eventID: 2,
                 eventDetails: [{}, { scheduleStartTs: lockTime }],
@@ -180,6 +191,7 @@ describe("BetStatusService", () => {
                         lockBetTimeBeforeScheduleStartByMilliseconds: 1000,
                     },
                 },
+                now,
             } as unknown as MarbleEventWithBetConfig;
             delayHandlingService.getDelayedTime.mockImplementation(({ time }: { time: Date }) => new Date(time.getTime() + 25));
 
@@ -189,7 +201,7 @@ describe("BetStatusService", () => {
             const [time, handler, options] = (scheduler.schedule as jest.Mock).mock.calls[0];
             expect(time.getTime()).toBe(lockTime - 1000 + 25);
             expect(typeof handler).toBe("function");
-            expect(options).toEqual({ ignorePast: true });
+            expect(options).toEqual({ ignorePast: true, overrideNow: now });
         });
     });
 

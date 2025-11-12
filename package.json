@@ -35,7 +35,7 @@
         "https-proxy-agent": "^7.0.6",
         "jest-mock-extended": "^4.0.0",
         "mongoose": "^6.13.8",
-        "odds-feed-client": "3.0.0",
+        "odds-feed-client": "3.4.2",
         "sc-common": "^3.0.0",
         "sc-game-base": "6.3.2",
         "sc-game-management-client": "^0.1.0",

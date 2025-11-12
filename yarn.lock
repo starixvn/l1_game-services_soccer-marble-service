@@ -6334,10 +6334,10 @@ object-assign@^4:
   resolved "http://npm.lumigame.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
   integrity sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM=
 
-odds-feed-client@3.0.0:
-  version "3.0.0"
-  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.0.0.tgz#6ec16b942440a6861eea25fd966f2ffa7e41f648"
-  integrity sha512-t+LNEc8KCLOnXDBpYpgyVD6wmpugEreKPMHZ8pv8ymt6m/XBfWZn2IaeOZTNLLMf4Rx4NyHMtqYJdD8eKgpxdg==
+odds-feed-client@3.4.2:
+  version "3.4.2"
+  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.4.2.tgz#3ec0257864b90edab885f17566fbcc0e74d6072c"
+  integrity sha512-4v+m7hJARZMCq4Ug0Fp0SZ22mMAu4QlOgtHYE9t9hR+Zx1W4X6dYJl9TgYgzHgzPrR+xl91F95bvZXxAONkUVA==
   dependencies:
     "@sentry/node" "^10.20.0"
     awilix "^12.0.5"
