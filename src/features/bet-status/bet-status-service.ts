@@ -7,8 +7,8 @@ import GameData from "../../game-data";
 import { MarbleEvent, Market } from "../shared-types";
 
 export interface BetConfig {
-    delayPlaceBetByOddsAvailableByMilliseconds?: number;
-    lockBetTimeBeforeScheduleStartByMilliseconds?: number;
+    delayPlaceBetMs?: number;
+    soonLockBetMs?: number;
 }
 
 interface BetStatusServiceContainer {
@@ -115,7 +115,7 @@ export class BetStatusService {
             eventWithBetConfig
             .config
             ?.bet
-            ?.delayPlaceBetByOddsAvailableByMilliseconds 
+            ?.delayPlaceBetMs 
             ?? 0;
 
         const timePlaceBet = 
@@ -133,7 +133,7 @@ export class BetStatusService {
             eventWithBetConfig
             .config
             ?.bet
-            ?.lockBetTimeBeforeScheduleStartByMilliseconds 
+            ?.soonLockBetMs 
             ?? 0;
         const configuredLockBetTime =
             new Date(rawLockBetTime).getTime() -

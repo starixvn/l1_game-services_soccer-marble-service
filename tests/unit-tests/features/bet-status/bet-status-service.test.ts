@@ -92,7 +92,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{ oddsAvailableTs: scheduleStart }],
                 config: {
                     bet: {
-                        delayPlaceBetByOddsAvailableByMilliseconds: 500,
+                        delayPlaceBetMs: 500,
                     },
                 },
                 now,
@@ -128,7 +128,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{}, { oddsAvailableTs: base + 2000 }, { oddsAvailableTs: base + 4000 }],
                 config: {
                     bet: {
-                        delayPlaceBetByOddsAvailableByMilliseconds: 250,
+                        delayPlaceBetMs: 250,
                     },
                 },
                 now,
@@ -188,7 +188,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{}, { scheduleStartTs: lockTime }],
                 config: {
                     bet: {
-                        lockBetTimeBeforeScheduleStartByMilliseconds: 1000,
+                        soonLockBetMs: 1000,
                     },
                 },
                 now,
@@ -214,7 +214,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{ oddsAvailableTs: base }],
                 config: {
                     bet: {
-                        delayPlaceBetByOddsAvailableByMilliseconds: 500,
+                        delayPlaceBetMs: 500,
                     },
                 },
             } as unknown as MarbleEventWithBetConfig;
@@ -234,7 +234,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{ oddsAvailableTs: base }, { oddsAvailableTs: base + 3000 }],
                 config: {
                     bet: {
-                        delayPlaceBetByOddsAvailableByMilliseconds: 0,
+                        delayPlaceBetMs: 0,
                     },
                 },
             } as unknown as MarbleEventWithBetConfig;
@@ -255,7 +255,7 @@ describe("BetStatusService", () => {
                 eventDetails: [{ scheduleStartTs: lockBase }],
                 config: {
                     bet: {
-                        lockBetTimeBeforeScheduleStartByMilliseconds: 2000,
+                        soonLockBetMs: 2000,
                     },
                 },
             } as unknown as MarbleEventWithBetConfig;

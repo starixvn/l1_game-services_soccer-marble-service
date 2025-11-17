@@ -2,11 +2,12 @@ import { Event, OddsFeedEventName } from "odds-feed-client";
 import { MarbleEvent } from "../shared-types";
 
 type DelayConfig = {
-    globalDelayInMillisecond?: number;
-    videoDelayInMillisecond?: number;
-    eventScheduleStartDelayInMillisecond?: number;
-    eventDetailScheduleStartDelayInMillisecond?: number;
-    eventDetailResultAvailableDelayInMillisecond?: number;
+    globalDelayMs?: number;
+    videoDelayMs?: number;
+    eventScheduleStartDelayMs?: number;
+    eventDetailScheduleStartDelayMs?: number;
+    eventDetailResultAvailableMs?: number;
+    eventDetailOddsAvailableMs?: number;
 }
 
 export interface MarbleEventWithDelayConfig extends MarbleEvent {
@@ -26,7 +27,7 @@ export class DelayHandlingService {
         if (!config) {
             return time;
         }
-        const globalDelayInMillisecond = config.globalDelayInMillisecond ?? 0;
+        const globalDelayInMillisecond = config.globalDelayMs ?? 0;
         const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config }, { oddFeedEventType });
         return new Date(time.getTime() + globalDelayInMillisecond + eventTypeDelayMilliseconds);
     }
@@ -36,7 +37,7 @@ export class DelayHandlingService {
         if (!config) {
             return time;
         }
-        const videoDelayInMillisecond = config.videoDelayInMillisecond ?? 0;
+        const videoDelayInMillisecond = config.videoDelayMs ?? 0;
         return new Date(this.getDelayedTime({ event, time }, { oddFeedEventType }).getTime() + videoDelayInMillisecond);
     }
 
@@ -48,11 +49,13 @@ export class DelayHandlingService {
 
         switch (oddFeedEventType) {
             case OddsFeedEventName.EventStart:
-                return config.eventScheduleStartDelayInMillisecond ?? 0;
+                return config.eventScheduleStartDelayMs ?? 0;
             case OddsFeedEventName.EventDetailStart:
-                return config.eventDetailScheduleStartDelayInMillisecond ?? 0;
+                return config.eventDetailScheduleStartDelayMs ?? 0;
             case OddsFeedEventName.EventDetailResultsAvailable:
-                return config.eventDetailResultAvailableDelayInMillisecond ?? 0;
+                return config.eventDetailResultAvailableMs ?? 0;
+            case OddsFeedEventName.EventDetailOddsAvailable:
+                return config.eventDetailOddsAvailableMs ?? 0;
             default:
                 return 0;
         }

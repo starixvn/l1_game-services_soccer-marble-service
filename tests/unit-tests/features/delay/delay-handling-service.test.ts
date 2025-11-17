@@ -26,8 +26,8 @@ describe("DelayHandlingService", () => {
                 eventID: 1,
                 config: {
                     delay: {
-                        globalDelayInMillisecond: 500,
-                        eventScheduleStartDelayInMillisecond: 150,
+                        globalDelayMs: 500,
+                        eventScheduleStartDelayMs: 150,
                     },
                 },
             } as Partial<Event> as Event;
@@ -43,8 +43,8 @@ describe("DelayHandlingService", () => {
                 eventID: 2,
                 config: {
                     delay: {
-                        globalDelayInMillisecond: 700,
-                        eventDetailScheduleStartDelayInMillisecond: 200,
+                        globalDelayMs: 700,
+                        eventDetailScheduleStartDelayMs: 200,
                     },
                 },
             } as Partial<Event> as Event;
@@ -60,7 +60,7 @@ describe("DelayHandlingService", () => {
                 eventID: 3,
                 config: {
                     delay: {
-                        eventDetailScheduleStartDelayInMillisecond: 350,
+                        eventDetailScheduleStartDelayMs: 350,
                     },
                 },
             } as Partial<Event> as Event;
@@ -76,8 +76,8 @@ describe("DelayHandlingService", () => {
                 eventID: 4,
                 config: {
                     delay: {
-                        globalDelayInMillisecond: 100,
-                        eventDetailResultAvailableDelayInMillisecond: 400,
+                        globalDelayMs: 100,
+                        eventDetailResultAvailableMs: 400,
                     },
                 },
             } as Partial<Event> as Event;
@@ -95,9 +95,9 @@ describe("DelayHandlingService", () => {
                 eventID: 5,
                 config: {
                     delay: {
-                        globalDelayInMillisecond: 300,
-                        videoDelayInMillisecond: 200,
-                        eventDetailResultAvailableDelayInMillisecond: 250,
+                        globalDelayMs: 300,
+                        videoDelayMs: 200,
+                        eventDetailResultAvailableMs: 250,
                     },
                 },
             } as Partial<Event> as Event;
@@ -122,8 +122,8 @@ describe("DelayHandlingService", () => {
                 eventID: 7,
                 config: {
                     delay: {
-                        globalDelayInMillisecond: 150,
-                        eventScheduleStartDelayInMillisecond: 50,
+                        globalDelayMs: 150,
+                        eventScheduleStartDelayMs: 50,
                     },
                 },
             } as Partial<Event> as Event;
