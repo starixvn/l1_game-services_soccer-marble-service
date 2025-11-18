@@ -42,7 +42,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
         }
 
         if (this.isBetTime()) {
-            console.log("isBetTime", this.isBetTime());
             this.bot?.run();
         }
 

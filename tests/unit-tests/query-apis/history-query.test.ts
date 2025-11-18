@@ -10,9 +10,9 @@ describe(HistoryQuery.name, () => {
         paid: true,
     };
     const mockRound = {
-        result: { score: "2-1" },
+        result: { 0: { phase: 2, result: "2-1" } },
         match: "Team A vs Team B",
-        settlementResult: "win",
+        settlementResult: { 0: { home: true } },
     };
     const mockBetLogDetails = [
         { id: 1, details: "bet detail 1" },
@@ -112,10 +112,10 @@ describe(HistoryQuery.name, () => {
                                 convertedBet: true,
                                 phien: mockBet.roundId,
                                 result: {
-                                    score: "2-1",
+                                    0: { phase: 2, result: "2-1" },
                                     teamName: "Team A vs Team B",
                                 },
-                                settlementResult: "win",
+                                settlementResult: { 0: { home: true } },
                                 betLogDetails: ["converted log 1", "converted log 2"],
                             },
                         ],

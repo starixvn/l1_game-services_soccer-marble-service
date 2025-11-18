@@ -62,10 +62,8 @@ export class ResultService {
 
         event.eventDetails.forEach((eventDetail, index) => {
             result.result[index] = {
-                finalScore: eventDetail.result.finalScore,
-                goalSequence: eventDetail.result.goalSequence,
-                playlist: eventDetail.playlist,
                 phase: eventDetail.phase,
+                result: eventDetail.result,
             };
             result.settlementResult[index] = this.getSettlementResultFromEventDetail(eventDetail);
         });

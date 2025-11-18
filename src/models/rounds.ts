@@ -6,10 +6,8 @@ export type EventDetailSettlementResult = {
 }
 
 export type EventDetailResult = {
-    finalScore: string;
-    goalSequence: string;
-    playlist: string;
     phase: number;
+    result: string;
 };
 
 export type Result = Record<number, EventDetailResult>;
@@ -22,10 +20,8 @@ export type ResultAndSettlementResult = {
 
 const eventDetailResultSchema = new mongoose.Schema<EventDetailResult>(
     {
-        finalScore: { type: String },
-        goalSequence: { type: String },
-        playlist: { type: String },
         phase: { type: Number },
+        result: { type: String },
     },
     { _id: false },
 );

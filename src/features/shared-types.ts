@@ -18,8 +18,5 @@ interface Selection {
 
 export type MarbleEventDetail = EventDetail & {
     markets: Market[];
-    result: {
-        finalScore: string;
-        goalSequence: string;
-    };
+    result: string;
 }

@@ -24,6 +24,7 @@ export function registerFeatures(diContainer: DiContainer) {
 
     register<MarbleEvent>(diContainer, {
         oddsFeedFilter,
+        shouldValidateOdds: true
     });
 
     diContainer.register({

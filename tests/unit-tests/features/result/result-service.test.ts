@@ -51,21 +51,32 @@ describe("ResultService", () => {
     });
 
     describe("getResultAndSettle", () => {
-        it("should build result and settlementResult and call settleSpecificRound", () => {
+        it("should build minimal result and settlementResult snapshots and call settleSpecificRound", () => {
             const event = {
                 eventID: 99,
                 eventDetails: [
                     {
-                        result: { finalScore: "1-0", goalSequence: [1], },
-                        playlist: "p1",
-                        phase: "first",
-                        markets: [ { selections: [ { betChoice: "home", settlementStatus: "W" } ] } ],
+                        phase: 1,
+                        result: "1-0",
+                        markets: [
+                            {
+                                selections: [
+                                    { betChoice: "home", settlementStatus: "W" },
+                                    { betChoice: "draw", settlementStatus: "L" },
+                                ],
+                            },
+                        ],
                     },
                     {
-                        result: { finalScore: "2-1", goalSequence: [2,1], },
-                        playlist: "p2",
-                        phase: "second",
-                        markets: [ { selections: [ { betChoice: "away", settlementStatus: "L" } ] } ],
+                        phase: 2,
+                        result: "2-1",
+                        markets: [
+                            {
+                                selections: [
+                                    { betChoice: "away", settlementStatus: "L" },
+                                ],
+                            },
+                        ],
                     },
                 ],
             } as any;
@@ -74,11 +85,11 @@ describe("ResultService", () => {
 
             expect(service.resultByEventId[99]).toBeDefined();
             expect(service.resultByEventId[99].result).toEqual({
-                0: { finalScore: "1-0", goalSequence: [1], playlist: "p1", phase: "first" },
-                1: { finalScore: "2-1", goalSequence: [2,1], playlist: "p2", phase: "second" },
+                0: { phase: 1, result: "1-0" },
+                1: { phase: 2, result: "2-1" },
             });
             expect(service.resultByEventId[99].settlementResult).toEqual({
-                0: { home: true },
+                0: { home: true, draw: false },
                 1: { away: false },
             });
 
