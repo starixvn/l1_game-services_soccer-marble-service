@@ -76,4 +76,28 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
         betResult.netWin = parseFloat(betResult.netWin.toFixed(2));
         return betResult;
     }
+
+    override async settleBets({ settlementResult, roundId, time }: { settlementResult: any; roundId: number; time: Date; }): Promise<void> {
+        const bets = await this.queryBets(roundId);
+
+        if (bets && bets.length) {
+            await Promise.all(
+                bets.map(async (bet: any) => {
+                    const odds = bet.odds ?? {};
+
+                    const betResult = this.calculateBetResult(settlementResult, bet, odds);
+
+                    bet.betWin = betResult.totalWin;
+                    bet.paid = true;
+
+                    await bet.save();
+                    const metaData = this.createMetadata({ bet, settlementResult });
+                    await this.callEndGame(bet, roundId, time, betResult, metaData);
+
+                    this.captureBetResult(bet.uid, betResult, bet.rate);
+                    await this.userBetResultPublisher.publish(bet.uid, betResult);
+                })
+            );
+        }
+    }
 }

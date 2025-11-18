@@ -108,4 +108,30 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
 
         return newBet.time;
     }
+
+    override async insertBetLog(player: any, roundId: number, bet: any, rate: number): Promise<void> {
+        const newBetLog: Record<string, any> = {
+            uid: player.UID,
+            name: player.profile.name,
+            time: new Date(),
+            choice: bet.betChoice,
+            amount: bet.amount,
+            clientSentTime: bet.clientSentTime,
+            receivedTime: bet.receivedTime,
+            roundId,
+            index: bet.index,
+        };
+
+        if (player.session) {
+            newBetLog.siteId = player.session.siteId;
+            newBetLog.currency = player.session.currencyName;
+            newBetLog.rate = rate;
+            newBetLog.operatorId = player.session.operatorId;
+            newBetLog.playerId = player.session.playerId;
+            newBetLog.appType = player.session.system;
+            newBetLog.siteName = player.session.siteName;
+        }
+
+        await this.betLogsRepository.create(newBetLog);
+    }
 }

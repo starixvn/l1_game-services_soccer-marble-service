@@ -8,7 +8,7 @@ const bet = {
     roundId: { type: Number, required: true },
     uid: { type: String, required: true },
     name: { type: String, required: true },
-    betwin: { type: Number, default: 0 },
+    betWin: { type: Number, default: 0 },
     time: { type: Date },
     totalAmount: { type: Number, default: 0 },
     odds: { type: Object },

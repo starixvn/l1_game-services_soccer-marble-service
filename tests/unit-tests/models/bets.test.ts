@@ -9,7 +9,7 @@ describe("Bets", () => {
 
             const expected = {
                 _id: mockId,
-                betwin: 0,
+                betWin: 0,
                 freeBet: false,
                 paid: false,
                 totalAmount: 0,
