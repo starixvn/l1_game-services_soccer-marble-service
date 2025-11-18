@@ -4,9 +4,10 @@ import GameDefinition from "../game-definition";
 import AppConfigs from "../app-configs";
 import GameStatusPublisher from "../publishers/game-status-publisher";
 import RunningRoundInfoPublisher from "../publishers/running-round-info-publisher";
-import RoundIdConsumer from "../consumers/round-id-consumer";
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
+import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { extractGameId } from "../helpers/eventid";
 
 
 export default class GameCron extends Table.Crons.TableGameCron {
@@ -15,17 +16,19 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare appConfigs: typeof AppConfigs;
     declare gameStatusPublisher: GameStatusPublisher;
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
-    declare roundIdConsumer: RoundIdConsumer;
 
     currentEventService: CurrentEventService;
+    betStatusService: BetStatusService;
+
+    count = 0;
 
     constructor(container: any) {
         super(container);
         this.currentEventService = container.currentEventService;
+        this.betStatusService = container.betStatusService;
     }
 
     public override async start() {
-        await this.roundIdConsumer.queryLastRound();
         await this.updateExchangeRates();
         await this.unsettledRoundConsumer.proceed();
         this.gameData.proceedEvent = true;
@@ -37,11 +40,16 @@ export default class GameCron extends Table.Crons.TableGameCron {
             this.gameData.proceedEvent = false;
             await this.checkGameStatus();
         }
+
+        if (this.isBetTime()) {
+            console.log("isBetTime", this.isBetTime());
+            this.bot?.run();
+        }
+
     }
 
     override async checkGameStatus() {
         const { configName } = this.definition;
-        console.log("checkGameStatus");
 
         const newGameConfigs = await getOrDefault(
             this.gameManagementApiClient.gameConfigs.getGameConfigs(configName),
@@ -50,7 +58,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
         if (!newGameConfigs) {
             this.logService.logError(`Cannot get game configs of ${this.definition.name}.`);
-            console.log("Cannot get game configs of", this.definition.name);
         }
 
         const previouslyDisabled = this.gameData.disabled;
@@ -63,7 +70,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.assignNewGameConfigs(newGameConfigs);
 
         this.gameData.disabled = configuredlyDisabled || this.gameData.delayStartTime > 0 || this.oddFeedNotAvailable();
-        console.log("this.gameData.disabled", this.gameData.disabled);
 
         await this.getSettingForNewRound();
 
@@ -90,10 +96,8 @@ export default class GameCron extends Table.Crons.TableGameCron {
             this.gameData.remainingTime = durations.wholeRound;
             this.gameStatusPublisher.publishDisableGameStatus();
         } else if (previouslyDisabled) {
-            console.log("enable game");
             await this.enableGame();
         } else {
-            console.log("start game");
             this.gameStatusPublisher.publishStartGame();
             this.resetForNewRound();
             this.bot?.reset();
@@ -123,4 +127,13 @@ export default class GameCron extends Table.Crons.TableGameCron {
         return timeNow > currEventEndTime;
     }
 
+    private isBetTime() {
+        const roundId = this.gameData.roundId;
+        if (roundId === undefined || roundId === null) {
+            return false;
+        }
+
+        const gameId = extractGameId(roundId).toString();
+        return this.betStatusService?.betStatusByGameId?.[gameId] ?? false;
+    }
 }

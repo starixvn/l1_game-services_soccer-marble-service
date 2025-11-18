@@ -26,9 +26,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     override async proceedBet(player: any, payload: BetPayload): Promise<void> {
-        console.log("proceedBet", payload.betChoice);
         return super.proceedBet(player, payload).catch((reason) => {
-            console.error("proceedBet error", reason);
             return Promise.reject(reason);
         });
     }
@@ -63,7 +61,6 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     async upsertBet(player: any, roundId: number, bet: BetPayload, rate: number) {
-        console.log("upsertBet", bet.betChoice);
         const gameId = extractGameId(roundId).toString();
         const newBet: Record<string, any> = {
             uid: player.UID,
@@ -72,11 +69,10 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             freeBet: bet.freeBet,
             roundId,
             clientSeed: bet.clientSeed,
-            index: bet.index,
         };
-        const existingBetFilter = { uid: player.UID, roundId, freeBet: bet.freeBet, index: bet.index };
+        const existingBetFilter = { uid: player.UID, roundId, freeBet: bet.freeBet };
         const existingBetIncrement = {
-            [bet.betChoice]: bet.amount,
+            [`${bet.index}.${bet.betChoice}`]: bet.amount,
             totalAmount: bet.amount,
         };
 
@@ -84,15 +80,19 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             newBet.siteId = player.session.siteId;
             newBet.currency = player.session.currencyName;
             newBet.rate = rate;
-
             newBet.operatorId = player.session.operatorId;
             newBet.playerId = player.session.playerId;
         }
         const odds = this.betStatusService.dynamicOddsByGameId[gameId];
+        const points = this.betStatusService.betChoicePointsByGameId[gameId];
+
 
         const oddsUpdate = odds ? 
             Object.entries(odds).reduce((acc, [key, value]) => {
-                acc[`odds.${key}`] = value;
+                acc[`odds.${bet.index}.${key}`] = {
+                    price: value,
+                    point: points[key] ?? 0,
+                };
                 return acc;
             }, {} as Record<string, any>) : {};
 

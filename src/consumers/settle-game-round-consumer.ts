@@ -45,24 +45,22 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
         }
     }
 
-    override calculateBetResult(settlementResult: SettlementResult, bet: any, odds: Record<string, number>) {
+    override calculateBetResult(settlementResult: SettlementResult, bet: any, odds: Record<string, any>) {
         const betData = bet._doc ?? bet;
-        const index = betData.index;
-        const betResult = Object.entries(settlementResult[index]).reduce(
-            (result, [choice, win]) => {
-                const betAmount = betData[choice] ?? 0;
-                const originalOdds = odds[choice] ?? 1;
-                const effectiveOdds = betData.freeBet ? originalOdds - 1 : originalOdds;
-                const winAmount = win ? betAmount * effectiveOdds : 0;
-                result.totalBetAmount += betAmount;
-                result.totalWin += winAmount;
-                (result.winningByChoices as any)[choice] = winAmount;
-
-                if (winAmount > 0) {
-                    result.netWin += winAmount - betAmount;
-                } else {
-                    result.totalLost += betAmount;
-                }
+        const betResult = Object.entries(settlementResult).reduce(
+            (result, [index, isWinByChoices]) => {
+                Object.entries(isWinByChoices).forEach(([choice, win]) => {
+                    const betAmount = betData[`${index}`]?.[choice] ?? 0;
+                    const originalOdds = odds[`${index}`]?.[choice]?.price ?? 1;
+                    const effectiveOdds = betData.freeBet ? originalOdds - 1 : originalOdds;
+                    const winAmount = win ? betAmount * effectiveOdds : 0;
+                    result.totalBetAmount += betAmount;
+                    result.totalWin += winAmount;
+                    if (!(result.winningByChoices as any)[`${index}`]) {
+                        (result.winningByChoices as any)[`${index}`] = {};
+                    }
+                    (result.winningByChoices as any)[`${index}`][choice] = winAmount;
+                });
 
                 return result;
             },
@@ -76,7 +74,6 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
         );
         betResult.totalWin = parseFloat(betResult.totalWin.toFixed(2));
         betResult.netWin = parseFloat(betResult.netWin.toFixed(2));
-
         return betResult;
     }
 }

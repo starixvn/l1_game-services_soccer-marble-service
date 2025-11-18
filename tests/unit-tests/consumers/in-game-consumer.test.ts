@@ -3,7 +3,6 @@ import InGameConsumer from "../../../src/consumers/in-game-consumer";
 import GameData from "../../../src/game-data";
 import { BetStatusService } from "../../../src/features/bet-status/bet-status-service";
 import { CurrentEventService } from "../../../src/features/current-event/current-event-service";
-import { GameFlow, GameFlowService } from "../../../src/features/game-flow/game-flow-service";
 import { getUserBetPercentage } from "../../../src/helpers/bet-percentage";
 jest.mock("../../../src/helpers/eventid", () => ({
     extractGameId: jest.fn(() => 10),
@@ -30,7 +29,6 @@ describe("InGameConsumer", () => {
     let mockGetBalance: any;
     let mockBetStatusService: BetStatusService;
     let mockCurrentEventService: CurrentEventService;
-    let mockGameFlowService: GameFlowService;
 
     beforeEach(() => {
         // Create mocks
@@ -39,7 +37,6 @@ describe("InGameConsumer", () => {
         mockGetBalance = jest.fn();
         mockBetStatusService = stub<BetStatusService>();
         mockCurrentEventService = stub<CurrentEventService>();
-        mockGameFlowService = stub<GameFlowService>();
 
         // Create the instance
         inGameConsumer = new InGameConsumer(
@@ -51,7 +48,6 @@ describe("InGameConsumer", () => {
             gameManagementApiClientFactory,
             mockBetStatusService,
             mockCurrentEventService,
-            mockGameFlowService
         );
     });
 

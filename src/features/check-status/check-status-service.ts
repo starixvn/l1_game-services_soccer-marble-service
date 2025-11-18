@@ -27,7 +27,7 @@ export class CheckStatusService {
         this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventStart, this.boundHandleEventStart);
     }
 
-    handleEventStart({ event }: EventNotification) {
+    handleEventStart() {
         this.checkStatus();
     }
 

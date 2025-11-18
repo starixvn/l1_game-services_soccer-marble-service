@@ -2,7 +2,7 @@ import { CheckStatusService } from "../../../../src/features/check-status/check-
 import { OddsFeedEventName } from "odds-feed-client";
 
 describe("CheckStatusService", () => {
-    let service: CheckStatusService & any;
+    let service: any;
     let oddsFeedEventSource: any;
     let gameCron: any;
 
@@ -31,7 +31,7 @@ describe("CheckStatusService", () => {
     describe("handleEventStart", () => {
         it("should call checkStatus on gameCron", () => {
             service.checkStatus = jest.fn();
-            service.handleEventStart({ event: { eventID: 1 } } as any);
+            service.handleEventStart();
             expect(service.checkStatus).toHaveBeenCalled();
         });
     });

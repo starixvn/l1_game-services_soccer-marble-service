@@ -127,7 +127,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
             const { amount, betChoice, freeBet, roundId } = payload;
             const name = player.profile.name;
             if (!this.validateRequestParams(payload, player) || !this.validateBetRequest(player, betChoice, amount, freeBet, roundId)) {
-                console.log("bet invalid, skipping");
                 return;
             }
 
@@ -147,9 +146,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
             this.adjustBetTracks(player.profile.name, payload);
             this.gameData.ingame[name].betQueue.push({ player, payload })
-            console.log("bet placed", payload);
         } catch (error) {
-            console.error("consume error", error);
             return;
         }
         

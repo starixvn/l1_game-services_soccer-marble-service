@@ -9,15 +9,16 @@ jest.mock("sc-game-base/src/table/crons", () => ({
 import ProcessBetQueue from "../../../src/crons/process-bet-queue";
 
 describe("ProcessBetQueue", () => {
-    let cron: ProcessBetQueue & any;
+    let cron: any;
 
     beforeEach(() => {
-        cron = Object.create(ProcessBetQueue.prototype) as any;
+        cron = Object.create(ProcessBetQueue.prototype);
         cron.gameData = { roundId: 10, playerBetCount: {} };
         cron.definition = { choices: ["home", "away", "draw"] };
         cron.betStatusService = {
             betStatusByGameId: { "0": true, "10": true },
             dynamicOddsByGameId: { "0": { home: 2, away: 3 }, "10": { home: 2, away: 3 } },
+            betChoicePointsByGameId: { "0": { home: 1, away: 2 }, "10": { home: 1, away: 2 } },
         };
         cron.betsRepository = { updateOne: jest.fn().mockResolvedValue(undefined) };
     });
@@ -28,7 +29,7 @@ describe("ProcessBetQueue", () => {
 
     describe("adjustTotalBets", () => {
         it("should call super and adjust player bet count", () => {
-            const superSpy = jest.spyOn(Object.getPrototypeOf(ProcessBetQueue.prototype) as any, "adjustTotalBets").mockImplementation(() => {});
+            const superSpy = jest.spyOn(Object.getPrototypeOf(ProcessBetQueue.prototype), "adjustTotalBets").mockImplementation(() => {});
             const player = { UID: "u1" };
             const bet = { betChoice: "home" } as any;
             cron.adjustPlayerBetCount = jest.fn();
@@ -107,9 +108,9 @@ describe("ProcessBetQueue", () => {
             const time = await cron.upsertBet(player, 10, bet, rate);
 
             expect(cron.betsRepository.updateOne).toHaveBeenCalledWith(
-                { uid: "u3", roundId: 10, freeBet: false, index: 0 },
-                expect.objectContaining({
-                    $inc: { home: 100, totalAmount: 100 },
+                { uid: "u3", roundId: 10, freeBet: false },
+                {
+                    $inc: { "0.home": 100, totalAmount: 100 },
                     $setOnInsert: expect.objectContaining({
                         uid: "u3",
                         name: "foo",
@@ -118,9 +119,14 @@ describe("ProcessBetQueue", () => {
                         rate: 1.23,
                         operatorId: "op",
                         playerId: "p1",
+                        freeBet: false,
+                        roundId: 10,
                     }),
-                    $set: { "odds.home": 2, "odds.away": 3 },
-                }),
+                    $set: {
+                        "odds.0.home": { price: 2, point: 1 },
+                        "odds.0.away": { price: 3, point: 2 },
+                    },
+                },
                 { upsert: true, setDefaultsOnInsert: true },
             );
             expect(time).toBeInstanceOf(Date);
@@ -133,12 +139,17 @@ describe("ProcessBetQueue", () => {
 
             await cron.upsertBet(player, 10, bet, 1.0);
             expect(cron.betsRepository.updateOne).toHaveBeenCalledWith(
-                { uid: "u4", roundId: 10, freeBet: undefined, index: 1 },
-                expect.objectContaining({
-                    $inc: { away: 50, totalAmount: 50 },
-                    $setOnInsert: expect.objectContaining({ uid: "u4", name: "bar" }),
+                { uid: "u4", roundId: 10, freeBet: undefined },
+                {
+                    $inc: { "1.away": 50, totalAmount: 50 },
+                    $setOnInsert: expect.objectContaining({
+                        uid: "u4",
+                        name: "bar",
+                        roundId: 10,
+                        freeBet: undefined,
+                    }),
                     $set: {},
-                }),
+                },
                 { upsert: true, setDefaultsOnInsert: true },
             );
         });

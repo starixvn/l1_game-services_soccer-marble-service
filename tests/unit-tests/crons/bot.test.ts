@@ -44,8 +44,15 @@ describe("Bot", () => {
         };
 
         betStatusService = {
-            betStatusByGameId: { "10": true },
+            betStatusByGameId: { "0": true, "10": true },
             dynamicOddsByGameId: {
+                "0": {
+                    home: 1.5,
+                    away: 2.0,
+                    draw: 3.0,
+                    homeLive: 1.8,
+                    awayLive: 2.2,
+                },
                 "10": {
                     home: 1.5,
                     away: 2.0,
@@ -54,10 +61,32 @@ describe("Bot", () => {
                     awayLive: 2.2,
                 },
             },
+            betChoicePointsByGameId: {
+                "0": {
+                    home: 1,
+                    away: 2,
+                    draw: 3,
+                    homeLive: 4,
+                    awayLive: 5,
+                },
+                "10": {
+                    home: 1,
+                    away: 2,
+                    draw: 3,
+                    homeLive: 4,
+                    awayLive: 5,
+                },
+            },
         };
 
         hedgeBetService = {
             hedgeBetGroupsByGameId: {
+                "0": [
+                    new Set(["home", "away"]),
+                    new Set(["homeLive", "awayLive"]),
+                    new Set(["home", "awayLive"]),
+                    new Set(["away", "homeLive"]),
+                ],
                 "10": [
                     new Set(["home", "away"]),
                     new Set(["homeLive", "awayLive"]),
@@ -436,7 +465,7 @@ describe("Bot", () => {
             };
             const choice = "home";
             const amount = 100;
-            const currentBet = null;
+            const currentBet = { index: 0 };
             const mockDate = new Date("2023-01-01T12:00:00Z");
             jest.spyOn(global, "Date").mockImplementation(() => mockDate as any);
 
@@ -448,8 +477,14 @@ describe("Bot", () => {
                 { uid: "bot123", roundId: 123 },
                 {
                     $set: {
-                        home: 100,
-                        odds: betStatusService.dynamicOddsByGameId["10"],
+                        "0.home": 100,
+                        odds: {
+                            "odds.0.home": { price: 1.5, point: 1 },
+                            "odds.0.away": { price: 2.0, point: 2 },
+                            "odds.0.draw": { price: 3.0, point: 3 },
+                            "odds.0.homeLive": { price: 1.8, point: 4 },
+                            "odds.0.awayLive": { price: 2.2, point: 5 },
+                        },
                     },
                     $setOnInsert: {
                         uid: "bot123",
@@ -477,7 +512,7 @@ describe("Bot", () => {
             };
             const choice = "home";
             const amount = 100;
-            const currentBet = { home: 50 };
+            const currentBet = { index: 0, "0.home": 50 };
             const mockDate = new Date("2023-01-01T12:00:00Z");
             jest.spyOn(global, "Date").mockImplementation(() => mockDate as any);
 
@@ -489,8 +524,14 @@ describe("Bot", () => {
                 { uid: "bot123", roundId: 123 },
                 {
                     $set: {
-                        home: 150,
-                        odds: betStatusService.dynamicOddsByGameId["10"],
+                        "0.home": 150,
+                        odds: {
+                            "odds.0.home": { price: 1.5, point: 1 },
+                            "odds.0.away": { price: 2.0, point: 2 },
+                            "odds.0.draw": { price: 3.0, point: 3 },
+                            "odds.0.homeLive": { price: 1.8, point: 4 },
+                            "odds.0.awayLive": { price: 2.2, point: 5 },
+                        },
                     },
                     $setOnInsert: {
                         uid: "bot123",

@@ -20,11 +20,11 @@ jest.mock("sc-game-base/src/core/game-management-api", () => ({
 }));
 
 describe("GameCron", () => {
-    let cron: GameCron & any;
+    let cron: any;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        cron = Object.create(GameCron.prototype) as any;
+        cron = Object.create(GameCron.prototype);
         cron.gameData = {
             gameConfigs: {},
             disabled: false,
@@ -41,7 +41,6 @@ describe("GameCron", () => {
             publishStartGame: jest.fn(),
         };
         cron.runningRoundInfoPublisher = {};
-        cron.roundIdConsumer = { queryLastRound: jest.fn().mockResolvedValue(undefined) };
         cron.unsettledRoundConsumer = { proceed: jest.fn().mockResolvedValue(undefined) };
         cron.startCron = jest.fn();
         cron.updateExchangeRates = jest.fn().mockResolvedValue(undefined);
@@ -64,12 +63,13 @@ describe("GameCron", () => {
         cron.logService = { logError: jest.fn(), logInfo: jest.fn(), logWarning: jest.fn() };
         cron.currentEventService = { eventByEventId: {} };
         cron.eventPullCounter = 0;
+        cron.betStatusService = { betStatusByGameId: { "0": true } };
+        cron.gameData.roundId = 0;
     });
 
     describe("start", () => {
-        it("should query last round, update exchange rates, proceed unsettled, set flag, and start cron", async () => {
+        it("should update exchange rates, proceed unsettled rounds, set flag, and start cron", async () => {
             await cron.start();
-            expect(cron.roundIdConsumer.queryLastRound).toHaveBeenCalled();
             expect(cron.updateExchangeRates).toHaveBeenCalled();
             expect(cron.unsettledRoundConsumer.proceed).toHaveBeenCalled();
             expect(cron.gameData.proceedEvent).toBe(true);
@@ -84,6 +84,7 @@ describe("GameCron", () => {
                 gameData: {},
                 cacheConsumer: { tag: "cache" },
                 currentEventService: { tag: "current" },
+                betStatusService: { tag: "bet" },
             } as any;
 
             // Act
@@ -92,6 +93,7 @@ describe("GameCron", () => {
             // Assert
             expect(instance.cacheConsumer).toBe(container.cacheConsumer);
             expect(instance.currentEventService).toBe(container.currentEventService);
+            expect(instance.betStatusService).toBe(container.betStatusService);
         });
     });
 
@@ -99,11 +101,25 @@ describe("GameCron", () => {
         it("should checkGameStatus and run bot when flags satisfied, then increment counter", async () => {
             cron.gameData.proceedEvent = true;
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
+            const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();
 
             expect(cron.gameData.proceedEvent).toBe(false);
             expect(cron.checkGameStatus).toHaveBeenCalled();
+            expect(cron.bot.run).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+
+        it("should not run bot when betting time is closed", async () => {
+            cron.gameData.proceedEvent = false;
+            cron.betStatusService.betStatusByGameId["0"] = false;
+            const logSpy = jest.spyOn(console, "log").mockImplementation();
+
+            await cron.proceed();
+
+            expect(cron.bot.run).not.toHaveBeenCalled();
+            logSpy.mockRestore();
         });
     });
 

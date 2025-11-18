@@ -106,8 +106,19 @@ export default class Bot extends TableGameConfigBot {
     async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
         const gameId = extractGameId(this.gameData.roundId).toString();
         const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
-        const currentAmount = currentBet ? currentBet[choice] ?? 0 : 0;
-        const update = { [choice]: amount + currentAmount, odds: dynamicOdds };
+        const points = this.betStatusService.betChoicePointsByGameId[gameId];
+
+        const oddsUpdate = dynamicOdds ? 
+            Object.entries(dynamicOdds).reduce((acc, [key, value]) => {
+                acc[`odds.${currentBet.index}.${key}`] = {
+                    price: value,
+                    point: points[key] ?? 0,
+                };
+                return acc;
+            }, {} as Record<string, any>) : {};
+
+        const currentAmount = currentBet ? currentBet[`${currentBet.index}.${choice}`] ?? 0 : 0;
+        const update = { [`${currentBet.index}.${choice}`]: amount + currentAmount, odds: oddsUpdate };
         const create = {
             uid: bot.id,
             name: bot.name,
@@ -137,6 +148,6 @@ export default class Bot extends TableGameConfigBot {
 
     private isOddOfBetChoiceValid(choice: string, gameId: string) {
         const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
-        return dynamicOdds?.[choice] && dynamicOdds?.[choice] !== 0;
+        return dynamicOdds?.[choice] && dynamicOdds?.[choice] > 0;
     }
 }

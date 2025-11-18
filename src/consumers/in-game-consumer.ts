@@ -4,7 +4,6 @@ import { getUserBetPercentage } from "../helpers/bet-percentage";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { extractGameId } from "../helpers/eventid";
-import { GameFlowService } from "../features/game-flow/game-flow-service";
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;
@@ -20,7 +19,6 @@ export default class InGameConsumer extends TableInGameConsumer {
         gameManagementApiClientFactory: any,
         betStatusService: BetStatusService,
         currentEventService: CurrentEventService,
-        gameFlowService: GameFlowService
     ) {
         super(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
         this.betStatusService = betStatusService;

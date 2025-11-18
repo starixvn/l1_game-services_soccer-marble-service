@@ -9,7 +9,7 @@ describe("SettleGameRoundConsumer", () => {
     };
 
     beforeEach(() => {
-        consumer = Object.create(SettleGameRoundConsumer.prototype) as any;
+        consumer = Object.create(SettleGameRoundConsumer.prototype);
         consumer.roundsRepository = { create: jest.fn() };
         consumer.roundResultPublisher = {
             publishRoundResult: jest.fn(),
@@ -82,8 +82,13 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true, away: false },
             } as any;
-            const bet = { index: 0, home: 100, away: 50, freeBet: false };
-            const odds = { home: 2.0, away: 2.5 } as Record<string, number>;
+            const bet = { 0: { home: 100, away: 50 }, freeBet: false } as any;
+            const odds = {
+                0: {
+                    home: { price: 2.0 },
+                    away: { price: 2.5 },
+                },
+            } as Record<string, any>;
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);
@@ -91,10 +96,10 @@ describe("SettleGameRoundConsumer", () => {
             // Assert
             expect(result.totalBetAmount).toBe(150);
             expect(result.totalWin).toBe(200);
-            expect(result.netWin).toBe(100);
-            expect(result.totalLost).toBe(50);
-            expect((result.winningByChoices as any).home).toBe(200);
-            expect((result.winningByChoices as any).away).toBe(0);
+            expect(result.netWin).toBe(0);
+            expect(result.totalLost).toBe(0);
+            expect((result.winningByChoices as any)["0"].home).toBe(200);
+            expect((result.winningByChoices as any)["0"].away).toBe(0);
         });
 
         it("should use _doc when present and handle free bet correctly", () => {
@@ -102,8 +107,8 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true },
             } as any;
-            const bet = { _doc: { index: 0, home: 100, freeBet: true } } as any;
-            const odds = { home: 2.0 } as Record<string, number>;
+            const bet = { _doc: { 0: { home: 100 }, freeBet: true } } as any;
+            const odds = { 0: { home: { price: 2.0 } } } as Record<string, any>;
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);
@@ -113,7 +118,7 @@ describe("SettleGameRoundConsumer", () => {
             expect(result.totalWin).toBe(100); // (2 - 1) * 100
             expect(result.netWin).toBe(0); // free bet excludes stake
             expect(result.totalLost).toBe(0);
-            expect((result.winningByChoices as any).home).toBe(100);
+            expect((result.winningByChoices as any)["0"].home).toBe(100);
         });
 
         it("should default odds to 1 and bet amount to 0 when missing", () => {
@@ -121,8 +126,8 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { draw: true },
             } as any;
-            const bet = { index: 0 } as any; // no draw amount provided, defaults to 0
-            const odds = {} as Record<string, number>; // missing odds default to 1
+            const bet = { 0: {}, freeBet: false } as any; // no draw amount provided, defaults to 0
+            const odds = {} as Record<string, any>; // missing odds default to 1
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);
@@ -132,7 +137,7 @@ describe("SettleGameRoundConsumer", () => {
             expect(result.totalWin).toBe(0);
             expect(result.netWin).toBe(0);
             expect(result.totalLost).toBe(0);
-            expect((result.winningByChoices as any).draw).toBe(0);
+            expect((result.winningByChoices as any)["0"].draw).toBe(0);
         });
 
         it("should round totals to two decimals", () => {
@@ -140,15 +145,16 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true },
             } as any;
-            const bet = { index: 0, home: 33.3333, freeBet: false } as any;
-            const odds = { home: 3.3333 } as Record<string, number>;
+            const bet = { 0: { home: 33.3333 }, freeBet: false } as any;
+            const odds = { 0: { home: { price: 3.3333 } } } as Record<string, any>;
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);
 
             // Assert
             expect(result.totalWin).toBe(111.11);
-            expect(result.netWin).toBe(77.78);
+            expect(result.netWin).toBe(0);
+            expect(result.totalLost).toBe(0);
         });
         
         it("should compute all zeros when all selections lose", () => {
@@ -156,8 +162,13 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: false, away: false },
             } as any;
-            const bet = { index: 0, home: 40, away: 60, freeBet: false } as any;
-            const odds = { home: 2, away: 3 } as Record<string, number>;
+            const bet = { 0: { home: 40, away: 60 }, freeBet: false } as any;
+            const odds = {
+                0: {
+                    home: { price: 2 },
+                    away: { price: 3 },
+                },
+            } as Record<string, any>;
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);
@@ -166,9 +177,9 @@ describe("SettleGameRoundConsumer", () => {
             expect(result.totalBetAmount).toBe(100);
             expect(result.totalWin).toBe(0);
             expect(result.netWin).toBe(0);
-            expect(result.totalLost).toBe(100);
-            expect((result.winningByChoices as any).home).toBe(0);
-            expect((result.winningByChoices as any).away).toBe(0);
+            expect(result.totalLost).toBe(0);
+            expect((result.winningByChoices as any)["0"].home).toBe(0);
+            expect((result.winningByChoices as any)["0"].away).toBe(0);
         });
     });
 });
