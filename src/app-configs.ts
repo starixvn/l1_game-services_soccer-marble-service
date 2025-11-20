@@ -30,7 +30,6 @@ const appConfigs = {
             dbName: "minigame",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-           
         },
     },
     sentry: {

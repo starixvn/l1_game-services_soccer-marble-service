@@ -30,7 +30,6 @@ export default {
             dbName: "minigame",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-           
         },
     },
     sentry: {

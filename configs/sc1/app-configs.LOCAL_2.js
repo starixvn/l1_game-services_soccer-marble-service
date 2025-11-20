@@ -1,5 +1,6 @@
 export default {
     hostingPort: 5000,
+    gameId: 158,
     apiSettings: {
         enabledApi: true,
         apiUrl: "http://l1-game-api-local2-service:5000",
@@ -29,7 +30,6 @@ export default {
             dbName: "minigame",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-           
         },
     },
     sentry: {
