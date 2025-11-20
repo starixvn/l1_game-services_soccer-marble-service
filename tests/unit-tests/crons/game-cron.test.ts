@@ -51,6 +51,12 @@ describe("GameCron", () => {
         cron.oddFeedNotAvailable = jest.fn().mockReturnValue(false);
         cron.bot = { run: jest.fn().mockResolvedValue(undefined) };
         cron.bot.reset = jest.fn();
+        cron.catchAllListener = jest.fn();
+        cron.eventStartListener = jest.fn();
+        cron.oddsFeedEventSource = {
+            on: jest.fn(),
+            eventOn: jest.fn(),
+        };
         cron.gameManagementApiClient = {
             gameConfigs: {
                 getGameConfigs: jest.fn().mockResolvedValue({}),
@@ -63,8 +69,10 @@ describe("GameCron", () => {
         cron.logService = { logError: jest.fn(), logInfo: jest.fn(), logWarning: jest.fn() };
         cron.currentEventService = { eventByEventId: {} };
         cron.eventPullCounter = 0;
-        cron.betStatusService = { betStatusByGameId: { "0": true } };
+        cron.betStatusService = { allowBets: true };
         cron.gameData.roundId = 0;
+        cron.currentEventEndTime = new Date(Date.now() + 60000);
+        cron.differenceBetweenServerTime = 0;
     });
 
     describe("start", () => {
@@ -74,6 +82,8 @@ describe("GameCron", () => {
             expect(cron.unsettledRoundConsumer.proceed).toHaveBeenCalled();
             expect(cron.gameData.proceedEvent).toBe(true);
             expect(cron.startCron).toHaveBeenCalled();
+            expect(cron.oddsFeedEventSource.on).toHaveBeenCalledWith(cron.catchAllListener);
+            expect(cron.oddsFeedEventSource.eventOn).toHaveBeenCalledWith(expect.anything(), cron.eventStartListener);
         });
     });
 
@@ -113,7 +123,7 @@ describe("GameCron", () => {
 
         it("should not run bot when betting time is closed", async () => {
             cron.gameData.proceedEvent = false;
-            cron.betStatusService.betStatusByGameId["0"] = false;
+            cron.betStatusService.allowBets = false;
             const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();

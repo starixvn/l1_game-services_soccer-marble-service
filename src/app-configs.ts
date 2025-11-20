@@ -1,5 +1,6 @@
 const appConfigs = {
     hostingPort: 5000,
+    gameId: 158,
     apiSettings: {
         enabledApi: true,
         apiUrl: "https://l1-proxy3.lumigame.com/game-api",

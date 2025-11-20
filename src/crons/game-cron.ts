@@ -62,8 +62,8 @@ export default class GameCron extends Table.Crons.TableGameCron {
     }
 
     async proceed() {
+        // respect remaining time since bot bet depends on it for bet calculation
         this.gameData.remainingTime = Math.floor((this.currentEventEndTime.getTime() - new Date().getTime()) / 1000 - this.differenceBetweenServerTime);
-        console.log("remainingTime", this.gameData.remainingTime);
         
         if (this.gameData.proceedEvent) {
             this.gameData.proceedEvent = false;
@@ -161,7 +161,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
             return false;
         }
 
-        const gameId = extractGameId(roundId).toString();
-        return this.betStatusService?.betStatusByGameId?.[gameId] ?? false;
+        return this.betStatusService.allowBets;
     }
 }

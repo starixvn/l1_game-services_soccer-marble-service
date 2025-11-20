@@ -44,55 +44,37 @@ describe("Bot", () => {
         };
 
         betStatusService = {
-            betStatusByGameId: { "0": true, "10": true },
-            dynamicOddsByGameId: {
-                "0": {
-                    home: 1.5,
-                    away: 2.0,
-                    draw: 3.0,
-                    homeLive: 1.8,
-                    awayLive: 2.2,
-                },
-                "10": {
-                    home: 1.5,
-                    away: 2.0,
-                    draw: 3.0,
-                    homeLive: 1.8,
-                    awayLive: 2.2,
-                },
+            allowBets: true,
+            odds: {
+                home: 1.5,
+                away: 2.0,
+                draw: 3.0,
+                homeLive: 1.8,
+                awayLive: 2.2,
             },
-            betChoicePointsByGameId: {
-                "0": {
-                    home: 1,
-                    away: 2,
-                    draw: 3,
-                    homeLive: 4,
-                    awayLive: 5,
-                },
-                "10": {
-                    home: 1,
-                    away: 2,
-                    draw: 3,
-                    homeLive: 4,
-                    awayLive: 5,
-                },
+            points: {
+                home: 1,
+                away: 2,
+                draw: 3,
+                homeLive: 4,
+                awayLive: 5,
             },
+            currentIndex: 0,
         };
 
+        let hedgeGroups = [
+            new Set(["home", "away"]),
+            new Set(["homeLive", "awayLive"]),
+            new Set(["home", "awayLive"]),
+            new Set(["away", "homeLive"]),
+        ];
+
         hedgeBetService = {
-            hedgeBetGroupsByGameId: {
-                "0": [
-                    new Set(["home", "away"]),
-                    new Set(["homeLive", "awayLive"]),
-                    new Set(["home", "awayLive"]),
-                    new Set(["away", "homeLive"]),
-                ],
-                "10": [
-                    new Set(["home", "away"]),
-                    new Set(["homeLive", "awayLive"]),
-                    new Set(["home", "awayLive"]),
-                    new Set(["away", "homeLive"]),
-                ],
+            get hedgeBetGroups() {
+                return hedgeGroups;
+            },
+            set hedgeBetGroups(value) {
+                hedgeGroups = value;
             },
         };
 
@@ -345,7 +327,7 @@ describe("Bot", () => {
 
         it("should return choice when dynamicHedgeBetGroups is undefined", () => {
             // Arrange
-            hedgeBetService.hedgeBetGroupsByGameId["10"] = undefined as any;
+            hedgeBetService.hedgeBetGroups = undefined as any;
             const bot = { choices: ["home", "away"] };
             mockChance.pickone.mockReturnValue("home");
 
@@ -358,7 +340,7 @@ describe("Bot", () => {
 
         it("should return choice when dynamicOdds is undefined", () => {
             // Arrange
-            betStatusService.dynamicOddsByGameId = {};
+            betStatusService.odds = undefined;
             const bot = { choices: ["home", "away"] };
             mockChance.pickone.mockReturnValue("home");
 
@@ -371,7 +353,7 @@ describe("Bot", () => {
 
         it("should filter out choices with zero odds", () => {
             // Arrange
-            betStatusService.dynamicOddsByGameId["10"] = {
+            betStatusService.odds = {
                 home: 1.5,
                 away: 0, // Zero odds
                 draw: 3.0,
@@ -479,11 +461,11 @@ describe("Bot", () => {
                     $set: {
                         "0.home": 100,
                         odds: {
-                            "odds.0.home": { price: 1.5, point: 1 },
-                            "odds.0.away": { price: 2.0, point: 2 },
-                            "odds.0.draw": { price: 3.0, point: 3 },
-                            "odds.0.homeLive": { price: 1.8, point: 4 },
-                            "odds.0.awayLive": { price: 2.2, point: 5 },
+                            "0.home": { price: 1.5, point: 1 },
+                            "0.away": { price: 2.0, point: 2 },
+                            "0.draw": { price: 3.0, point: 3 },
+                            "0.homeLive": { price: 1.8, point: 4 },
+                            "0.awayLive": { price: 2.2, point: 5 },
                         },
                     },
                     $setOnInsert: {
@@ -512,7 +494,7 @@ describe("Bot", () => {
             };
             const choice = "home";
             const amount = 100;
-            const currentBet = { index: 0, "0.home": 50 };
+            const currentBet = { index: 0, 0: { home: 50 } };
             const mockDate = new Date("2023-01-01T12:00:00Z");
             jest.spyOn(global, "Date").mockImplementation(() => mockDate as any);
 
@@ -526,11 +508,11 @@ describe("Bot", () => {
                     $set: {
                         "0.home": 150,
                         odds: {
-                            "odds.0.home": { price: 1.5, point: 1 },
-                            "odds.0.away": { price: 2.0, point: 2 },
-                            "odds.0.draw": { price: 3.0, point: 3 },
-                            "odds.0.homeLive": { price: 1.8, point: 4 },
-                            "odds.0.awayLive": { price: 2.2, point: 5 },
+                            "0.home": { price: 1.5, point: 1 },
+                            "0.away": { price: 2.0, point: 2 },
+                            "0.draw": { price: 3.0, point: 3 },
+                            "0.homeLive": { price: 1.8, point: 4 },
+                            "0.awayLive": { price: 2.2, point: 5 },
                         },
                     },
                     $setOnInsert: {
@@ -555,14 +537,14 @@ describe("Bot", () => {
         it("should filter out choices with invalid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            betStatusService.dynamicOddsByGameId["10"] = {
+            betStatusService.odds = {
                 home: 1.5,
                 away: 0, // Invalid odds
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions, "10");
+            const result = botInstance.filterBetChoice(betOptions);
 
             // Assert
             expect(result).toEqual(["home", "draw"]);
@@ -571,14 +553,14 @@ describe("Bot", () => {
         it("should filter out choices with undefined odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            betStatusService.dynamicOddsByGameId["10"] = {
+            betStatusService.odds = {
                 home: 1.5,
                 // away is undefined
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions, "10");
+            const result = botInstance.filterBetChoice(betOptions);
 
             // Assert
             expect(result).toEqual(["home", "draw"]);
@@ -587,14 +569,14 @@ describe("Bot", () => {
         it("should return empty array when all choices have invalid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            betStatusService.dynamicOddsByGameId["10"] = {
+            betStatusService.odds = {
                 home: 0,
                 away: 0,
                 draw: 0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions, "10");
+            const result = botInstance.filterBetChoice(betOptions);
 
             // Assert
             expect(result).toEqual([]);
@@ -603,14 +585,14 @@ describe("Bot", () => {
         it("should return all choices when all have valid odds", () => {
             // Arrange
             const betOptions = ["home", "away", "draw"];
-            betStatusService.dynamicOddsByGameId["10"] = {
+            betStatusService.odds = {
                 home: 1.5,
                 away: 2.0,
                 draw: 3.0,
             };
 
             // Act
-            const result = botInstance.filterBetChoice(betOptions, "10");
+            const result = botInstance.filterBetChoice(betOptions);
 
             // Assert
             expect(result).toEqual(["home", "away", "draw"]);

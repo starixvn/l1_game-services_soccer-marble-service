@@ -1,3 +1,5 @@
+import appConfigs from "./app-configs";
+
 export const PRE_MATCH_BET_CHOICES = {
     home: "home",
     away: "away",
@@ -84,7 +86,7 @@ export const OVER_UNDER_VALUE = 4.5;
 
 export const IS_DEV_ENV = process.env.NODE_ENV === "development";
 
-export const GAME_NAME = "soccermarble";
+export const GAME_NAME = `soccermarble_${appConfigs.gameId}`;
 
 export const MODEL_NAME_PREFIX = IS_DEV_ENV ? `${GAME_NAME}_dev` : `${GAME_NAME}`;
 

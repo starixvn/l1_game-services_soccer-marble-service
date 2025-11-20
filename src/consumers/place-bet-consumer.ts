@@ -76,7 +76,6 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: string }[] {
         const configs = this.gameData.gameConfigs;
-        const gameId = extractGameId(roundId).toString();
 
         return [
             {
@@ -84,11 +83,11 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet),
             },
             {
-                failure: roundId !== this.betStatusService.currentRoundId,
+                failure: roundId !== this.gameData.roundId,
                 notice: this.getNoticeObj(helpers.noticeHelper.invalidBet, { gameRoundId: roundId }),
             },
             {
-                failure: !this.betStatusService.betStatusByGameId[gameId],
+                failure: !this.betStatusService.allowBets,
                 notice: this.getNoticeObj(helpers.noticeHelper.placeBetNextRound),
             },
         ];
@@ -114,7 +113,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
     override consume(player: any, payload: any): void {
         try {
-            const index = this.betStatusService.getBetStatus().currentIndex;
+            const index = this.betStatusService.currentIndex;
             Object.assign(payload, {
                 amount: payload.amount >> 0,
                 freeBet: payload.freeBet ?? false,
@@ -163,8 +162,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
     }
 
     private isBetChoiceOddZero(betChoice: string) {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        const odds = this.betStatusService.dynamicOddsByGameId[gameId]?.[betChoice] ?? 0;
+        const odds = this.betStatusService.odds?.[betChoice] ?? 0;
         return odds === 0;
     }
 }

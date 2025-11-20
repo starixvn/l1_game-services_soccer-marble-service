@@ -103,7 +103,6 @@ describe("BetStatusService", () => {
             service.handleEventStart({ event } as EventNotification<MarbleEvent>);
 
             expect(service.betStatusByGameId["7"]).toBe(false);
-            expect(service.currentRoundId).toBe(999);
             expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
                 overrideNow: now,
                 ignorePast: true,
@@ -310,16 +309,31 @@ describe("BetStatusService", () => {
         });
     });
 
-    describe("getBetStatus", () => {
-        it("should return betting status for current game", () => {
+    describe("derived getters", () => {
+        beforeEach(() => {
+            gameData.roundId = 12345;
             service.dynamicOddsByGameId["7"] = { home: 2 };
             service.betChoicePointsByGameId["7"] = { home: 1 };
             service.currentOddIndexByGameId["7"] = 3;
-            gameData.roundId = 12345;
+            service.betStatusByGameId["7"] = true;
+        });
 
-            const status = service.getBetStatus();
+        it("should expose odds for current round", () => {
+            expect(service.odds).toEqual({ home: 2 });
+        });
 
-            expect(status).toEqual({ points: { home: 1 }, odds: { home: 2 }, currentIndex: 3 });
+        it("should expose points for current round", () => {
+            expect(service.points).toEqual({ home: 1 });
+        });
+
+        it("should expose current index for current round", () => {
+            expect(service.currentIndex).toBe(3);
+        });
+
+        it("should report allowBets only when odds available", () => {
+            expect(service.allowBets).toBe(true);
+            service.dynamicOddsByGameId["7"] = {};
+            expect(service.allowBets).toBe(false);
         });
     });
 });

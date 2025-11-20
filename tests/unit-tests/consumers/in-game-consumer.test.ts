@@ -37,6 +37,30 @@ describe("InGameConsumer", () => {
         mockGetBalance = jest.fn();
         mockBetStatusService = stub<BetStatusService>();
         mockCurrentEventService = stub<CurrentEventService>();
+        let oddsValue: Record<string, number> = { home: 1.5, away: 2.0 };
+        Object.defineProperty(mockBetStatusService, "odds", {
+            configurable: true,
+            get: () => oddsValue,
+            set: (value: Record<string, number>) => {
+                oddsValue = value;
+            },
+        });
+        let pointsValue: Record<string, number> = { home: 1.2, away: 2.3 };
+        Object.defineProperty(mockBetStatusService, "points", {
+            configurable: true,
+            get: () => pointsValue,
+            set: (value: Record<string, number>) => {
+                pointsValue = value;
+            },
+        });
+        let currentIndexValue = 0;
+        Object.defineProperty(mockBetStatusService, "currentIndex", {
+            configurable: true,
+            get: () => currentIndexValue,
+            set: (value: number) => {
+                currentIndexValue = value;
+            },
+        });
 
         // Create the instance
         inGameConsumer = new InGameConsumer(
@@ -116,7 +140,7 @@ describe("InGameConsumer", () => {
             const mockUserBetPercentage = { home: 50, away: 30, draw: 20 };
 
             mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
-            (mockBetStatusService as any).dynamicOddsByGameId = { "10": { home: 1.5, away: 2.0 } };
+            (mockBetStatusService as any).odds = { home: 1.5, away: 2.0 };
             (mockGameData as any).roundId = 1 as any;
 
             const superBuildPayloadSpy = jest
@@ -143,15 +167,12 @@ describe("InGameConsumer", () => {
             // Arrange
             const testUID = DEFAULT_PLAYER_UID;
             const mockOdds = { home: 1.5, away: 2.0, draw: 3.0 };
-            const mockBetStatus = { odds: mockOdds, points: {}, currentIndex: 0 };
-
-            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
+            (mockBetStatusService as any).odds = mockOdds;
 
             // Act
             inGameConsumer.publishOddsToPlayer(testUID);
 
             // Assert
-            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
             expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { odds: mockOdds });
         });
     });
@@ -161,15 +182,12 @@ describe("InGameConsumer", () => {
             // Arrange
             const testUID = "test-player-456";
             const mockPoints = { home: 10, away: 20, draw: 30 };
-            const mockBetStatus = { odds: {}, points: mockPoints, currentIndex: 0 };
-
-            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
+            (mockBetStatusService as any).points = mockPoints;
 
             // Act
             inGameConsumer.publishBetChoicePointsToPlayer(testUID);
 
             // Assert
-            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
             expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { points: mockPoints });
         });
     });
@@ -201,15 +219,12 @@ describe("InGameConsumer", () => {
             // Arrange
             const testUID = "test-player-101";
             const mockCurrentIndex = 2;
-            const mockBetStatus = { odds: {}, points: {}, currentIndex: mockCurrentIndex };
-
-            (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue(mockBetStatus);
+            (mockBetStatusService as any).currentIndex = mockCurrentIndex;
 
             // Act
             inGameConsumer.publishCurrentIndexToPlayer(testUID);
 
             // Assert
-            expect(mockBetStatusService.getBetStatus).toHaveBeenCalled();
             expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { currentIndex: mockCurrentIndex });
         });
     });

@@ -160,34 +160,40 @@ describe("PlaceBetConsumer", () => {
         };
 
         // Setup BetStatusService mocks
-        Object.defineProperty(mockBetStatusService, 'currentRoundId', {
+        Object.defineProperty(mockBetStatusService, "currentRoundId", {
             value: 1,
-            writable: true
+            writable: true,
+            configurable: true,
         });
-        Object.defineProperty(mockBetStatusService, 'betStatusByGameId', {
-            value: { "123": true },
-            writable: true
-        });
-        Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-            value: {
-                "123": {
-                    [BET_CHOICES.home]: 1.5,
-                    [BET_CHOICES.away]: 2.0,
-                    [BET_CHOICES.draw]: 3.0,
-                    [LIVE_BET_CHOICES.homeLive]: 1.8,
-                    [LIVE_BET_CHOICES.awayLive]: 2.2,
-                }
+        let allowBetsValue = true;
+        Object.defineProperty(mockBetStatusService, "allowBets", {
+            configurable: true,
+            get: () => allowBetsValue,
+            set: (value: boolean) => {
+                allowBetsValue = value;
             },
-            writable: true
         });
-        (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue({
-            currentIndex: 0,
-            odds: {
-                [BET_CHOICES.home]: 1.5,
-                [BET_CHOICES.away]: 2.0,
-                [BET_CHOICES.draw]: 3.0,
+        let currentIndexValue = 0;
+        Object.defineProperty(mockBetStatusService, "currentIndex", {
+            configurable: true,
+            get: () => currentIndexValue,
+            set: (value: number) => {
+                currentIndexValue = value;
             },
-            points: {}
+        });
+        let oddsValue: Record<string, number> | undefined = {
+            [BET_CHOICES.home]: 1.5,
+            [BET_CHOICES.away]: 2.0,
+            [BET_CHOICES.draw]: 3.0,
+            [LIVE_BET_CHOICES.homeLive]: 1.8,
+            [LIVE_BET_CHOICES.awayLive]: 2.2,
+        };
+        Object.defineProperty(mockBetStatusService, "odds", {
+            configurable: true,
+            get: () => oddsValue,
+            set: (value: Record<string, number> | undefined) => {
+                oddsValue = value;
+            },
         });
 
         // Setup HedgeBetService mocks
@@ -265,10 +271,7 @@ describe("PlaceBetConsumer", () => {
         describe("betting status validation", () => {
             it("should fail validation when betStatusByGameId is false for the game", () => {
                 // Arrange
-                Object.defineProperty(mockBetStatusService, 'betStatusByGameId', {
-                    value: { "123": false },
-                    writable: true
-                });
+                (mockBetStatusService as any).allowBets = false;
 
                 // Act
                 const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
@@ -280,10 +283,7 @@ describe("PlaceBetConsumer", () => {
 
             it("should pass validation when betStatusByGameId is true for the game", () => {
                 // Arrange
-                Object.defineProperty(mockBetStatusService, 'betStatusByGameId', {
-                    value: { "123": true },
-                    writable: true
-                });
+                (mockBetStatusService as any).allowBets = true;
 
                 // Act
                 const result = placeBetConsumer.composeBettingTimeValidationCriteria(roundId);
@@ -299,14 +299,7 @@ describe("PlaceBetConsumer", () => {
         describe("zero odds validation", () => {
             it("should fail validation when the odds for the bet choice is zero", () => {
                 // Arrange
-                Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                    value: {
-                        "123": {
-                    [BET_CHOICES.home]: 0,
-                        }
-                    },
-                    writable: true
-                });
+                (mockBetStatusService as any).odds = { [BET_CHOICES.home]: 0 };
                 const betChoice = BET_CHOICES.home;
 
                 // Act
@@ -319,14 +312,7 @@ describe("PlaceBetConsumer", () => {
 
             it("should pass validation when the odds for the bet choice is not zero", () => {
                 // Arrange
-                Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                    value: {
-                        "123": {
-                    [BET_CHOICES.home]: 1.5,
-                        }
-                    },
-                    writable: true
-                });
+                (mockBetStatusService as any).odds = { [BET_CHOICES.home]: 1.5 };
                 const betChoice = BET_CHOICES.home;
 
                 // Act
@@ -339,12 +325,7 @@ describe("PlaceBetConsumer", () => {
 
             it("should fail validation when the odds for the bet choice is undefined (defaults to zero)", () => {
                 // Arrange
-                Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                    value: {
-                        "123": {}
-                    },
-                    writable: true
-                });
+                (mockBetStatusService as any).odds = {};
                 const betChoice = BET_CHOICES.home;
 
                 // Act
@@ -584,9 +565,7 @@ describe("PlaceBetConsumer", () => {
             it("should process payload and create new player when player doesn't exist in ingame", () => {
                 // Arrange
                 delete mockGameData.ingame.testPlayer;
-                (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue({
-                    currentIndex: 2
-                });
+                (mockBetStatusService as any).currentIndex = 2;
 
                 // Act
                 placeBetConsumer.consume(mockPlayer, mockPayload);
@@ -623,9 +602,7 @@ describe("PlaceBetConsumer", () => {
                     clientSeed: "existing-seed",
                     operatorId: "test-operator",
                 };
-                (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue({
-                    currentIndex: 1
-                });
+                (mockBetStatusService as any).currentIndex = 1;
 
                 // Act
                 placeBetConsumer.consume(mockPlayer, mockPayload);
@@ -648,9 +625,7 @@ describe("PlaceBetConsumer", () => {
                 };
                 mockGameData.roundId = 999;
                 delete mockGameData.ingame.testPlayer; // Ensure player doesn't exist
-                (mockBetStatusService.getBetStatus as jest.Mock).mockReturnValue({
-                    currentIndex: 0
-                });
+                (mockBetStatusService as any).currentIndex = 0;
 
                 // Act
                 placeBetConsumer.consume(mockPlayer, payloadWithDefaults);
@@ -672,14 +647,7 @@ describe("PlaceBetConsumer", () => {
     describe("isBetChoiceOddZero", () => {
         it("should return true when odds is zero", () => {
             // Arrange
-            Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                value: {
-                    "123": {
-                        [BET_CHOICES.home]: 0,
-                    }
-                },
-                writable: true
-            });
+            (mockBetStatusService as any).odds = { [BET_CHOICES.home]: 0 };
 
             // Act
             const result = (placeBetConsumer as any).isBetChoiceOddZero(BET_CHOICES.home);
@@ -690,14 +658,7 @@ describe("PlaceBetConsumer", () => {
 
         it("should return false when odds is greater than zero", () => {
             // Arrange
-            Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                value: {
-                    "123": {
-                        [BET_CHOICES.home]: 1.5,
-                    }
-                },
-                writable: true
-            });
+            (mockBetStatusService as any).odds = { [BET_CHOICES.home]: 1.5 };
 
             // Act
             const result = (placeBetConsumer as any).isBetChoiceOddZero(BET_CHOICES.home);
@@ -708,12 +669,7 @@ describe("PlaceBetConsumer", () => {
 
         it("should return true when odds is undefined (defaults to 0)", () => {
             // Arrange
-            Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                value: {
-                    "123": {}
-                },
-                writable: true
-            });
+            (mockBetStatusService as any).odds = {};
 
             // Act
             const result = (placeBetConsumer as any).isBetChoiceOddZero(BET_CHOICES.home);
@@ -724,10 +680,7 @@ describe("PlaceBetConsumer", () => {
 
         it("should return true when gameId doesn't exist in dynamicOddsByGameId", () => {
             // Arrange
-            Object.defineProperty(mockBetStatusService, 'dynamicOddsByGameId', {
-                value: {},
-                writable: true
-            });
+            (mockBetStatusService as any).odds = undefined as any;
 
             // Act
             const result = (placeBetConsumer as any).isBetChoiceOddZero(BET_CHOICES.home);

@@ -1,10 +1,8 @@
-import { BET_CHOICE_MAPPER, BET_CHOICES } from "./constants";
 
 export default {
     id: 158,
     name: "SoccerMarble",
     configName: "soccermarble",
-    choicesMapper: BET_CHOICE_MAPPER,
     hedgeBetGroups: [
         ["ft_hdp_home", "ft_hdp_away"],
         ["h1_hdp_home", "h1_hdp_away"],
@@ -20,9 +18,5 @@ export default {
     defaultBetTracks: {},
     botSettings: {
         ratio: { mainPreOpts: 40, mainLiveOpts: 40, subPreOpts: 10, subLiveOpts: 10 },
-        mainPreOpts: [BET_CHOICES.home, BET_CHOICES.away],
-        mainLiveOpts: [BET_CHOICES.homeLive, BET_CHOICES.awayLive],
-        subPreOpts: [BET_CHOICES.over, BET_CHOICES.under, BET_CHOICES.odd, BET_CHOICES.even, BET_CHOICES.draw],
-        subLiveOpts: [BET_CHOICES.overLive, BET_CHOICES.underLive, BET_CHOICES.oddLive, BET_CHOICES.evenLive, BET_CHOICES.drawLive],
     },
 };

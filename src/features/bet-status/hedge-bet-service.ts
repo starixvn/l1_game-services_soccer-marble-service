@@ -1,3 +1,6 @@
+import GameData from "../../game-data";
+import { extractGameId } from "../../helpers/eventid";
+
 type HedgeBetRestriction = Record<string, Set<string>>;
 
 type HedgeBetInputArgs = {
@@ -6,10 +9,25 @@ type HedgeBetInputArgs = {
     betChoice: string;
 }
 
+interface HedgeBetServiceContainer {
+    gameData: GameData;
+}
+
 export class HedgeBetService {
+    gameData: GameData;
     private readonly hedgeBetRestriction: Record<string, HedgeBetRestriction> = {};
-    
-    readonly hedgeBetGroupsByGameId: Record<string, Set<string>[]> = {};
+
+    constructor(container: HedgeBetServiceContainer) {
+        this.gameData = container.gameData;
+    }
+
+    private readonly hedgeBetGroupsByGameId: Record<string, Set<string>[]> = {};
+
+    get hedgeBetGroups() {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.hedgeBetGroupsByGameId[gameId];
+    }
+
     updateHedgeBetGroups(gameId: string, hedgeBetGroups: Set<string>[]) {
         this.hedgeBetGroupsByGameId[gameId] = hedgeBetGroups;
     }

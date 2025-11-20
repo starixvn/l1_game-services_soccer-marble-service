@@ -1,4 +1,5 @@
 import { results } from "../../../src/models";
+import { GAME_NAME } from "../../../src/constants";
 import { mongo } from "mongoose";
 
 describe("Results", () => {
@@ -34,7 +35,7 @@ describe("Results", () => {
             const error = actual.validateSync() as any;
 
             // Assert
-            expect(error.message).toBe(`soccermarble_results validation failed: roundId: Path \`roundId\` is required.`);
+            expect(error.message).toBe(`${GAME_NAME}_results validation failed: roundId: Path \`roundId\` is required.`);
         });
     });
 
@@ -54,12 +55,13 @@ describe("Results", () => {
             process.env.NODE_ENV = "development";
 
             const { results } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new results({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_dev_results");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_results`);
         });
 
         it("should not have _dev suffix in production environment", async () => {
@@ -67,12 +69,13 @@ describe("Results", () => {
             process.env.NODE_ENV = "production";
 
             const { results } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new results({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_results");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_results`);
         });
 
         it("should handle undefined environment as production", async () => {
@@ -80,12 +83,13 @@ describe("Results", () => {
             delete process.env.NODE_ENV;
 
             const { results } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new results({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_results");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_results`);
         });
     });
 });

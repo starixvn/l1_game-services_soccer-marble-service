@@ -22,8 +22,7 @@ export default class RunningRoundInfoPublisher extends RunningRoundInfoPublisher
 
     publishBetPercentage() {
         const { playerBetCount } = this.gameData;
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        const betChoices = Object.keys(this.betStatusService.dynamicOddsByGameId[gameId]);
+        const betChoices = Object.keys(this.betStatusService.odds);
 
         const userBetPercentage = getUserBetPercentage(playerBetCount, betChoices);
 

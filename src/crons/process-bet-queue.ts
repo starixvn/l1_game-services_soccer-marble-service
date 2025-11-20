@@ -44,7 +44,6 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: { errorCode: string } }[] {
-        const gameId = extractGameId(roundId).toString();
 
         return [
             {
@@ -52,14 +51,13 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
             {
-                failure: !this.betStatusService.betStatusByGameId[gameId],
+                failure: !this.betStatusService.allowBets,
                 notice: { errorCode: helpers.noticeHelper.placeBetNextRound },
             },
         ];
     }
 
     async upsertBet(player: any, roundId: number, bet: BetPayload, rate: number) {
-        const gameId = extractGameId(roundId).toString();
         const newBet: Record<string, any> = {
             uid: player.UID,
             name: player.profile.name,
@@ -81,8 +79,8 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             newBet.operatorId = player.session.operatorId;
             newBet.playerId = player.session.playerId;
         }
-        const odds = this.betStatusService.dynamicOddsByGameId[gameId];
-        const points = this.betStatusService.betChoicePointsByGameId[gameId];
+        const odds = this.betStatusService.odds;
+        const points = this.betStatusService.points;
 
 
         const oddsUpdate = odds ? 

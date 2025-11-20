@@ -40,8 +40,7 @@ export default class InGameConsumer extends TableInGameConsumer {
 
     override async buildPayload(realPlayer: any) {
         const payload = await super.buildPayload(realPlayer);
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        const betChoices = Object.keys(this.betStatusService.dynamicOddsByGameId[gameId]);
+        const betChoices = Object.keys(this.betStatusService.odds);
         return {
             ...payload,
             userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
@@ -49,11 +48,11 @@ export default class InGameConsumer extends TableInGameConsumer {
     }
 
     publishOddsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { odds: this.betStatusService.getBetStatus().odds });
+        this.publisher.publishToUser(UID, { odds: this.betStatusService.odds });
     }
 
     publishBetChoicePointsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { points: this.betStatusService.getBetStatus().points });
+        this.publisher.publishToUser(UID, { points: this.betStatusService.points });
     }
 
     publishMatchToPlayer(UID: string): void {
@@ -64,6 +63,6 @@ export default class InGameConsumer extends TableInGameConsumer {
     }
 
     publishCurrentIndexToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { currentIndex: this.betStatusService.getBetStatus().currentIndex });
+        this.publisher.publishToUser(UID, { currentIndex: this.betStatusService.currentIndex });
     }
 }

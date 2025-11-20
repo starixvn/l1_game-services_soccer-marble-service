@@ -1,10 +1,15 @@
+import GameData from "../../../../src/game-data";
 import { HedgeBetService } from "../../../../src/features/bet-status/hedge-bet-service";
 
 describe("HedgeBetService", () => {
     let service: HedgeBetService;
+    let gameData: GameData;
 
     beforeEach(() => {
-        service = new HedgeBetService();
+        gameData = {
+            roundId: 0,
+        } as unknown as GameData;
+        service = new HedgeBetService({ gameData });
     });
 
     afterEach(() => {

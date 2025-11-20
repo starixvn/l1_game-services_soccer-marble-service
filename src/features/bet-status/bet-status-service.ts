@@ -80,8 +80,8 @@ export class BetStatusService {
     public handleEventStart({ event }: EventNotification<MarbleEventWithBetConfig>) {
         const gameId = extractGameId(event.eventID).toString();
         this.betStatusByGameId[gameId] = false;
-        this.currentRoundId = event.eventID;
         this.schedulePlaceBet({ event, index: 0 });
+        this.currentRoundId = event.eventID;
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
@@ -92,16 +92,30 @@ export class BetStatusService {
         this.schedulePlaceBet({ event, index });
     }
 
-    public getBetStatus() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return {
-            points: this.betChoicePointsByGameId[gameId],
-            odds: this.dynamicOddsByGameId[gameId],
-            currentIndex: this.currentOddIndexByGameId[gameId],
+    public get allowBets() {
+        if (!this.gameData.roundId) {
+            return false;
         }
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.betStatusByGameId[gameId] && Object.keys(this.dynamicOddsByGameId[gameId] ?? {}).length > 0; 
     }
 
-    getTimeToPlaceBet({ event, index }: EventDetailNotification) {
+    public get currentIndex() {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.currentOddIndexByGameId[gameId];
+    }
+
+    public get points() {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.betChoicePointsByGameId[gameId];
+    }
+
+    public get odds() {
+        const gameId = extractGameId(this.gameData.roundId).toString();
+        return this.dynamicOddsByGameId[gameId];
+    }
+
+    private getTimeToPlaceBet({ event, index }: EventDetailNotification) {
         const eventWithBetConfig = event as MarbleEventWithBetConfig;
         const rawPlaceBetTime = index === 0
             ? eventWithBetConfig.scheduleStartTs
@@ -126,7 +140,7 @@ export class BetStatusService {
         });
     }
 
-    getTimeToLockBet({ event, index }: EventDetailNotification) {
+    private getTimeToLockBet({ event, index }: EventDetailNotification) {
         const rawLockBetTime = event.eventDetails[index].scheduleStartTs;
         const eventWithBetConfig = event as MarbleEventWithBetConfig;
         const lockBetDelay = 
@@ -185,6 +199,14 @@ export class BetStatusService {
         this.gameStatusPublisher.publishOdds(this.dynamicOddsByGameId[gameId]);
         this.gameStatusPublisher.publishBetChoicePoints(this.betChoicePointsByGameId[gameId]);
         this.gameStatusPublisher.publishCurrentIndex(this.currentOddIndexByGameId[gameId]);
+    }
+
+    public getBetStatus() {
+        return {
+            odds: this.odds ?? {},
+            points: this.points ?? {},
+            currentIndex: this.currentIndex,
+        };
     }
 
     private getOddFromEventDetail({ event, index }: EventDetailNotification<MarbleEvent>) {

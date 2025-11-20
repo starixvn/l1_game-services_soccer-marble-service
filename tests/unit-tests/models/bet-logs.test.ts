@@ -1,5 +1,6 @@
 import { mongo } from "mongoose";
 import { betLogs } from "../../../src/models";
+import { GAME_NAME } from "../../../src/constants";
 
 describe("Bet Logs", () => {
     describe("when create the new instance of BetLogs", () => {
@@ -30,7 +31,7 @@ describe("Bet Logs", () => {
 
             // Assert
             expect(error.message).toBe(
-                `soccermarble_betlogs validation failed: operatorId: Path \`operatorId\` is required., rate: Path \`rate\` is required., currency: Path \`currency\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required.`,
+                `${GAME_NAME}_betlogs validation failed: operatorId: Path \`operatorId\` is required., rate: Path \`rate\` is required., currency: Path \`currency\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required.`,
             );
         });
     });
@@ -51,12 +52,13 @@ describe("Bet Logs", () => {
             process.env.NODE_ENV = "development";
 
             const { betLogs } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new betLogs({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_dev_betlogs");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_betlogs`);
         });
 
         it("should not have _dev suffix in production environment", async () => {
@@ -64,12 +66,13 @@ describe("Bet Logs", () => {
             process.env.NODE_ENV = "production";
 
             const { betLogs } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new betLogs({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_betlogs");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_betlogs`);
         });
 
         it("should handle undefined environment as production", async () => {
@@ -77,12 +80,13 @@ describe("Bet Logs", () => {
             delete process.env.NODE_ENV;
 
             const { betLogs } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new betLogs({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_betlogs");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_betlogs`);
         });
     });
 });

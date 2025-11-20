@@ -1,5 +1,4 @@
 import gameSettings from "../../src/game-settings";
-import { BET_CHOICES } from "../../src/constants";
 
 describe("gameSettings", () => {
     it("should have the correct id", () => {
@@ -12,29 +11,6 @@ describe("gameSettings", () => {
 
     it("should have the correct configName", () => {
         expect(gameSettings.configName).toBe("soccermarble");
-    });
-
-    // durations removed in current settings; skip ordering test
-
-    // choices removed in current settings; mapper asserts cover mapping integrity
-
-    it("should have the correct choicesMapper", () => {
-        expect(gameSettings.choicesMapper).toEqual({
-            [BET_CHOICES.home]: 1,
-            [BET_CHOICES.away]: 2,
-            [BET_CHOICES.draw]: 3,
-            [BET_CHOICES.over]: 4,
-            [BET_CHOICES.under]: 5,
-            [BET_CHOICES.odd]: 6,
-            [BET_CHOICES.even]: 7,
-            [BET_CHOICES.homeLive]: 8,
-            [BET_CHOICES.awayLive]: 9,
-            [BET_CHOICES.drawLive]: 10,
-            [BET_CHOICES.overLive]: 11,
-            [BET_CHOICES.underLive]: 12,
-            [BET_CHOICES.oddLive]: 13,
-            [BET_CHOICES.evenLive]: 14,
-        });
     });
 
     it("should have the correct hedgeBetGroups", () => {
@@ -65,10 +41,6 @@ describe("gameSettings", () => {
     it("should have the correct botSettings", () => {
         expect(gameSettings.botSettings).toEqual({
             ratio: { mainPreOpts: 40, mainLiveOpts: 40, subPreOpts: 10, subLiveOpts: 10 },
-            mainPreOpts: [BET_CHOICES.home, BET_CHOICES.away],
-            mainLiveOpts: [BET_CHOICES.homeLive, BET_CHOICES.awayLive],
-            subPreOpts: [BET_CHOICES.over, BET_CHOICES.under, BET_CHOICES.odd, BET_CHOICES.even, BET_CHOICES.draw],
-            subLiveOpts: [BET_CHOICES.overLive, BET_CHOICES.underLive, BET_CHOICES.oddLive, BET_CHOICES.evenLive, BET_CHOICES.drawLive],
         });
     });
 });

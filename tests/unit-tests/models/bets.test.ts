@@ -1,4 +1,5 @@
 import { bets } from "../../../src/models";
+import { GAME_NAME } from "../../../src/constants";
 import { mongo } from "mongoose";
 
 describe("Bets", () => {
@@ -31,7 +32,7 @@ describe("Bets", () => {
 
             // Assert
             expect(error.message).toBe(
-                `soccermarble_bets validation failed: rate: Path \`rate\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required., roundId: Path \`roundId\` is required.`,
+                `${GAME_NAME}_bets validation failed: rate: Path \`rate\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required., roundId: Path \`roundId\` is required.`,
             );
         });
     });
@@ -52,12 +53,13 @@ describe("Bets", () => {
             process.env.NODE_ENV = "development";
 
             const { bets } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new bets({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_dev_bets");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_bets`);
         });
 
         it("should not have _dev suffix in production environment", async () => {
@@ -65,12 +67,13 @@ describe("Bets", () => {
             process.env.NODE_ENV = "production";
 
             const { bets } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new bets({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_bets");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_bets`);
         });
 
         it("should handle undefined environment as production", async () => {
@@ -78,12 +81,13 @@ describe("Bets", () => {
             delete process.env.NODE_ENV;
 
             const { bets } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new bets({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_bets");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_bets`);
         });
     });
 });

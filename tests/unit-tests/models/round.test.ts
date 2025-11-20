@@ -1,4 +1,5 @@
 import { rounds } from "../../../src/models";
+import { GAME_NAME } from "../../../src/constants";
 import { mongo } from "mongoose";
 
 describe("Round", () => {
@@ -36,7 +37,7 @@ describe("Round", () => {
 
             // Assert
             expect(error?.message).toBe(
-                `soccermarble_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
+                `${GAME_NAME}_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
             );
         });
     });
@@ -57,12 +58,13 @@ describe("Round", () => {
             process.env.NODE_ENV = "development";
 
             const { rounds } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_dev_rounds");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_rounds`);
         });
 
         it("should not have _dev suffix in production environment", async () => {
@@ -70,12 +72,13 @@ describe("Round", () => {
             process.env.NODE_ENV = "production";
 
             const { rounds } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_rounds");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_rounds`);
         });
 
         it("should handle undefined environment as production", async () => {
@@ -83,12 +86,13 @@ describe("Round", () => {
             delete process.env.NODE_ENV;
 
             const { rounds } = await import("../../../src/models");
+            const { MODEL_NAME_PREFIX } = await import("../../../src/constants");
 
             // Act
             const model = new rounds({});
 
             // Assert
-            expect(model.collection.name).toBe("soccermarble_rounds");
+            expect(model.collection.name).toBe(`${MODEL_NAME_PREFIX}_rounds`);
         });
     });
 });

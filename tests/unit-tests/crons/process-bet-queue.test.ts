@@ -16,9 +16,9 @@ describe("ProcessBetQueue", () => {
         cron.gameData = { roundId: 10, playerBetCount: {} };
         cron.definition = { choices: ["home", "away", "draw"] };
         cron.betStatusService = {
-            betStatusByGameId: { "0": true, "10": true },
-            dynamicOddsByGameId: { "0": { home: 2, away: 3 }, "10": { home: 2, away: 3 } },
-            betChoicePointsByGameId: { "0": { home: 1, away: 2 }, "10": { home: 1, away: 2 } },
+            allowBets: true,
+            odds: { home: 2, away: 3 },
+            points: { home: 1, away: 2 },
         };
         cron.betsRepository = { updateOne: jest.fn().mockResolvedValue(undefined) };
     });
@@ -60,10 +60,10 @@ describe("ProcessBetQueue", () => {
             expect(cron.gameData.playerBetCount.home).toEqual(["u1"]);
         });
 
-        it("should ignore invalid bet choices", () => {
+        it("should initialize bucket when bet choice not tracked", () => {
             const player = { UID: "u2" };
             cron.adjustPlayerBetCount(player, "invalid");
-            expect(cron.gameData.playerBetCount.invalid).toBeUndefined();
+            expect(cron.gameData.playerBetCount.invalid).toEqual(["u2"]);
         });
     });
 
@@ -75,13 +75,14 @@ describe("ProcessBetQueue", () => {
         });
 
         it("should fail when bet status by game id is false", () => {
-            cron.betStatusService.betStatusByGameId = { "10": false };
+            cron.betStatusService.allowBets = false;
             const result = cron.composeBettingTimeValidationCriteria(10);
             expect(result[1].failure).toBe(true);
             expect(result[1].notice.errorCode).toBe("SB1905");
         });
 
         it("should pass when roundId matches and bet status true", () => {
+            cron.betStatusService.allowBets = true;
             const result = cron.composeBettingTimeValidationCriteria(10);
             expect(result[0].failure).toBe(false);
             expect(result[1].failure).toBe(false);
@@ -133,7 +134,8 @@ describe("ProcessBetQueue", () => {
         });
 
         it("should upsert bet without odds when odds are missing", async () => {
-            cron.betStatusService.dynamicOddsByGameId = {};
+            cron.betStatusService.odds = undefined;
+            cron.betStatusService.points = {};
             const player = { UID: "u4", profile: { name: "bar" }, session: null };
             const bet = { amount: 50, betChoice: "away", roundId: 10, clientSeed: new Date(), index: 1 } as any;
 
