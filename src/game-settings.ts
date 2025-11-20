@@ -1,8 +1,9 @@
+import appConfigs from "./app-configs";
 
 export default {
-    id: 158,
-    name: "SoccerMarble",
-    configName: "soccermarble",
+    id: appConfigs.gameId,
+    name: `SoccerMarble${appConfigs.gameId}`,
+    configName: `soccermarble${appConfigs.gameId}`,
     hedgeBetGroups: [
         ["ft_hdp_home", "ft_hdp_away"],
         ["h1_hdp_home", "h1_hdp_away"],
@@ -11,7 +12,7 @@ export default {
         ["ft_oe_even", "ft_oe_odd"],
         ["h1_oe_even", "h1_oe_odd"],
         ["ft_1x2_home", "ft_1x2_away"],
-        ["h1_1x2_home", "h1_1x2_away"]
+        ["h1_1x2_home", "h1_1x2_away"],
     ],
     provablyFair: false,
     historyPageSize: 8,

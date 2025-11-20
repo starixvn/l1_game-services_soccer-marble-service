@@ -6,11 +6,11 @@ describe("gameSettings", () => {
     });
 
     it("should have the correct name", () => {
-        expect(gameSettings.name).toBe("SoccerMarble");
+        expect(gameSettings.name).toBe("SoccerMarble158");
     });
 
     it("should have the correct configName", () => {
-        expect(gameSettings.configName).toBe("soccermarble");
+        expect(gameSettings.configName).toBe("soccermarble158");
     });
 
     it("should have the correct hedgeBetGroups", () => {
@@ -22,7 +22,7 @@ describe("gameSettings", () => {
             ["ft_oe_even", "ft_oe_odd"],
             ["h1_oe_even", "h1_oe_odd"],
             ["ft_1x2_home", "ft_1x2_away"],
-            ["h1_1x2_home", "h1_1x2_away"]
+            ["h1_1x2_home", "h1_1x2_away"],
         ]);
     });
 

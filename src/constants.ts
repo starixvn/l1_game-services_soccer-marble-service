@@ -30,7 +30,7 @@ export const DEFAULT_ODD_PREMATCH_ODDS = {
     [PRE_MATCH_BET_CHOICES.even]: 0,
 };
 
-export const DEFAULT_ODD_LIVE_ODDS = {  
+export const DEFAULT_ODD_LIVE_ODDS = {
     [LIVE_BET_CHOICES.homeLive]: 0,
     [LIVE_BET_CHOICES.awayLive]: 0,
     [LIVE_BET_CHOICES.drawLive]: 0,
@@ -41,18 +41,18 @@ export const DEFAULT_ODD_LIVE_ODDS = {
 };
 
 export const ODD_FEED_TO_BET_CHOICE_MAP: Record<string, string> = {
-    '0:ft_1x2_home': PRE_MATCH_BET_CHOICES.home,
-    '0:ft_1x2_away': PRE_MATCH_BET_CHOICES.away,
-    '0:ft_1x2_draw': PRE_MATCH_BET_CHOICES.draw,
-    '0:ft_oe_even': PRE_MATCH_BET_CHOICES.even,
-    '0:ft_oe_odd': PRE_MATCH_BET_CHOICES.odd,
-    '0:ft_ou_over': PRE_MATCH_BET_CHOICES.over,
-    '0:ft_ou_under': PRE_MATCH_BET_CHOICES.under,
-    '1:ft_oe_odd': LIVE_BET_CHOICES.oddLive,
-    '1:ft_oe_even': LIVE_BET_CHOICES.evenLive,
-    '1:ft_ou_over': LIVE_BET_CHOICES.overLive,
-    '1:ft_ou_under': LIVE_BET_CHOICES.underLive
-}
+    "0:ft_1x2_home": PRE_MATCH_BET_CHOICES.home,
+    "0:ft_1x2_away": PRE_MATCH_BET_CHOICES.away,
+    "0:ft_1x2_draw": PRE_MATCH_BET_CHOICES.draw,
+    "0:ft_oe_even": PRE_MATCH_BET_CHOICES.even,
+    "0:ft_oe_odd": PRE_MATCH_BET_CHOICES.odd,
+    "0:ft_ou_over": PRE_MATCH_BET_CHOICES.over,
+    "0:ft_ou_under": PRE_MATCH_BET_CHOICES.under,
+    "1:ft_oe_odd": LIVE_BET_CHOICES.oddLive,
+    "1:ft_oe_even": LIVE_BET_CHOICES.evenLive,
+    "1:ft_ou_over": LIVE_BET_CHOICES.overLive,
+    "1:ft_ou_under": LIVE_BET_CHOICES.underLive,
+};
 
 export const BET_CHOICES = {
     ...PRE_MATCH_BET_CHOICES,
@@ -86,7 +86,7 @@ export const OVER_UNDER_VALUE = 4.5;
 
 export const IS_DEV_ENV = process.env.NODE_ENV === "development";
 
-export const GAME_NAME = `soccermarble_${appConfigs.gameId}`;
+export const GAME_NAME = `soccermarble${appConfigs.gameId}`;
 
 export const MODEL_NAME_PREFIX = IS_DEV_ENV ? `${GAME_NAME}_dev` : `${GAME_NAME}`;
 
