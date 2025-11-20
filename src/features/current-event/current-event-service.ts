@@ -3,9 +3,10 @@ import { extractGameId } from "../../helpers/eventid";
 import { GameStatusPublisher } from "../../publishers";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, SystemNotification, Scheduler, Event } from "odds-feed-client";
+import { MarbleEvent } from "../shared-types";
 
 interface CurrentEventServiceContainer {
-    oddsFeedEventSource: OddsFeedEventSource;
+    oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     delayHandlingService: DelayHandlingService;
     scheduler: Scheduler;
     gameData: GameData;
@@ -13,7 +14,7 @@ interface CurrentEventServiceContainer {
 }
 
 export class CurrentEventService {
-    private readonly oddsFeedEventSource: OddsFeedEventSource;
+    private readonly oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     private readonly delayHandlingService: DelayHandlingService;
     private readonly scheduler: Scheduler;
     private readonly _currentEventByGameId: Record<string, number> = {};
@@ -21,7 +22,7 @@ export class CurrentEventService {
     private readonly gameData: GameData;
     private readonly gameStatusPublisher: GameStatusPublisher;
 
-    private readonly boundHandleEventStart: (notification: EventNotification) => void;
+    private readonly boundHandleEventStart: (notification: EventNotification<MarbleEvent>) => void;
     private readonly boundHandleEventCleanup: (notification: SystemNotification) => void;
     private readonly boundHandleEventDetailOddAvailable: (notification: EventDetailNotification) => void;
     
@@ -92,7 +93,7 @@ export class CurrentEventService {
         delete this.eventByEventId[eventID];
     }
 
-    public handleEventStart({ event }: EventNotification) {
+    public handleEventStart({ event }: EventNotification<MarbleEvent>) {
         const whenToSetCurrentEvent = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
             oddFeedEventType: OddsFeedEventName.EventStart,
         });
@@ -114,7 +115,7 @@ export class CurrentEventService {
         });
     }
 
-    public handleEventIndexReset({ event }: EventNotification) {
+    public handleEventIndexReset({ event }: EventNotification<MarbleEvent>) {
         const gameId = extractGameId(event.eventID).toString();
         this._currentEventDetailIndexByGameId[gameId] = 0;
         this.eventByEventId[event.eventID] = event;

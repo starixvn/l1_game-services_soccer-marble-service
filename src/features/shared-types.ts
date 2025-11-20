@@ -2,6 +2,7 @@ import { Event, EventDetail } from "odds-feed-client";
 
 export interface MarbleEvent extends Event {
     eventDetails: MarbleEventDetail[];
+    scheduleEndTs: string;
 }
 
 export interface Market {

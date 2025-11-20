@@ -8,6 +8,8 @@ import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { extractGameId } from "../helpers/eventid";
+import { CatchAllEventListener, EventNotification, Notification, OddsFeedEventName, OddsFeedEventSource, EventListener } from "odds-feed-client";
+import { MarbleEvent } from "../features/shared-types";
 
 
 export default class GameCron extends Table.Crons.TableGameCron {
@@ -16,9 +18,15 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare appConfigs: typeof AppConfigs;
     declare gameStatusPublisher: GameStatusPublisher;
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
-
+    
+    oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     currentEventService: CurrentEventService;
     betStatusService: BetStatusService;
+    catchAllListener: CatchAllEventListener<MarbleEvent>;
+    eventStartListener: EventListener<MarbleEvent>;
+
+    differenceBetweenServerTime = 0;
+    currentEventEndTime: Date = new Date();
 
     count = 0;
 
@@ -26,9 +34,27 @@ export default class GameCron extends Table.Crons.TableGameCron {
         super(container);
         this.currentEventService = container.currentEventService;
         this.betStatusService = container.betStatusService;
+        this.oddsFeedEventSource = container.oddsFeedEventSource;
+        this.catchAllListener = this.handleOddsFeedWilcard.bind(this);
+        this.eventStartListener = this.handleEventStart.bind(this);
+    }
+
+    handleOddsFeedWilcard(_: OddsFeedEventName, notification: Notification<MarbleEvent>) : void {
+        const event = (notification as EventNotification<MarbleEvent>).event;
+        if (event) {
+            const serviceNow = new Date().getTime();
+            const serverNow = event.now ? new Date(event.now).getTime() : serviceNow;
+            this.differenceBetweenServerTime = (serverNow - serviceNow) / 1000;
+        }
+    }
+
+    handleEventStart({event}: EventNotification<MarbleEvent>) : void {
+        this.currentEventEndTime = new Date(event.scheduleEndTs);
     }
 
     public override async start() {
+        this.oddsFeedEventSource.on(this.catchAllListener);
+        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.eventStartListener);
         await this.updateExchangeRates();
         await this.unsettledRoundConsumer.proceed();
         this.gameData.proceedEvent = true;
@@ -36,6 +62,9 @@ export default class GameCron extends Table.Crons.TableGameCron {
     }
 
     async proceed() {
+        this.gameData.remainingTime = Math.floor((this.currentEventEndTime.getTime() - new Date().getTime()) / 1000 - this.differenceBetweenServerTime);
+        console.log("remainingTime", this.gameData.remainingTime);
+        
         if (this.gameData.proceedEvent) {
             this.gameData.proceedEvent = false;
             await this.checkGameStatus();

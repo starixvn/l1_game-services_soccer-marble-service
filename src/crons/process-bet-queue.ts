@@ -37,12 +37,10 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     adjustPlayerBetCount(player: any, betChoice: string) {
-        if (this.definition.choices.includes(betChoice)) {
-            if (!this.gameData.playerBetCount[betChoice]) {
-                this.gameData.playerBetCount[betChoice] = [];
-            }
-            !this.gameData.playerBetCount[betChoice].includes(player.UID) && this.gameData.playerBetCount[betChoice].push(player.UID);
+        if (!this.gameData.playerBetCount[betChoice]) {
+            this.gameData.playerBetCount[betChoice] = [];
         }
+        !this.gameData.playerBetCount[betChoice].includes(player.UID) && this.gameData.playerBetCount[betChoice].push(player.UID);
     }
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: { errorCode: string } }[] {

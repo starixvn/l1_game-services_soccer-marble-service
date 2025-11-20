@@ -27,10 +27,29 @@ export default class Bot extends TableGameConfigBot {
         return this.chance.integer({ min: 2, max: 10 });
     }
 
+    isDuringBetTime = () => {
+        const roundId = this.gameData.roundId;
+        if (roundId === undefined || roundId === null) {
+            return false;
+        }
+
+        const gameId = extractGameId(roundId).toString();
+        return this.betStatusService?.betStatusByGameId?.[gameId] ?? false;
+    };
+
     resetBot(bot: any) {
         super.resetBot(bot);
 
         bot.totalTickets = bot.remainTickets;
+    }
+
+    override getNumberOfBotsToJoin() {
+        const remaining = this.maxNumberOfBots - Object.keys(this.botsInRoom).length;
+        const maxBotRandom =
+            remaining > 0
+                ? remaining
+                : 1;
+        return this.chance.integer({ min: 1, max: maxBotRandom });
     }
 
     getNumberOfBotsToBet() {
@@ -47,7 +66,6 @@ export default class Bot extends TableGameConfigBot {
         let botsToBet = Object.values(this.botsInRoom).filter(
             (t: any) => t.totalBet < this.gameData.gameConfigs.bot_maxbet && t.remainTickets > 0
         );
-
         botsToBet = this.chance.shuffle(botsToBet);
 
         return botsToBet.slice(0, Math.min(numberBotsToBet, botsToBet.length - 1));
@@ -62,7 +80,8 @@ export default class Bot extends TableGameConfigBot {
         }
     }
 
-    getBetChoice(bot: any) {
+
+    override getBetChoice(bot: any) {
         const gameId = extractGameId(this.gameData.roundId).toString();
         const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
         const betChoices = Object.keys(dynamicOdds ?? {}).filter((choice) => this.isBetChoiceValid(choice, gameId));
@@ -98,27 +117,22 @@ export default class Bot extends TableGameConfigBot {
         return result;
     }
 
-    isDuringBetTime() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.betStatusService.betStatusByGameId[gameId];
-    };
-
-    async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
+    override async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {
         const gameId = extractGameId(this.gameData.roundId).toString();
         const dynamicOdds = this.betStatusService.dynamicOddsByGameId[gameId];
         const points = this.betStatusService.betChoicePointsByGameId[gameId];
-
+        const currentIndex = this.betStatusService.getBetStatus().currentIndex;
         const oddsUpdate = dynamicOdds ? 
             Object.entries(dynamicOdds).reduce((acc, [key, value]) => {
-                acc[`odds.${currentBet.index}.${key}`] = {
+                acc[`${currentIndex}.${key}`] = {
                     price: value,
                     point: points[key] ?? 0,
                 };
                 return acc;
             }, {} as Record<string, any>) : {};
 
-        const currentAmount = currentBet ? currentBet[`${currentBet.index}.${choice}`] ?? 0 : 0;
-        const update = { [`${currentBet.index}.${choice}`]: amount + currentAmount, odds: oddsUpdate };
+        const currentAmount = currentBet ? currentBet[`${currentIndex}`]?.[choice] ?? 0 : 0;
+        const update = { [`${currentIndex}.${choice}`]: amount + currentAmount, odds: oddsUpdate };
         const create = {
             uid: bot.id,
             name: bot.name,

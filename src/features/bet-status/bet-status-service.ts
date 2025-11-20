@@ -170,10 +170,10 @@ export class BetStatusService {
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
         const gameId = extractGameId(event.eventID).toString();
+        this.dynamicOddsByGameId[gameId] = this.getOddFromEventDetail({ event, index });
         this.betEventDetailIndexByGameId[gameId] = index;
         this.betStatusByGameId[gameId] = true;
         this.currentOddIndexByGameId[gameId] = index;
-        this.dynamicOddsByGameId[gameId] = this.getOddFromEventDetail({ event, index });
         this.betChoicePointsByGameId[gameId] = this.getPointFromEventDetail({ event, index });
         this.hedgeBetService.resetHedgeBetRestriction(gameId);
         this.hedgeBetService.updateHedgeBetGroups(gameId, this.getHedgeBetGroups({ event, index }));
