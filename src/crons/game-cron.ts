@@ -7,7 +7,6 @@ import RunningRoundInfoPublisher from "../publishers/running-round-info-publishe
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
-import { extractGameId } from "../helpers/eventid";
 import { CatchAllEventListener, EventNotification, Notification, OddsFeedEventName, OddsFeedEventSource, EventListener } from "odds-feed-client";
 import { MarbleEvent } from "../features/shared-types";
 

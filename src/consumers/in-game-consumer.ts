@@ -3,7 +3,6 @@ import GameData from "../game-data";
 import { getUserBetPercentage } from "../helpers/bet-percentage";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CurrentEventService } from "../features/current-event/current-event-service";
-import { extractGameId } from "../helpers/eventid";
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;

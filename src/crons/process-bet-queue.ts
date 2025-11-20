@@ -3,7 +3,6 @@ import GameData from "../game-data";
 import { helpers } from "sc-common";
 import GameDefinition from "../game-definition";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
-import { extractGameId } from "../helpers/eventid";
 
 type BetPayload = {
     amount: number;

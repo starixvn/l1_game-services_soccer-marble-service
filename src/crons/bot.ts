@@ -1,7 +1,6 @@
 import { TableGameConfigBot } from "sc-game-base/src/table/crons";
 import GameData from "../game-data";
 import GameDefinition from "../game-definition";
-import { extractGameId } from "../helpers/eventid";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { HedgeBetService } from "../features/bet-status/hedge-bet-service";
 
