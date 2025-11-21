@@ -460,13 +460,11 @@ describe("Bot", () => {
                 {
                     $set: {
                         "0.home": 100,
-                        odds: {
-                            "0.home": { price: 1.5, point: 1 },
-                            "0.away": { price: 2.0, point: 2 },
-                            "0.draw": { price: 3.0, point: 3 },
-                            "0.homeLive": { price: 1.8, point: 4 },
-                            "0.awayLive": { price: 2.2, point: 5 },
-                        },
+                            "odds.0.home": { price: 1.5, point: 1 },
+                            "odds.0.away": { price: 2.0, point: 2 },
+                            "odds.0.draw": { price: 3.0, point: 3 },
+                            "odds.0.homeLive": { price: 1.8, point: 4 },
+                            "odds.0.awayLive": { price: 2.2, point: 5 },
                     },
                     $setOnInsert: {
                         uid: "bot123",
@@ -507,14 +505,12 @@ describe("Bot", () => {
                 {
                     $set: {
                         "0.home": 150,
-                        odds: {
-                            "0.home": { price: 1.5, point: 1 },
-                            "0.away": { price: 2.0, point: 2 },
-                            "0.draw": { price: 3.0, point: 3 },
-                            "0.homeLive": { price: 1.8, point: 4 },
-                            "0.awayLive": { price: 2.2, point: 5 },
-                        },
-                    },
+                        "odds.0.home": { price: 1.5, point: 1 },
+                        "odds.0.away": { price: 2.0, point: 2 },
+                        "odds.0.draw": { price: 3.0, point: 3 },
+                        "odds.0.homeLive": { price: 1.8, point: 4 },
+                        "odds.0.awayLive": { price: 2.2, point: 5 },
+                },
                     $setOnInsert: {
                         uid: "bot123",
                         name: "TestBot",

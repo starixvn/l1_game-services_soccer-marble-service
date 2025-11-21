@@ -119,7 +119,7 @@ export default class Bot extends TableGameConfigBot {
         const currentIndex = this.betStatusService.currentIndex;
         const oddsUpdate = dynamicOdds ? 
             Object.entries(dynamicOdds).reduce((acc, [key, value]) => {
-                acc[`${currentIndex}.${key}`] = {
+                acc[`odds.${currentIndex}.${key}`] = {
                     price: value,
                     point: points[key] ?? 0,
                 };
@@ -127,7 +127,7 @@ export default class Bot extends TableGameConfigBot {
             }, {} as Record<string, any>) : {};
 
         const currentAmount = currentBet ? currentBet[`${currentIndex}`]?.[choice] ?? 0 : 0;
-        const update = { [`${currentIndex}.${choice}`]: amount + currentAmount, odds: oddsUpdate };
+        const update = { [`${currentIndex}.${choice}`]: amount + currentAmount, ...oddsUpdate };
         const create = {
             uid: bot.id,
             name: bot.name,
@@ -143,6 +143,8 @@ export default class Bot extends TableGameConfigBot {
             { $set: update, $setOnInsert: create },
             { upsert: true, setDefaultsOnInsert: true }
         );
+
+
 
         return create.time;
     }
