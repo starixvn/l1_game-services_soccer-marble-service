@@ -14,7 +14,6 @@ export default class RunningRoundInfoPublisher extends RunningRoundInfoPublisher
 
     publish() {
         super.publish();
-
         this.publishBetPercentage();
     }
 

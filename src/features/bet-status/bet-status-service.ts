@@ -196,9 +196,11 @@ export class BetStatusService {
     
     private publishBetChoiceReady({ gameId }: { gameId: string }) {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
-        this.gameStatusPublisher.publishOdds(this.dynamicOddsByGameId[gameId]);
-        this.gameStatusPublisher.publishBetChoicePoints(this.betChoicePointsByGameId[gameId]);
-        this.gameStatusPublisher.publishCurrentIndex(this.currentOddIndexByGameId[gameId]);
+        this.gameStatusPublisher.publishToAllUsers({
+            odds: this.odds,
+            points: this.points,
+            index: this.currentIndex
+        })
     }
 
     public getBetStatus() {

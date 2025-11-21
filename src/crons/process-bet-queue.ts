@@ -32,10 +32,12 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
 
     adjustTotalBets(player: any, bet: BetPayload, rate: number) {
         super.adjustTotalBets(player, bet, rate);
+        console.log('adjustPlayerBetCount', bet.betChoice);
         this.adjustPlayerBetCount(player, bet.betChoice);
     }
 
     adjustPlayerBetCount(player: any, betChoice: string) {
+        
         if (!this.gameData.playerBetCount[betChoice]) {
             this.gameData.playerBetCount[betChoice] = [];
         }

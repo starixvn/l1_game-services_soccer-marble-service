@@ -70,7 +70,8 @@ export default class GameCron extends Table.Crons.TableGameCron {
         }
 
         if (this.isBetTime()) {
-            this.bot?.run();
+            await this.bot?.run();
+            this.runningRoundInfoPublisher.publish();
         }
 
     }

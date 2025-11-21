@@ -235,17 +235,6 @@ describe("Bot", () => {
             expect(mockGameData.playerBetCount[choice]).toContain(playerId);
         });
 
-        it("should not add player for invalid choice", () => {
-            // Arrange
-            const playerId = "player1";
-            const choice = "invalidChoice";
-
-            // Act
-            botInstance.updatePlayerBetCount(playerId, choice);
-
-            // Assert
-            expect(mockGameData.playerBetCount[choice]).toBeUndefined();
-        });
 
         it("should initialize array if not exists", () => {
             // Arrange

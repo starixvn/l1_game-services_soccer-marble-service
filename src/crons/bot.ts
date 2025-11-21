@@ -70,12 +70,10 @@ export default class Bot extends TableGameConfigBot {
     }
 
     updatePlayerBetCount(playerId: string, choice: string) {
-        if (this.definition.choices.includes(choice)) {
-            if (!this.gameData.playerBetCount[choice]) {
-                this.gameData.playerBetCount[choice] = [];
-            }
-            !this.gameData.playerBetCount[choice].includes(playerId) && this.gameData.playerBetCount[choice].push(playerId);
+        if (!this.gameData.playerBetCount[choice]) {
+            this.gameData.playerBetCount[choice] = [];
         }
+        !this.gameData.playerBetCount[choice].includes(playerId) && this.gameData.playerBetCount[choice].push(playerId);
     }
 
 

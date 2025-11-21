@@ -20,6 +20,7 @@ describe("BetStatusService", () => {
         publishOdds: jest.Mock;
         publishBetChoicePoints: jest.Mock;
         publishCurrentIndex: jest.Mock;
+        publishToAllUsers: jest.Mock;
     };
     let delayHandlingService: { getDelayedTime: jest.Mock };
     let scheduler: { schedule: jest.Mock };
@@ -39,6 +40,7 @@ describe("BetStatusService", () => {
             publishOdds: jest.fn(),
             publishBetChoicePoints: jest.fn(),
             publishCurrentIndex: jest.fn(),
+            publishToAllUsers: jest.fn(),
         };
         delayHandlingService = {
             getDelayedTime: jest.fn(({ time }: { time: Date }) => time),
@@ -303,9 +305,11 @@ describe("BetStatusService", () => {
             expect(hedgeBetService.resetHedgeBetRestriction).toHaveBeenCalledWith("7");
             expect(hedgeBetService.updateHedgeBetGroups).toHaveBeenCalled();
             expect(gameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalled();
-            expect(gameStatusPublisher.publishOdds).toHaveBeenCalledWith({ home: 2, away: 3 });
-            expect(gameStatusPublisher.publishBetChoicePoints).toHaveBeenCalledWith({ home: 1, away: 2 });
-            expect(gameStatusPublisher.publishCurrentIndex).toHaveBeenCalledWith(1);
+            expect(gameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
+                odds: { home: 2, away: 3 },
+                points: { home: 1, away: 2 },
+                index: 1,
+            });
         });
     });
 

@@ -40,7 +40,9 @@ describe("GameCron", () => {
             publishDisableGameStatus: jest.fn(),
             publishStartGame: jest.fn(),
         };
-        cron.runningRoundInfoPublisher = {};
+        cron.runningRoundInfoPublisher = {
+            publish: jest.fn(),
+        };
         cron.unsettledRoundConsumer = { proceed: jest.fn().mockResolvedValue(undefined) };
         cron.startCron = jest.fn();
         cron.updateExchangeRates = jest.fn().mockResolvedValue(undefined);
@@ -118,6 +120,7 @@ describe("GameCron", () => {
             expect(cron.gameData.proceedEvent).toBe(false);
             expect(cron.checkGameStatus).toHaveBeenCalled();
             expect(cron.bot.run).toHaveBeenCalled();
+            expect(cron.runningRoundInfoPublisher.publish).toHaveBeenCalled();
             logSpy.mockRestore();
         });
 
@@ -129,6 +132,7 @@ describe("GameCron", () => {
             await cron.proceed();
 
             expect(cron.bot.run).not.toHaveBeenCalled();
+            expect(cron.runningRoundInfoPublisher.publish).not.toHaveBeenCalled();
             logSpy.mockRestore();
         });
     });
