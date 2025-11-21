@@ -17,7 +17,7 @@ export default Object.assign(appConfigs, {
     database: {
         url: "mongodb://127.0.0.1:27017/",
         options: {
-            dbName: "marble-football2-test-db",
+            dbName: `marbles${appConfigs.gameId}-test-db`,
             useNewUrlParser: true,
             useUnifiedTopology: true,
            

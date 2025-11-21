@@ -1,6 +1,8 @@
+const GAME_ID = 158;
+
 const appConfigs = {
     hostingPort: 5000,
-    gameId: 158,
+    gameId: GAME_ID,
     apiSettings: {
         enabledApi: true,
         apiUrl: "https://l1-proxy3.lumigame.com/game-api",
@@ -25,7 +27,7 @@ const appConfigs = {
     },
     enabledLogs: true,
     database: {
-        url: "mongodb://lmn_backend:LmnBackend@10.10.50.12:39103,10.10.50.13:39103,10.10.50.14:39103/?replicaSet=L1pppLocal&appName=marblefootball",
+        url: `mongodb://lmn_backend:LmnBackend@10.10.50.12:39103,10.10.50.13:39103,10.10.50.14:39103/?replicaSet=L1pppLocal&appName=marbles${GAME_ID}`,
         options: {
             dbName: "minigame",
             useNewUrlParser: true,

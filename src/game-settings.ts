@@ -2,8 +2,8 @@ import appConfigs from "./app-configs";
 
 export default {
     id: appConfigs.gameId,
-    name: `Marble${appConfigs.gameId}`,
-    configName: `marble${appConfigs.gameId}`,
+    name: `Marbles${appConfigs.gameId}`,
+    configName: `marbles${appConfigs.gameId}`,
     hedgeBetGroups: [
         ["ft_hdp_home", "ft_hdp_away"],
         ["h1_hdp_home", "h1_hdp_away"],

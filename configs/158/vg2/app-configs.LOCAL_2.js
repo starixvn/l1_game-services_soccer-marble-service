@@ -25,7 +25,7 @@ export default {
     },
     enabledLogs: true,
     database: {
-        url: "mongodb://lmn_backend:LmnBackend@10.10.50.12:39202,10.10.50.13:39202,10.10.50.14:39202/?replicaSet=L2ppLocal&appName=marblefootball",
+        url: "mongodb://lmn_backend:LmnBackend@10.10.50.12:39202,10.10.50.13:39202,10.10.50.14:39202/?replicaSet=L2ppLocal&appName=marbles158",
         options: {
             dbName: "minigame",
             useNewUrlParser: true,
@@ -34,7 +34,7 @@ export default {
     },
     sentry: {
         sentryUrl: "https://acb36eb835d948d68c1aad9873754d51@sentry.lumigame.com/27",
-        logIdentifier: "MarbleFootball2",
+        logIdentifier: "Marbles",
         env: "LOCAL2",
     },
     authenticateSettings: {
