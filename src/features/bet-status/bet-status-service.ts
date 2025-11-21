@@ -55,7 +55,6 @@ export class BetStatusService {
     }
 
     public readonly betStatusByGameId: Record<string, boolean> = {};
-    public readonly betEventDetailIndexByGameId: Record<string, number> = {};
     public readonly betChoicePointsByGameId: Record<string, Record<string, number>> = {};
     public readonly dynamicOddsByGameId: Record<string, Record<string, number>> = {};
     public currentRoundId?: number;
@@ -184,17 +183,16 @@ export class BetStatusService {
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
         const gameId = extractGameId(event.eventID).toString();
-        this.dynamicOddsByGameId[gameId] = this.getOddFromEventDetail({ event, index });
-        this.betEventDetailIndexByGameId[gameId] = index;
         this.betStatusByGameId[gameId] = true;
         this.currentOddIndexByGameId[gameId] = index;
+        this.dynamicOddsByGameId[gameId] = this.getOddFromEventDetail({ event, index });
         this.betChoicePointsByGameId[gameId] = this.getPointFromEventDetail({ event, index });
         this.hedgeBetService.resetHedgeBetRestriction(gameId);
         this.hedgeBetService.updateHedgeBetGroups(gameId, this.getHedgeBetGroups({ event, index }));
-        this.publishBetChoiceReady({ gameId });
+        this.publishBetChoiceReady();
     }
     
-    private publishBetChoiceReady({ gameId }: { gameId: string }) {
+    private publishBetChoiceReady() {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.gameStatusPublisher.publishToAllUsers({
             odds: this.odds,

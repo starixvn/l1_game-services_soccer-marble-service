@@ -297,7 +297,6 @@ describe("BetStatusService", () => {
 
             service.handleBetChoiceReady({ event, index: 1 } as unknown as EventDetailNotification<MarbleEvent>);
 
-            expect(service.betEventDetailIndexByGameId["7"]).toBe(1);
             expect(service.betStatusByGameId["7"]).toBe(true);
             expect(service.currentOddIndexByGameId["7"]).toBe(1);
             expect(service.dynamicOddsByGameId["7"]).toEqual({ home: 2, away: 3 });
