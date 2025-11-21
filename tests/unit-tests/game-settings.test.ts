@@ -6,11 +6,11 @@ describe("gameSettings", () => {
     });
 
     it("should have the correct name", () => {
-        expect(gameSettings.name).toBe("SoccerMarble158");
+        expect(gameSettings.name).toBe("Marble158");
     });
 
     it("should have the correct configName", () => {
-        expect(gameSettings.configName).toBe("soccermarble158");
+        expect(gameSettings.configName).toBe("marble158");
     });
 
     it("should have the correct hedgeBetGroups", () => {
