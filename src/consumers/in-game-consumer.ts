@@ -26,23 +26,23 @@ export default class InGameConsumer extends TableInGameConsumer {
 
     override async consume(realPlayer: any): Promise<void> {
         await super.consume(realPlayer);
-
-        try {
-
-            this.publishOddsToPlayer(realPlayer.UID);
-            this.publishBetChoicePointsToPlayer(realPlayer.UID);
-            this.publishMatchToPlayer(realPlayer.UID);
-        }   catch (error) {
-            console.log("error", error);
-        }
     }
 
     override async buildPayload(realPlayer: any) {
         const payload = await super.buildPayload(realPlayer);
         const betChoices = Object.keys(this.betStatusService.odds);
+
+        const currentEvent = this.currentEventService.getCurrentEvent();
+        const home = currentEvent.eventNameAKey;
+        const away = currentEvent.eventNameBKey;
+        const match = { home, away };
         return {
             ...payload,
             userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
+            odds: this.betStatusService.odds,
+            points: this.betStatusService.points,
+            index: this.betStatusService.currentIndex,
+            match,
         };
     }
 
