@@ -15,6 +15,7 @@ interface Selection {
     price?: number;
     point?: number;
     settlementStatus: string;
+    group?: string;
 }
 
 export type MarbleEventDetail = EventDetail & {

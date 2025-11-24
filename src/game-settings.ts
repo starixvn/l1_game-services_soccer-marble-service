@@ -18,6 +18,6 @@ export default {
     historyPageSize: 8,
     defaultBetTracks: {},
     botSettings: {
-        ratio: { mainPreOpts: 40, mainLiveOpts: 40, subPreOpts: 10, subLiveOpts: 10 },
+        ratio: { main: 80, side: 20 },
     },
 };

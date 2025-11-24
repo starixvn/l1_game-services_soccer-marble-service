@@ -3,6 +3,7 @@ import GameData from "../game-data";
 import GameDefinition from "../game-definition";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { HedgeBetService } from "../features/bet-status/hedge-bet-service";
+import { helpers } from "sc-common";
 
 export default class Bot extends TableGameConfigBot {
     declare gameData: GameData;
@@ -10,6 +11,9 @@ export default class Bot extends TableGameConfigBot {
 
     betStatusService: BetStatusService;
     hedgeBetService: HedgeBetService;
+
+    indexedAllBets: Record<number, Record<string, number>> = {};
+    // like AllBets but it is like allBets[index][choice] = amount
 
     constructor(definition: any, gameData: any, publisher: any, gameManagementApiClientFactory: any, tempBetsRepository: any, betStatusService: BetStatusService, hedgeBetService: HedgeBetService) {
         super(definition, gameData, publisher, gameManagementApiClientFactory, tempBetsRepository);
@@ -41,13 +45,17 @@ export default class Bot extends TableGameConfigBot {
         bot.totalTickets = bot.remainTickets;
     }
 
+    resetAllBotData(): void {
+        super.resetAllBotData();
+        this.allBets = {};
+    }
+
     override getNumberOfBotsToJoin() {
         const remaining = this.maxNumberOfBots - Object.keys(this.botsInRoom).length;
-        const maxBotRandom =
-            remaining > 0
-                ? remaining
-                : 1;
-        return this.chance.integer({ min: 1, max: maxBotRandom });
+            
+        return remaining > 0
+            ? this.chance.integer({ min: 1, max: remaining })
+            : 0;
     }
 
     getNumberOfBotsToBet() {
@@ -56,6 +64,19 @@ export default class Bot extends TableGameConfigBot {
         const maxTickets = Math.max(2, Math.floor(totalTickets * randomPercent));
 
         return this.chance.integer({ min: 1, max: maxTickets });
+    }
+
+    override getBetChoicesRatios() {
+        const betGroups = this.betStatusService.betGroups;
+        const allBetOptions = Object.keys(this.allBets ?? {});
+
+        const totalBotBet = this.getAllBetAmountOnChoices(allBetOptions);
+        return Object.keys(betGroups).map((group) => {
+            return {
+                group: betGroups[group],
+                underBetRatio: (this.getAllBetAmountOnChoices(betGroups[group]) * 100) / totalBotBet < this.botSettings.ratio[group],
+            };
+        });
     }
 
     getBotsToBet() {
@@ -78,9 +99,13 @@ export default class Bot extends TableGameConfigBot {
 
 
     override getBetChoice(bot: any) {
-        const dynamicOdds = this.betStatusService.odds;
-        const betChoices = Object.keys(dynamicOdds ?? {}).filter((choice) => this.isBetChoiceValid(choice));
-        const choice = this.chance.pickone(betChoices);
+        const betOptions = Object.keys(this.betStatusService.odds);
+        const betChoiceRatios = this.getBetChoicesRatios();
+        const underRatioGroups = helpers.arrayHelper.shuffle(betChoiceRatios.filter((data) => data.underBetRatio));
+        const choice = underRatioGroups.length > 0 
+            ? this.chance.pickone(underRatioGroups[0].group) 
+            : this.chance.pickone(betOptions);
+
         const hedgeBetGroup = this.hedgeBetService.hedgeBetGroups?.find((group) => group.has(choice));
 
         if (hedgeBetGroup) {
@@ -89,26 +114,6 @@ export default class Bot extends TableGameConfigBot {
         } else {
             return choice;
         }
-    }
-
-    filterBetChoicesRatios(betChoiceRatios: { group: string[]; underBetRatio: boolean }[]) {
-        const result = [];
-
-        for (const betChoiceRatio of betChoiceRatios) {
-            const betOptions = this.filterBetChoice(betChoiceRatio.group);
-
-            if (betOptions.length > 0) {
-                result.push({ group: betOptions, underBetRatio: betChoiceRatio.underBetRatio });
-            }
-        }
-
-        if (result.every((data) => !data.underBetRatio)) {
-            for (const betChoiceRatio of result) {
-                betChoiceRatio.underBetRatio = true;
-            }
-        }
-
-        return result;
     }
 
     override async insertOrUpdateBet(bot: any, choice: string, amount: number, currentBet: any) {

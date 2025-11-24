@@ -9,6 +9,7 @@ import { CurrentEventService } from "../features/current-event/current-event-ser
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CatchAllEventListener, EventNotification, Notification, OddsFeedEventName, OddsFeedEventSource, EventListener } from "odds-feed-client";
 import { MarbleEvent } from "../features/shared-types";
+import Bot from "./bot";
 
 
 export default class GameCron extends Table.Crons.TableGameCron {
@@ -17,7 +18,8 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare appConfigs: typeof AppConfigs;
     declare gameStatusPublisher: GameStatusPublisher;
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
-    
+    declare bot: Bot;
+
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     currentEventService: CurrentEventService;
     betStatusService: BetStatusService;
@@ -126,6 +128,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
         } else if (previouslyDisabled) {
             await this.enableGame();
         } else {
+            console.log("All Bets This Round : ", this.bot?.allBets);
             this.gameStatusPublisher.publishStartGame();
             this.resetForNewRound();
             this.bot?.reset();

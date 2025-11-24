@@ -1,6 +1,5 @@
 import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, Scheduler } from "odds-feed-client";
 import { GameStatusPublisher } from "../../publishers";
-import { extractGameId } from "../../helpers/eventid";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { HedgeBetService } from "./hedge-bet-service";
 import GameData from "../../game-data";
@@ -35,7 +34,6 @@ export class BetStatusService {
     private readonly hedgeBetService: HedgeBetService;
     private readonly gameData: GameData;
 
-    private readonly currentOddIndexByGameId: Record<string, number> = {};
  
     private readonly boundHandleEventStart: (notification: EventNotification<MarbleEvent>) => void;
     private readonly boundHandleEventDetailOddAvailable: (notification: EventDetailNotification<MarbleEvent>) => void;
@@ -54,10 +52,31 @@ export class BetStatusService {
         this.boundHandleEventDetailUpcoming = this.handleEventDetailUpcoming.bind(this);
     }
 
-    public readonly betStatusByGameId: Record<string, boolean> = {};
-    public readonly betChoicePointsByGameId: Record<string, Record<string, number>> = {};
-    public readonly dynamicOddsByGameId: Record<string, Record<string, number>> = {};
-    public currentRoundId?: number;
+    private _betStatus = false;
+    private _betChoicePoints: Record<string, number> = {};
+    private _dynamicOdds: Record<string, number> = {};
+    private _currentOddIndex = 0;
+    private _betGroups: Record<string, string[]> = {};
+
+    public get allowBets() {
+        return this._betStatus && Object.keys(this._dynamicOdds ?? {}).length > 0; 
+    }
+
+    public get currentIndex() {
+        return this._currentOddIndex;
+    }
+
+    public get points() {
+        return this._betChoicePoints;
+    }
+
+    public get odds() {
+        return this._dynamicOdds;
+    }
+
+    public get betGroups() {
+        return this._betGroups;
+    }
 
 
     public initEvent() {
@@ -77,10 +96,8 @@ export class BetStatusService {
     }
 
     public handleEventStart({ event }: EventNotification<MarbleEventWithBetConfig>) {
-        const gameId = extractGameId(event.eventID).toString();
-        this.betStatusByGameId[gameId] = false;
+        this._betStatus = false;
         this.schedulePlaceBet({ event, index: 0 });
-        this.currentRoundId = event.eventID;
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
@@ -89,29 +106,6 @@ export class BetStatusService {
         }
 
         this.schedulePlaceBet({ event, index });
-    }
-
-    public get allowBets() {
-        if (!this.gameData.roundId) {
-            return false;
-        }
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.betStatusByGameId[gameId] && Object.keys(this.dynamicOddsByGameId[gameId] ?? {}).length > 0; 
-    }
-
-    public get currentIndex() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.currentOddIndexByGameId[gameId];
-    }
-
-    public get points() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.betChoicePointsByGameId[gameId];
-    }
-
-    public get odds() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.dynamicOddsByGameId[gameId];
     }
 
     private getTimeToPlaceBet({ event, index }: EventDetailNotification) {
@@ -169,26 +163,31 @@ export class BetStatusService {
     private scheduleLockBet({ event, index }: EventDetailNotification<MarbleEvent>) {
         const timeToLockBet = this.getTimeToLockBet({ event, index });
 
-        this.scheduler.schedule(timeToLockBet, this.publishBetChoiceLocked.bind(this, { event, index }), {
+        this.scheduler.schedule(timeToLockBet, this.publishBetChoiceLocked.bind(this), {
             ignorePast: true,
             overrideNow: event.now
         });
     }
 
-    private publishBetChoiceLocked({ event, index }: EventDetailNotification<MarbleEvent>) {
-        const gameId = extractGameId(event.eventID).toString();
-        this.betStatusByGameId[gameId] = false;
+    private publishBetChoiceLocked() {
+        this._betStatus = false;
         this.gameStatusPublisher.publishEndPlacingBetStatus();
     }
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
-        const gameId = extractGameId(event.eventID).toString();
-        this.betStatusByGameId[gameId] = true;
-        this.currentOddIndexByGameId[gameId] = index;
-        this.dynamicOddsByGameId[gameId] = this.getOddFromEventDetail({ event, index });
-        this.betChoicePointsByGameId[gameId] = this.getPointFromEventDetail({ event, index });
-        this.hedgeBetService.resetHedgeBetRestriction(gameId);
-        this.hedgeBetService.updateHedgeBetGroups(gameId, this.getHedgeBetGroups({ event, index }));
+        this._betStatus = true;
+        this._currentOddIndex = index;
+
+        const { odds, points, groups } = this.getBetDataFromEventDetail({ event, index });
+
+        
+        this._dynamicOdds = odds ?? {};
+        this._betChoicePoints = points ?? {};
+        this._betGroups = this.formatBetGroup(groups ?? {});
+
+
+        this.hedgeBetService.resetHedgeBetRestriction();
+        this.hedgeBetService.updateHedgeBetGroups(this.getHedgeBetGroups({ event, index }));
         this.publishBetChoiceReady();
     }
     
@@ -201,42 +200,33 @@ export class BetStatusService {
         })
     }
 
-    public getBetStatus() {
-        return {
-            odds: this.odds ?? {},
-            points: this.points ?? {},
-            currentIndex: this.currentIndex,
-        };
+    // f: <string, string> -> <string, array<string>>
+    // example { "home": "side", "away": "side" } -> { "side": ["home", "away"] }
+    private formatBetGroup(unformattedGroups: Record<string, string>): Record<string, string[]> {
+        return Object.entries(unformattedGroups).reduce((acc, [choice, group]) => {
+            acc[group] = [...(acc[group] ?? []), choice];
+            return acc;
+        }, {} as Record<string, string[]>);
     }
 
-    private getOddFromEventDetail({ event, index }: EventDetailNotification<MarbleEvent>) {
+    private getBetDataFromEventDetail({ event, index }: EventDetailNotification<MarbleEvent>) {
         const eventDetail = event.eventDetails[index];
         if (!eventDetail) {
             return {};
         }
-        
-        const odds: Record<string, number> = {};
-        for (const market of eventDetail.markets) {
-            for (const selection of market.selections) {
-                odds[selection.betChoice] = selection.price ?? 0;
-            }
-        }
-        return odds;
-    }
 
-    private getPointFromEventDetail({ event, index }: EventDetailNotification<MarbleEvent>) {
-        const eventDetail = event.eventDetails[index];
-        if (!eventDetail) {
-            return {};
-        }
-        
         const points: Record<string, number> = {};
+        const odds: Record<string, number> = {};
+        const groups: Record<string, string> = {};
+
         for (const market of eventDetail.markets) {
             for (const selection of market.selections) {
                 points[selection.betChoice] = selection.point ?? 0;
+                odds[selection.betChoice] = selection.price ?? 0;
+                groups[selection.betChoice] = selection.group ?? "side";
             }
         }
-        return points;
+        return { points, odds, groups };
     }
 
     private getHedgeBetGroups({ event, index }: EventDetailNotification<MarbleEvent>): Set<string>[] {

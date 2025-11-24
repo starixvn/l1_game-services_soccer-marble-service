@@ -1,5 +1,4 @@
 import GameData from "../../game-data";
-import { extractGameId } from "../../helpers/eventid";
 
 type HedgeBetRestriction = Record<string, Set<string>>;
 
@@ -15,59 +14,48 @@ interface HedgeBetServiceContainer {
 
 export class HedgeBetService {
     gameData: GameData;
-    private readonly hedgeBetRestriction: Record<string, HedgeBetRestriction> = {};
+    private _hedgeBetRestriction: HedgeBetRestriction = {};
 
     constructor(container: HedgeBetServiceContainer) {
         this.gameData = container.gameData;
     }
 
-    private readonly hedgeBetGroupsByGameId: Record<string, Set<string>[]> = {};
+    private _hedgeBetGroups: Set<string>[] = [];
 
     get hedgeBetGroups() {
-        const gameId = extractGameId(this.gameData.roundId).toString();
-        return this.hedgeBetGroupsByGameId[gameId];
+        return this._hedgeBetGroups;
     }
 
-    updateHedgeBetGroups(gameId: string, hedgeBetGroups: Set<string>[]) {
-        this.hedgeBetGroupsByGameId[gameId] = hedgeBetGroups;
+    updateHedgeBetGroups(hedgeBetGroups: Set<string>[]) {
+        this._hedgeBetGroups = hedgeBetGroups;
     }
 
-    resetHedgeBetRestriction(gameId: string) {
-        this.hedgeBetRestriction[gameId] = {};
+    resetHedgeBetRestriction() {
+        this._hedgeBetRestriction = {};
     }
 
-    trackHedgeBetRestriction({ gameId, player, betChoice }: HedgeBetInputArgs) {
-        if (!gameId) {
-            return;
-        }
+    trackHedgeBetRestriction({ player, betChoice }: HedgeBetInputArgs) {
 
-        const hedgeBetGroups = this.hedgeBetGroupsByGameId[gameId];
-        const hedgeBetGroup = hedgeBetGroups?.find((group) => group.has(betChoice)) ?? new Set();
+        const hedgeBetGroups = this._hedgeBetGroups;
+        const hedgeBetGroup = hedgeBetGroups?.find((group: Set<string>) => group.has(betChoice)) ?? new Set();
         const bannedBetChoices = Array.from(hedgeBetGroup).filter((choice) => choice !== betChoice);
 
-        if (!this.hedgeBetRestriction[gameId]) {
-            this.hedgeBetRestriction[gameId] = {};
-        }
 
-        if (!this.hedgeBetRestriction[gameId][player]) {
-            this.hedgeBetRestriction[gameId][player] = new Set();
+        if (!this._hedgeBetRestriction[player]) {
+            this._hedgeBetRestriction[player] = new Set();
         }
 
         bannedBetChoices.forEach((choice) => {
-            this.hedgeBetRestriction[gameId][player].add(choice);
+            this._hedgeBetRestriction[player].add(choice);
         });
     }
 
-    verifyHedgeBetRestriction({ gameId, player, betChoice }: HedgeBetInputArgs) {
-        if (!gameId) {
-            return new Set();
-        }
-
-        const hedgeBetGroups = this.hedgeBetGroupsByGameId[gameId];
+    verifyHedgeBetRestriction({ player, betChoice }: HedgeBetInputArgs) {
+        const hedgeBetGroups = this._hedgeBetGroups;
         const hedgeBetGroup = hedgeBetGroups?.find((group) => group.has(betChoice)) ?? new Set();
 
 
-        const hedgeBetRestriction = this.hedgeBetRestriction[gameId][player];
+        const hedgeBetRestriction = this._hedgeBetRestriction[player];
         return hedgeBetRestriction?.has(betChoice) 
             ? hedgeBetGroup 
             : new Set();
