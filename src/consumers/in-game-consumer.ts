@@ -3,11 +3,13 @@ import GameData from "../game-data";
 import { getUserBetPercentage } from "../helpers/bet-percentage";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CurrentEventService } from "../features/current-event/current-event-service";
+import { StreamingService } from "../features/streaming-service/streaming-service";
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;
     betStatusService: BetStatusService;
     currentEventService: CurrentEventService;
+    streamingService: StreamingService;
 
     constructor(
         definition: any,
@@ -18,10 +20,12 @@ export default class InGameConsumer extends TableInGameConsumer {
         gameManagementApiClientFactory: any,
         betStatusService: BetStatusService,
         currentEventService: CurrentEventService,
+        streamingService: StreamingService,
     ) {
         super(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
         this.betStatusService = betStatusService;
-        this.currentEventService = currentEventService;
+        this.currentEventService = currentEventService; 
+        this.streamingService = streamingService;
     }
 
     override async consume(realPlayer: any): Promise<void> {
@@ -43,6 +47,7 @@ export default class InGameConsumer extends TableInGameConsumer {
             points: this.betStatusService.points,
             index: this.betStatusService.currentIndex,
             match,
+            playlist: this.streamingService.currentPlaylist,
         };
     }
 

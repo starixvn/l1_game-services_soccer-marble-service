@@ -160,11 +160,6 @@ describe("PlaceBetConsumer", () => {
         };
 
         // Setup BetStatusService mocks
-        Object.defineProperty(mockBetStatusService, "currentRoundId", {
-            value: 1,
-            writable: true,
-            configurable: true,
-        });
         let allowBetsValue = true;
         Object.defineProperty(mockBetStatusService, "allowBets", {
             configurable: true,
@@ -183,8 +178,8 @@ describe("PlaceBetConsumer", () => {
         });
         let oddsValue: Record<string, number> | undefined = {
             [BET_CHOICES.home]: 1.5,
-            [BET_CHOICES.away]: 2.0,
-            [BET_CHOICES.draw]: 3.0,
+            [BET_CHOICES.away]: 2,
+            [BET_CHOICES.draw]: 3,
             [LIVE_BET_CHOICES.homeLive]: 1.8,
             [LIVE_BET_CHOICES.awayLive]: 2.2,
         };
@@ -242,10 +237,10 @@ describe("PlaceBetConsumer", () => {
         });
 
         describe("round id mismatch", () => {
-            it("should fail validation when round id does not match betStatusService.currentRoundId", () => {
+            it("should fail validation when round id does not match gameData.roundId", () => {
                 // Arrange
                 const wrongRoundId = 999;
-                mockBetStatusService.currentRoundId = 1;
+                mockGameData.roundId = 1;
 
                 // Act
                 const result = placeBetConsumer.composeBettingTimeValidationCriteria(wrongRoundId);
@@ -255,10 +250,10 @@ describe("PlaceBetConsumer", () => {
                 expect(result[1].notice).toEqual({ errorCode: "SB1935" });
             });
 
-            it("should pass validation when round id matches betStatusService.currentRoundId", () => {
+            it("should pass validation when round id matches gameData.roundId", () => {
                 // Arrange
                 const correctRoundId = 1;
-                mockBetStatusService.currentRoundId = 1;
+                mockGameData.roundId = 1;
 
                 // Act
                 const result = placeBetConsumer.composeBettingTimeValidationCriteria(correctRoundId);

@@ -21,4 +21,5 @@ interface Selection {
 export type MarbleEventDetail = EventDetail & {
     markets: Market[];
     result: string;
+    playlist: string;
 }

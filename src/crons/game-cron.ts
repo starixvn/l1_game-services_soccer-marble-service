@@ -128,7 +128,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
         } else if (previouslyDisabled) {
             await this.enableGame();
         } else {
-            console.log("All Bets This Round : ", this.bot?.allBets);
             this.gameStatusPublisher.publishStartGame();
             this.resetForNewRound();
             this.bot?.reset();
@@ -154,7 +153,8 @@ export default class GameCron extends Table.Crons.TableGameCron {
         }
 
         const timeNow = Date.now();
-        const currEventEndTime = new Date(currentEvent?.eventDetails[currentEvent.eventDetails.length - 1].resultsAvailableTs).getTime();
+        const lastIndex = currentEvent.eventDetails.length - 1;
+        const currEventEndTime = new Date(currentEvent?.eventDetails[lastIndex].resultsAvailableTs).getTime();
         return timeNow > currEventEndTime;
     }
 

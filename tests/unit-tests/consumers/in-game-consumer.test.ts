@@ -3,6 +3,7 @@ import InGameConsumer from "../../../src/consumers/in-game-consumer";
 import GameData from "../../../src/game-data";
 import { BetStatusService } from "../../../src/features/bet-status/bet-status-service";
 import { CurrentEventService } from "../../../src/features/current-event/current-event-service";
+import { StreamingService } from "../../../src/features/streaming-service/streaming-service";
 import { getUserBetPercentage } from "../../../src/helpers/bet-percentage";
 jest.mock("../../../src/helpers/eventid", () => ({
     extractGameId: jest.fn(() => 10),
@@ -29,6 +30,7 @@ describe("InGameConsumer", () => {
     let mockGetBalance: any;
     let mockBetStatusService: BetStatusService;
     let mockCurrentEventService: CurrentEventService;
+    let mockStreamingService: StreamingService;
 
     beforeEach(() => {
         // Create mocks
@@ -37,7 +39,8 @@ describe("InGameConsumer", () => {
         mockGetBalance = jest.fn();
         mockBetStatusService = stub<BetStatusService>();
         mockCurrentEventService = stub<CurrentEventService>();
-        let oddsValue: Record<string, number> = { home: 1.5, away: 2.0 };
+        mockStreamingService = stub<StreamingService>();
+        let oddsValue: Record<string, number> = { home: 1.5, away: 2 };
         Object.defineProperty(mockBetStatusService, "odds", {
             configurable: true,
             get: () => oddsValue,
@@ -62,6 +65,12 @@ describe("InGameConsumer", () => {
             },
         });
 
+        // Setup StreamingService mock
+        Object.defineProperty(mockStreamingService, "currentPlaylist", {
+            configurable: true,
+            get: () => "test-playlist",
+        });
+
         // Create the instance
         inGameConsumer = new InGameConsumer(
             mockDefinition,
@@ -72,6 +81,7 @@ describe("InGameConsumer", () => {
             gameManagementApiClientFactory,
             mockBetStatusService,
             mockCurrentEventService,
+            mockStreamingService,
         );
     });
 
@@ -85,6 +95,7 @@ describe("InGameConsumer", () => {
             expect(inGameConsumer.gameData).toBe(mockGameData);
             expect(inGameConsumer.betStatusService).toBe(mockBetStatusService);
             expect(inGameConsumer.currentEventService).toBe(mockCurrentEventService);
+            expect(inGameConsumer.streamingService).toBe(mockStreamingService);
         });
 
         it("should extend TableInGameConsumer", () => {
@@ -94,25 +105,18 @@ describe("InGameConsumer", () => {
     });
 
     describe("consume", () => {
-        it("should call super.consume and all publisher methods", async () => {
+        it("should call super.consume", async () => {
             // Arrange
             const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
             const superConsumeSpy = jest
                 .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "consume")
                 .mockResolvedValue();
-            
-            const publishOddsSpy = jest.spyOn(inGameConsumer, "publishOddsToPlayer").mockImplementation();
-            const publishBetChoicePointsSpy = jest.spyOn(inGameConsumer, "publishBetChoicePointsToPlayer").mockImplementation();
-            const publishMatchSpy = jest.spyOn(inGameConsumer, "publishMatchToPlayer").mockImplementation();
 
             // Act
             await inGameConsumer.consume(mockRealPlayer);
 
             // Assert
             expect(superConsumeSpy).toHaveBeenCalledWith(mockRealPlayer);
-            expect(publishOddsSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
-            expect(publishBetChoicePointsSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
-            expect(publishMatchSpy).toHaveBeenCalledWith(DEFAULT_PLAYER_UID);
         });
 
         it("should handle errors gracefully without throwing", async () => {
@@ -120,14 +124,10 @@ describe("InGameConsumer", () => {
             const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
             const superConsumeSpy = jest
                 .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "consume")
-                .mockResolvedValue();
-            
-            jest.spyOn(inGameConsumer, "publishOddsToPlayer").mockImplementation(() => {
-                throw new Error("Test error");
-            });
+                .mockRejectedValue(new Error("Test error"));
 
             // Act & Assert
-            await expect(inGameConsumer.consume(mockRealPlayer)).resolves.not.toThrow();
+            await expect(inGameConsumer.consume(mockRealPlayer)).rejects.toThrow("Test error");
             expect(superConsumeSpy).toHaveBeenCalledWith(mockRealPlayer);
         });
     });
@@ -140,8 +140,14 @@ describe("InGameConsumer", () => {
             const mockUserBetPercentage = { home: 50, away: 30, draw: 20 };
 
             mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
-            (mockBetStatusService as any).odds = { home: 1.5, away: 2.0 };
+            (mockBetStatusService as any).odds = { home: 1.5, away: 2 };
             (mockGameData as any).roundId = 1 as any;
+            
+            const mockCurrentEvent = {
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+            };
+            (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
             const superBuildPayloadSpy = jest
                 .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "buildPayload")
@@ -158,6 +164,11 @@ describe("InGameConsumer", () => {
             expect(result).toEqual({
                 ...mockSuperPayload,
                 userBetPercentage: mockUserBetPercentage,
+                odds: { home: 1.5, away: 2 },
+                points: { home: 1.2, away: 2.3 },
+                index: 0,
+                match: { home: "Team A", away: "Team B" },
+                playlist: "test-playlist",
             });
         });
     });
@@ -166,7 +177,7 @@ describe("InGameConsumer", () => {
         it("should publish odds to the specified player", () => {
             // Arrange
             const testUID = DEFAULT_PLAYER_UID;
-            const mockOdds = { home: 1.5, away: 2.0, draw: 3.0 };
+            const mockOdds = { home: 1.5, away: 2, draw: 3     };
             (mockBetStatusService as any).odds = mockOdds;
 
             // Act

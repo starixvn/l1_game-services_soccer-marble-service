@@ -40,7 +40,7 @@ describe("gameSettings", () => {
 
     it("should have the correct botSettings", () => {
         expect(gameSettings.botSettings).toEqual({
-            ratio: { mainPreOpts: 40, mainLiveOpts: 40, subPreOpts: 10, subLiveOpts: 10 },
+            ratio: { main: 80, side: 20 },
         });
     });
 });

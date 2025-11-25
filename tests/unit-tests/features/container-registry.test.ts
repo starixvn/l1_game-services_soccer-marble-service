@@ -41,6 +41,7 @@ describe("features/container-registry", () => {
             const checkStatusService = { initEvent: jest.fn() };
             const resultService = { initEvent: jest.fn() };
             const gameFlowService = { init: jest.fn() };
+            const streamingService = { init: jest.fn() };
 
             const container = {
                 resolve: jest.fn((key: string) => {
@@ -50,6 +51,7 @@ describe("features/container-registry", () => {
                         case 'checkStatusService': return checkStatusService;
                         case 'resultService': return resultService;
                         case 'gameFlowService': return gameFlowService;
+                        case 'streamingService': return streamingService;
                         default: return undefined;
                     }
                 }),
@@ -62,6 +64,7 @@ describe("features/container-registry", () => {
             expect(checkStatusService.initEvent).toHaveBeenCalled();
             expect(resultService.initEvent).toHaveBeenCalled();
             expect(gameFlowService.init).toHaveBeenCalled();
+            expect(streamingService.init).toHaveBeenCalled();
         });
     });
 

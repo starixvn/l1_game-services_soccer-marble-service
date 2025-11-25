@@ -168,6 +168,6 @@ export default class Bot extends TableGameConfigBot {
     private isNoBetChoiceValid() {
         const dynamicOdds = this.betStatusService.odds;
         const odds = Object.values(dynamicOdds ?? {});
-        return odds.length === 0 || odds.every((odd) => odd === 0);
+        return odds.every((odd) => odd === 0);
     }
 }

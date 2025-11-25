@@ -9,6 +9,7 @@ import { HedgeBetService } from "./bet-status/hedge-bet-service";
 import { CheckStatusService } from "./check-status/check-status-service";
 import { ResultService } from "./result/result-service";
 import { GameFlowService } from "./game-flow/game-flow-service";
+import { StreamingService } from "./streaming-service/streaming-service";
 
 
 export interface DelayHandlerContainer {
@@ -70,6 +71,13 @@ export function registerFeatures(diContainer: DiContainer) {
         value: GameFlowService,
         disposer,
     });
+
+    diContainer.register({
+        key: 'streamingService',
+        registerType: 'class',
+        value: StreamingService,
+        disposer,
+    });
 };
 
 export function disposer(service: any) {
@@ -87,4 +95,5 @@ export function initFeatures(container: DiContainer) {
     container.resolve<CheckStatusService>('checkStatusService').initEvent();
     container.resolve<ResultService>('resultService').initEvent();
     container.resolve<GameFlowService>('gameFlowService').init();
+    container.resolve<StreamingService>('streamingService').init();
 }

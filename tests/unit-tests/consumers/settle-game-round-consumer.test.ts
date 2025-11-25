@@ -85,7 +85,7 @@ describe("SettleGameRoundConsumer", () => {
             const bet = { 0: { home: 100, away: 50 }, freeBet: false } as any;
             const odds = {
                 0: {
-                    home: { price: 2.0 },
+                    home: { price: 2 },
                     away: { price: 2.5 },
                 },
             } as Record<string, any>;
@@ -108,7 +108,7 @@ describe("SettleGameRoundConsumer", () => {
                 0: { home: true },
             } as any;
             const bet = { _doc: { 0: { home: 100 }, freeBet: true } } as any;
-            const odds = { 0: { home: { price: 2.0 } } } as Record<string, any>;
+            const odds = { 0: { home: { price: 2 } } } as Record<string, any>;
 
             // Act
             const result = consumer.calculateBetResult(settlementResult, bet, odds);

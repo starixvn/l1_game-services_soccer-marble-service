@@ -104,7 +104,7 @@ describe("BetStatusService", () => {
 
             service.handleEventStart({ event } as EventNotification<MarbleEvent>);
 
-            expect(service.betStatusByGameId["7"]).toBe(false);
+            expect(service.allowBets).toBe(false);
             expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
                 overrideNow: now,
                 ignorePast: true,
@@ -148,35 +148,38 @@ describe("BetStatusService", () => {
 
     describe("odd/point/group extraction edge cases", () => {
         it("should return empty odds when event detail missing", () => {
-            const odds = (service as any).getOddFromEventDetail({ event: { eventDetails: [] }, index: 1 });
+            const event = { eventDetails: [] } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event, index: 1 } as EventDetailNotification<MarbleEvent>);
 
-            expect(odds).toEqual({});
+            expect(service.odds).toEqual({});
         });
 
         it("should default odds to zero when price missing", () => {
             const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "home" }] }] }] } as unknown as MarbleEvent;
-            const odds = (service as any).getOddFromEventDetail({ event, index: 0 });
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
-            expect(odds).toEqual({ home: 0 });
+            expect(service.odds).toEqual({ home: 0 });
         });
 
         it("should return empty points when event detail missing", () => {
-            const points = (service as any).getPointFromEventDetail({ event: { eventDetails: [] }, index: 2 });
+            const event = { eventDetails: [] } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event, index: 2 } as EventDetailNotification<MarbleEvent>);
 
-            expect(points).toEqual({});
+            expect(service.points).toEqual({});
         });
 
         it("should default points to zero when value missing", () => {
             const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "away" }] }] }] } as unknown as MarbleEvent;
-            const points = (service as any).getPointFromEventDetail({ event, index: 0 });
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
-            expect(points).toEqual({ away: 0 });
+            expect(service.points).toEqual({ away: 0 });
         });
 
         it("should return empty hedge bet groups when event detail missing", () => {
-            const groups = (service as any).getHedgeBetGroups({ event: { eventDetails: [] }, index: 0 });
+            const event = { eventDetails: [] } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
-            expect(groups).toEqual([]);
+            expect(hedgeBetService.updateHedgeBetGroups).toHaveBeenCalledWith([]);
         });
     });
 
@@ -271,11 +274,21 @@ describe("BetStatusService", () => {
 
     describe("publishBetChoiceLocked", () => {
         it("should update status and publish end placing bet", () => {
-            service.betStatusByGameId["7"] = true;
+            // First set bet status to true by handling bet choice ready
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [{ selections: [{ betChoice: "home", price: 2, point: 1 }] }],
+                }],
+            } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+            expect(service.allowBets).toBe(true);
 
-            service.publishBetChoiceLocked({ event: { eventID: 7 } as MarbleEvent, index: 1 } as unknown as EventDetailNotification<MarbleEvent>);
+            // Now test publishBetChoiceLocked
+            const publishBetChoiceLocked = (service as any).publishBetChoiceLocked.bind(service);
+            publishBetChoiceLocked();
 
-            expect(service.betStatusByGameId["7"]).toBe(false);
+            expect(service.allowBets).toBe(false);
             expect(gameStatusPublisher.publishEndPlacingBetStatus).toHaveBeenCalled();
         });
     });
@@ -297,11 +310,11 @@ describe("BetStatusService", () => {
 
             service.handleBetChoiceReady({ event, index: 1 } as unknown as EventDetailNotification<MarbleEvent>);
 
-            expect(service.betStatusByGameId["7"]).toBe(true);
-            expect(service.currentOddIndexByGameId["7"]).toBe(1);
-            expect(service.dynamicOddsByGameId["7"]).toEqual({ home: 2, away: 3 });
-            expect(service.betChoicePointsByGameId["7"]).toEqual({ home: 1, away: 2 });
-            expect(hedgeBetService.resetHedgeBetRestriction).toHaveBeenCalledWith("7");
+            expect(service.allowBets).toBe(true);
+            expect(service.currentIndex).toBe(1);
+            expect(service.odds).toEqual({ home: 2, away: 3 });
+            expect(service.points).toEqual({ home: 1, away: 2 });
+            expect(hedgeBetService.resetHedgeBetRestriction).toHaveBeenCalled();
             expect(hedgeBetService.updateHedgeBetGroups).toHaveBeenCalled();
             expect(gameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalled();
             expect(gameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
@@ -314,11 +327,13 @@ describe("BetStatusService", () => {
 
     describe("derived getters", () => {
         beforeEach(() => {
-            gameData.roundId = 12345;
-            service.dynamicOddsByGameId["7"] = { home: 2 };
-            service.betChoicePointsByGameId["7"] = { home: 1 };
-            service.currentOddIndexByGameId["7"] = 3;
-            service.betStatusByGameId["7"] = true;
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [{ selections: [{ betChoice: "home", price: 2, point: 1 }] }],
+                }],
+            } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
         });
 
         it("should expose odds for current round", () => {
@@ -330,12 +345,18 @@ describe("BetStatusService", () => {
         });
 
         it("should expose current index for current round", () => {
-            expect(service.currentIndex).toBe(3);
+            expect(service.currentIndex).toBe(0);
         });
 
         it("should report allowBets only when odds available", () => {
             expect(service.allowBets).toBe(true);
-            service.dynamicOddsByGameId["7"] = {};
+            
+            // Test with empty event details to get empty odds
+            const emptyEvent = {
+                eventID: 7,
+                eventDetails: [],
+            } as unknown as MarbleEvent;
+            service.handleBetChoiceReady({ event: emptyEvent, index: 0 } as EventDetailNotification<MarbleEvent>);
             expect(service.allowBets).toBe(false);
         });
     });

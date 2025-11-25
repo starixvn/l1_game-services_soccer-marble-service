@@ -1,10 +1,10 @@
 import GameStatusPublisher from "../../../src/publishers/game-status-publisher";
 
 describe("GameStatusPublisher", () => {
-    let publisher: GameStatusPublisher & any;
+    let publisher: GameStatusPublisher;
 
     beforeEach(() => {
-        publisher = Object.create(GameStatusPublisher.prototype) as any;
+        publisher = Object.create(GameStatusPublisher.prototype);
         publisher.publishToAllUsers = jest.fn();
     });
 
@@ -13,7 +13,7 @@ describe("GameStatusPublisher", () => {
     });
 
     it("should publish odds to all users", () => {
-        const odds = { home: 2.0, away: 3.0 };
+        const odds = { home: 2, away: 3 };
         publisher.publishOdds(odds);
         expect(publisher.publishToAllUsers).toHaveBeenCalledWith({ odds });
     });

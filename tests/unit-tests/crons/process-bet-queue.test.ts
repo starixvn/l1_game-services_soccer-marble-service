@@ -139,7 +139,7 @@ describe("ProcessBetQueue", () => {
             const player = { UID: "u4", profile: { name: "bar" }, session: null };
             const bet = { amount: 50, betChoice: "away", roundId: 10, clientSeed: new Date(), index: 1 } as any;
 
-            await cron.upsertBet(player, 10, bet, 1.0);
+            await cron.upsertBet(player, 10, bet, 1);
             expect(cron.betsRepository.updateOne).toHaveBeenCalledWith(
                 { uid: "u4", roundId: 10, freeBet: undefined },
                 {
