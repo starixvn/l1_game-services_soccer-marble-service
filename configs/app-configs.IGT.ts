@@ -29,7 +29,6 @@ export default {
             dbName: "marble-football-test-db",
             useNewUrlParser: true,
             useUnifiedTopology: true,
-           
         },
     },
     sentry: {
@@ -62,10 +61,6 @@ export default {
         system: "SG",
         enabled: true,
         endpoint: "http://10.10.50.69:4318/v1/traces",
-    },
-    tournament: {
-        code: "SEAOC",
-        teams: ["BRN", "KHM", "IDN", "LAO", "MYS", "PHL", "SGP", "THA", "TLS", "VNM", "JPN", "KOR", "CHN", "TWN", "HKG", "IND"],
     },
     oddsFeedAPI: {
         url: "http://localhost:5999",

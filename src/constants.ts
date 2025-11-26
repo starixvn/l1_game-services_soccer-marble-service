@@ -90,44 +90,6 @@ export const GAME_NAME = `marbles${appConfigs.gameId}`;
 
 export const MODEL_NAME_PREFIX = IS_DEV_ENV ? `${GAME_NAME}_dev` : `${GAME_NAME}`;
 
-export const DEFAULT_NUMBER_OF_VIDEOS: Record<string, number> = {
-    AAAA: 2,
-    AAAH: 6,
-    AAA: 2,
-    AAHA: 2,
-    AAHH: 2,
-    AAH: 2,
-    AA: 2,
-    AHAA: 3,
-    AHAH: 3,
-    AHA: 2,
-    AHHA: 4,
-    AHHH: 5,
-    AHH: 2,
-    AH: 15,
-    A: 15,
-    HAAA: 2,
-    HAAH: 2,
-    HAA: 11,
-    HAHA: 2,
-    HAHH: 2,
-    HAH: 12,
-    HA: 2,
-    HHAA: 2,
-    HHAH: 3,
-    HHA: 8,
-    HHHA: 2,
-    HHHH: 2,
-    HHH: 2,
-    HH: 4,
-    H: 19,
-};
-
-export const DEFAULT_TOURNAMENT_CODES = {
-    code: "UCL",
-    teams: ["MCI", "RMA", "BAR", "LIV", "ARS", "FCB", "INT", "LEV", "AVL", "ATA", "BVB", "JUV", "PSG", "SLB", "ATM", "MIL"],
-};
-
 export type BetChoiceSelection = {
     [K in keyof typeof BET_CHOICES]: string;
 };

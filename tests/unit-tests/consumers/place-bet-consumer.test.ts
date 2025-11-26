@@ -53,10 +53,6 @@ describe("PlaceBetConsumer", () => {
             gameConfigs: {
                 enabled: true,
                 enableFreeBet: true,
-                tournamentConfig: {
-                    code: "test",
-                    teams: ["team1", "team2"]
-                },
                 videoStreamConfig: {
                     videoInfos: [],
                 },
@@ -71,22 +67,24 @@ describe("PlaceBetConsumer", () => {
                             scheduleStartTs: new Date(Date.now() - 60000),
                             productCode: "SOCCER",
                             productTypeKey: "MATCH",
-                            eventDetails: [{
-                                eventID: 123,
-                                scheduleStartTs: new Date(Date.now() - 60000),
-                                oddsAvailableTs: new Date(Date.now() - 30000),
-                                resultsAvailableTs: new Date(Date.now() + 120000),
-                                hasResults: false,
-                                playlist: "test-playlist",
-                                goalInfo: "test-goal-info",
-                                result: "test-result",
-                                markets: []
-                            }]
-                        }
+                            eventDetails: [
+                                {
+                                    eventID: 123,
+                                    scheduleStartTs: new Date(Date.now() - 60000),
+                                    oddsAvailableTs: new Date(Date.now() - 30000),
+                                    resultsAvailableTs: new Date(Date.now() + 120000),
+                                    hasResults: false,
+                                    playlist: "test-playlist",
+                                    goalInfo: "test-goal-info",
+                                    result: "test-result",
+                                    markets: [],
+                                },
+                            ],
+                        },
                     },
                     currentRound: 1,
-                    currentEventDetailIndex: 0
-                }
+                    currentEventDetailIndex: 0,
+                },
             },
             currencyGroupGames: [],
             ingame: {},
@@ -209,8 +207,8 @@ describe("PlaceBetConsumer", () => {
         mockedEventIdHelper.extractGameId.mockReturnValue(123);
 
         placeBetConsumer = new PlaceBetConsumer(
-            mockGameDefinition, 
-            mockGameData, 
+            mockGameDefinition,
+            mockGameData,
             mockEventPublisher,
             mockHedgeBetService,
             mockBetStatusService
@@ -509,7 +507,7 @@ describe("PlaceBetConsumer", () => {
                 freeBet: false,
                 roundId: 1,
                 m: 1,
-                clientSeed: "test-seed"
+                clientSeed: "test-seed",
             };
 
             // Mock the parent class methods
@@ -545,10 +543,10 @@ describe("PlaceBetConsumer", () => {
                 // Assert
                 expect(placeBetConsumer.validateRequestParams).toHaveBeenCalledWith(mockPayload, mockPlayer);
                 expect(placeBetConsumer.validateBetRequest).toHaveBeenCalledWith(
-                    mockPlayer, 
-                    BET_CHOICES.home, 
+                    mockPlayer,
+                    BET_CHOICES.home,
                     100, // amount should be floored
-                    false, 
+                    false,
                     1
                 );
                 expect(placeBetConsumer.adjustBetTracks).not.toHaveBeenCalled();
@@ -606,7 +604,7 @@ describe("PlaceBetConsumer", () => {
                 expect(mockGameData.ingame.testPlayer.betQueue).toHaveLength(1);
                 expect(mockGameData.ingame.testPlayer.betQueue[0]).toEqual({
                     player: mockPlayer,
-                    payload: mockPayload
+                    payload: mockPayload,
                 });
                 expect(mockGameData.ingame.testPlayer.betTracks).toEqual({ home: 50 }); // Should remain unchanged
                 expect(placeBetConsumer.adjustBetTracks).toHaveBeenCalledWith("testPlayer", mockPayload);
@@ -631,7 +629,7 @@ describe("PlaceBetConsumer", () => {
                 expect(payloadWithDefaults.roundId).toBe(999); // Should use gameData.roundId
                 expect(payloadWithDefaults.mode).toBe("1"); // Default DisplayMode.Landscape
                 expect(payloadWithDefaults.index).toBe(0);
-                
+
                 // Verify player was created with default values
                 expect(mockGameData.ingame.testPlayer).toBeDefined();
                 expect(mockGameData.ingame.testPlayer.betQueue).toHaveLength(1);
@@ -693,9 +691,11 @@ describe("PlaceBetConsumer", () => {
             mockBet = {
                 betChoice: BET_CHOICES.home,
                 roundId: 1,
-                amount: 100
+                amount: 100,
             };
-            superAdjustBetTracksSpy = jest.spyOn(Core.BaseEventConsumers.PlaceBetConsumer.prototype, "adjustBetTracks").mockImplementation();
+            superAdjustBetTracksSpy = jest
+                .spyOn(Core.BaseEventConsumers.PlaceBetConsumer.prototype, "adjustBetTracks")
+                .mockImplementation();
         });
 
         it("should call super.adjustBetTracks and hedgeBetService.trackHedgeBetRestriction", () => {
@@ -762,9 +762,9 @@ describe("PlaceBetConsumer", () => {
                     betChoice: BET_CHOICES.away,
                 });
                 expect(result[0].failure).toBe(true);
-                expect(result[0].notice).toEqual({ 
-                    errorCode: "SB1939", 
-                    hedgeBetGroup: [BET_CHOICES.home, BET_CHOICES.away] 
+                expect(result[0].notice).toEqual({
+                    errorCode: "SB1939",
+                    hedgeBetGroup: [BET_CHOICES.home, BET_CHOICES.away],
                 });
             });
 
@@ -783,9 +783,9 @@ describe("PlaceBetConsumer", () => {
                     betChoice: LIVE_BET_CHOICES.awayLive,
                 });
                 expect(result[0].failure).toBe(true);
-                expect(result[0].notice).toEqual({ 
-                    errorCode: "SB1939", 
-                    hedgeBetGroup: [BET_CHOICES.home, LIVE_BET_CHOICES.awayLive] 
+                expect(result[0].notice).toEqual({
+                    errorCode: "SB1939",
+                    hedgeBetGroup: [BET_CHOICES.home, LIVE_BET_CHOICES.awayLive],
                 });
             });
         });
@@ -839,4 +839,4 @@ describe("PlaceBetConsumer", () => {
             });
         });
     });
-}); 
+});
