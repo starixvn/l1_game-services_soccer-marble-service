@@ -38,6 +38,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.betStatusService = container.betStatusService;
         this.oddsFeedEventSource = container.oddsFeedEventSource;
         this.catchAllListener = this.handleOddsFeedWilcard.bind(this);
+        this.oddsFeedCron = container.oddsFeedCron;
         this.eventStartListener = this.handleEventStart.bind(this);
     }
 
