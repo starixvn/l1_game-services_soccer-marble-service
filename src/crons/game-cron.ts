@@ -7,7 +7,7 @@ import RunningRoundInfoPublisher from "../publishers/running-round-info-publishe
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
-import { CatchAllEventListener, EventNotification, Notification, OddsFeedEventName, OddsFeedEventSource, EventListener } from "odds-feed-client";
+import { CatchAllEventListener, EventNotification, Notification, OddsFeedEventName, OddsFeedEventSource, EventListener, OddsFeedCron } from "odds-feed-client";
 import { MarbleEvent } from "../features/shared-types";
 import Bot from "./bot";
 
@@ -20,6 +20,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
     declare runningRoundInfoPublisher: RunningRoundInfoPublisher;
     declare bot: Bot;
 
+    declare oddsFeedCron: OddsFeedCron;
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     currentEventService: CurrentEventService;
     betStatusService: BetStatusService;
@@ -43,7 +44,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
     handleOddsFeedWilcard(_: OddsFeedEventName, notification: Notification<MarbleEvent>) : void {
         const event = (notification as EventNotification<MarbleEvent>).event;
         if (event) {
-            const serviceNow = new Date().getTime();
+            const serviceNow = Date.now();
             const serverNow = event.now ? new Date(event.now).getTime() : serviceNow;
             this.differenceBetweenServerTime = (serverNow - serviceNow) / 1000;
         }
@@ -122,10 +123,11 @@ export default class GameCron extends Table.Crons.TableGameCron {
             const notification = await getOrDefault(this.gameManagementApiClient.notification.getUmMessages(configName), {});
 
             this.gameData.umMessages = notification;
-
+            this.oddsFeedCron.stop();
             this.gameData.remainingTime = durations.wholeRound;
             this.gameStatusPublisher.publishDisableGameStatus();
         } else if (previouslyDisabled) {
+            await this.oddsFeedCron.start();
             await this.enableGame();
         } else {
             this.gameStatusPublisher.publishStartGame();

@@ -2614,6 +2614,47 @@
     "@sentry/opentelemetry" "10.5.0"
     import-in-the-middle "^1.14.2"
 
+"@sentry/node@10.20.0":
+  version "10.20.0"
+  resolved "http://npm.lumigame.com/@sentry/node/-/node-10.20.0.tgz#09a7d452457e1b32da428a88d5db921349935cf2"
+  integrity sha512-Hv6cxQ2ilL54lF6+WwvvrvJEkt0fwUAAQZNwfAR0CfuP4Zg8FPQvxDeLhryd2Qr0nwPMNi3eYjypORjD3dcMLg==
+  dependencies:
+    "@opentelemetry/api" "^1.9.0"
+    "@opentelemetry/context-async-hooks" "^2.1.0"
+    "@opentelemetry/core" "^2.1.0"
+    "@opentelemetry/instrumentation" "^0.204.0"
+    "@opentelemetry/instrumentation-amqplib" "0.51.0"
+    "@opentelemetry/instrumentation-connect" "0.48.0"
+    "@opentelemetry/instrumentation-dataloader" "0.22.0"
+    "@opentelemetry/instrumentation-express" "0.53.0"
+    "@opentelemetry/instrumentation-fs" "0.24.0"
+    "@opentelemetry/instrumentation-generic-pool" "0.48.0"
+    "@opentelemetry/instrumentation-graphql" "0.52.0"
+    "@opentelemetry/instrumentation-hapi" "0.51.0"
+    "@opentelemetry/instrumentation-http" "0.204.0"
+    "@opentelemetry/instrumentation-ioredis" "0.52.0"
+    "@opentelemetry/instrumentation-kafkajs" "0.14.0"
+    "@opentelemetry/instrumentation-knex" "0.49.0"
+    "@opentelemetry/instrumentation-koa" "0.52.0"
+    "@opentelemetry/instrumentation-lru-memoizer" "0.49.0"
+    "@opentelemetry/instrumentation-mongodb" "0.57.0"
+    "@opentelemetry/instrumentation-mongoose" "0.51.0"
+    "@opentelemetry/instrumentation-mysql" "0.50.0"
+    "@opentelemetry/instrumentation-mysql2" "0.51.0"
+    "@opentelemetry/instrumentation-pg" "0.57.0"
+    "@opentelemetry/instrumentation-redis" "0.53.0"
+    "@opentelemetry/instrumentation-tedious" "0.23.0"
+    "@opentelemetry/instrumentation-undici" "0.15.0"
+    "@opentelemetry/resources" "^2.1.0"
+    "@opentelemetry/sdk-trace-base" "^2.1.0"
+    "@opentelemetry/semantic-conventions" "^1.37.0"
+    "@prisma/instrumentation" "6.15.0"
+    "@sentry/core" "10.20.0"
+    "@sentry/node-core" "10.20.0"
+    "@sentry/opentelemetry" "10.20.0"
+    import-in-the-middle "^1.14.2"
+    minimatch "^9.0.0"
+
 "@sentry/node@10.5.0":
   version "10.5.0"
   resolved "http://npm.lumigame.com/@sentry/node/-/node-10.5.0.tgz#b7a037de5e70c15e363faea04a4ae72da997937e"
@@ -2652,47 +2693,6 @@
     "@sentry/core" "10.5.0"
     "@sentry/node-core" "10.5.0"
     "@sentry/opentelemetry" "10.5.0"
-    import-in-the-middle "^1.14.2"
-    minimatch "^9.0.0"
-
-"@sentry/node@^10.20.0":
-  version "10.20.0"
-  resolved "http://npm.lumigame.com/@sentry/node/-/node-10.20.0.tgz#09a7d452457e1b32da428a88d5db921349935cf2"
-  integrity sha512-Hv6cxQ2ilL54lF6+WwvvrvJEkt0fwUAAQZNwfAR0CfuP4Zg8FPQvxDeLhryd2Qr0nwPMNi3eYjypORjD3dcMLg==
-  dependencies:
-    "@opentelemetry/api" "^1.9.0"
-    "@opentelemetry/context-async-hooks" "^2.1.0"
-    "@opentelemetry/core" "^2.1.0"
-    "@opentelemetry/instrumentation" "^0.204.0"
-    "@opentelemetry/instrumentation-amqplib" "0.51.0"
-    "@opentelemetry/instrumentation-connect" "0.48.0"
-    "@opentelemetry/instrumentation-dataloader" "0.22.0"
-    "@opentelemetry/instrumentation-express" "0.53.0"
-    "@opentelemetry/instrumentation-fs" "0.24.0"
-    "@opentelemetry/instrumentation-generic-pool" "0.48.0"
-    "@opentelemetry/instrumentation-graphql" "0.52.0"
-    "@opentelemetry/instrumentation-hapi" "0.51.0"
-    "@opentelemetry/instrumentation-http" "0.204.0"
-    "@opentelemetry/instrumentation-ioredis" "0.52.0"
-    "@opentelemetry/instrumentation-kafkajs" "0.14.0"
-    "@opentelemetry/instrumentation-knex" "0.49.0"
-    "@opentelemetry/instrumentation-koa" "0.52.0"
-    "@opentelemetry/instrumentation-lru-memoizer" "0.49.0"
-    "@opentelemetry/instrumentation-mongodb" "0.57.0"
-    "@opentelemetry/instrumentation-mongoose" "0.51.0"
-    "@opentelemetry/instrumentation-mysql" "0.50.0"
-    "@opentelemetry/instrumentation-mysql2" "0.51.0"
-    "@opentelemetry/instrumentation-pg" "0.57.0"
-    "@opentelemetry/instrumentation-redis" "0.53.0"
-    "@opentelemetry/instrumentation-tedious" "0.23.0"
-    "@opentelemetry/instrumentation-undici" "0.15.0"
-    "@opentelemetry/resources" "^2.1.0"
-    "@opentelemetry/sdk-trace-base" "^2.1.0"
-    "@opentelemetry/semantic-conventions" "^1.37.0"
-    "@prisma/instrumentation" "6.15.0"
-    "@sentry/core" "10.20.0"
-    "@sentry/node-core" "10.20.0"
-    "@sentry/opentelemetry" "10.20.0"
     import-in-the-middle "^1.14.2"
     minimatch "^9.0.0"
 
@@ -3672,6 +3672,14 @@ asynckit@^0.4.0:
   resolved "http://npm.lumigame.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha1-x57Zf380y48robyXkLzDZkdLS3k=
 
+awilix@12.0.5, awilix@^12.0.5:
+  version "12.0.5"
+  resolved "http://npm.lumigame.com/awilix/-/awilix-12.0.5.tgz#374613817325177a7a0ead4291dd4affe91d42fb"
+  integrity sha512-Qf/V/hRo6DK0FoBKJ9QiObasRxHAhcNi0mV6kW2JMawxS3zq6Un+VsZmVAZDUfvB+MjTEiJ2tUJUl4cr0JiUAw==
+  dependencies:
+    camel-case "^4.1.2"
+    fast-glob "^3.3.3"
+
 awilix@8.0.0:
   version "8.0.0"
   resolved "http://npm.lumigame.com/awilix/-/awilix-8.0.0.tgz#556fa20e0f7b52b39479ed6b027ee054efd8f16a"
@@ -3679,14 +3687,6 @@ awilix@8.0.0:
   dependencies:
     camel-case "^4.1.2"
     fast-glob "^3.2.12"
-
-awilix@^12.0.5:
-  version "12.0.5"
-  resolved "http://npm.lumigame.com/awilix/-/awilix-12.0.5.tgz#374613817325177a7a0ead4291dd4affe91d42fb"
-  integrity sha512-Qf/V/hRo6DK0FoBKJ9QiObasRxHAhcNi0mV6kW2JMawxS3zq6Un+VsZmVAZDUfvB+MjTEiJ2tUJUl4cr0JiUAw==
-  dependencies:
-    camel-case "^4.1.2"
-    fast-glob "^3.3.3"
 
 axios-retry@^4.0.0:
   version "4.5.0"
@@ -4212,7 +4212,7 @@ cron@2.0.0:
   dependencies:
     luxon "^1.23.x"
 
-cron@^4.3.3:
+cron@4.3.3:
   version "4.3.3"
   resolved "http://npm.lumigame.com/cron/-/cron-4.3.3.tgz#d37cfcbc73ba34a50d9d9ce9b653ae60837377d7"
   integrity sha512-B/CJj5yL3sjtlun6RtYHvoSB26EmQ2NUmhq9ZiJSyKIM4K/fqfh9aelDFlIayD2YMeFZqWLi9hHV+c+pq2Djkw==
@@ -6334,14 +6334,14 @@ object-assign@^4:
   resolved "http://npm.lumigame.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
   integrity sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM=
 
-odds-feed-client@3.4.2:
-  version "3.4.2"
-  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.4.2.tgz#3ec0257864b90edab885f17566fbcc0e74d6072c"
-  integrity sha512-4v+m7hJARZMCq4Ug0Fp0SZ22mMAu4QlOgtHYE9t9hR+Zx1W4X6dYJl9TgYgzHgzPrR+xl91F95bvZXxAONkUVA==
+odds-feed-client@3.6.0:
+  version "3.6.0"
+  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.6.0.tgz#24df139a556897eb1411772e9af55ee7318cbcf2"
+  integrity sha512-v4aRctPMYEVnvtWMBCtU/GFCdEaz5Moh6MCGA/NwoP3kB8Lfdqt5zEYFNektEbEqumLYOyOqgx+rqjQjdbp2uA==
   dependencies:
-    "@sentry/node" "^10.20.0"
-    awilix "^12.0.5"
-    cron "^4.3.3"
+    "@sentry/node" "10.20.0"
+    awilix "12.0.5"
+    cron "4.3.3"
 
 on-finished@~2.3.0:
   version "2.3.0"

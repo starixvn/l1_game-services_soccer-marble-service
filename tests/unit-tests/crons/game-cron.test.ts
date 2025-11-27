@@ -59,6 +59,10 @@ describe("GameCron", () => {
             on: jest.fn(),
             eventOn: jest.fn(),
         };
+        cron.oddsFeedCron = {
+            stop: jest.fn(),
+            start: jest.fn().mockResolvedValue(undefined),
+        };
         cron.gameManagementApiClient = {
             gameConfigs: {
                 getGameConfigs: jest.fn().mockResolvedValue({}),
@@ -179,7 +183,7 @@ describe("GameCron", () => {
     });
 
     describe("handleGameStatus", () => {
-        it("should disable game, set remaining time, and publish disable status", async () => {
+        it("should disable game, set remaining time, publish disable status, and stop odds feed cron", async () => {
             (getOrDefault as jest.Mock).mockResolvedValueOnce({});
             cron.gameData.disabled = true;
 
@@ -188,12 +192,14 @@ describe("GameCron", () => {
             expect(getOrDefault).toHaveBeenCalled();
             expect(cron.gameData.remainingTime).toBe(126);
             expect(cron.gameStatusPublisher.publishDisableGameStatus).toHaveBeenCalled();
+            expect(cron.oddsFeedCron.stop).toHaveBeenCalled();
         });
 
-        it("should enable game when previously disabled", async () => {
+        it("should enable game, start odds feed cron when previously disabled", async () => {
             cron.gameData.disabled = false;
             await cron.handleGameStatus(true);
             expect(cron.enableGame).toHaveBeenCalled();
+            expect(cron.oddsFeedCron.start).toHaveBeenCalled();
         });
 
         it("should publish start game when not disabled and not previously disabled", async () => {
