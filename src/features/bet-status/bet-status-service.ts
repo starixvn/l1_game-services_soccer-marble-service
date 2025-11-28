@@ -59,6 +59,7 @@ export class BetStatusService {
     private _currentOddIndex = 0;
     private _betGroups: Record<string, string[]> = {};
     private _marginProcessedDynamicOdds: Record<string, number> = {};
+    private _previousOdds: Record<string, number> = {};
 
     public get allowBets() {
         return this._betStatus && Object.keys(this._dynamicOdds ?? {}).length > 0; 
@@ -80,6 +81,17 @@ export class BetStatusService {
         return this._betGroups;
     }
 
+    public get previousOdds() {
+        return this._previousOdds;
+    }
+
+    public get payload() {
+        let additional = {};
+        if (this.currentIndex > 0) {
+            additional = { previousOdds: this.previousOdds };
+        }
+        return { odds: this.odds, points: this.points, index: this.currentIndex, ...additional };
+    }
 
     public initEvent() {
         this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.boundHandleEventStart);
@@ -185,6 +197,7 @@ export class BetStatusService {
         const marginConfig = this.gameData.gameConfigs.margin as MarginConfigs ?? [];
         const processedOdds = trueOddsToOddsWithMarginConfig(odds ?? {}, marginConfig);
         this._dynamicOdds = odds ?? {};
+        this._previousOdds = { ...this._marginProcessedDynamicOdds };
         this._marginProcessedDynamicOdds = processedOdds ?? {};
         this._betChoicePoints = points ?? {};
         this._betGroups = this.formatBetGroup(groups ?? {});
@@ -197,11 +210,7 @@ export class BetStatusService {
     
     private publishBetChoiceReady() {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
-        this.gameStatusPublisher.publishToAllUsers({
-            odds: this.odds,
-            points: this.points,
-            index: this.currentIndex
-        })
+        this.gameStatusPublisher.publishToAllUsers(this.payload);
     }
 
     // f: <string, string> -> <string, array<string>>

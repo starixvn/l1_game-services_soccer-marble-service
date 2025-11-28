@@ -1,9 +1,24 @@
 import { TableInGameConsumer } from "sc-game-base/src/table/event-consumers";
+import { Core } from "sc-game-base";
+import { BaseEventPublisher } from "sc-game-base/src/core/event-publishers";
 import GameData from "../game-data";
+import GameDefinition from "../game-definition";
 import { getUserBetPercentage } from "../helpers/bet-percentage";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { StreamingService } from "../features/streaming-service/streaming-service";
+
+interface InGameConsumerContainer {
+    definition: GameDefinition;
+    gameData: GameData;
+    roundQuery: Core.QueryApis.RoundQuery;
+    publisher: BaseEventPublisher;
+    getBalance: (player: any) => Promise<number>;
+    gameManagementApiClientFactory: any;
+    betStatusService: BetStatusService;
+    currentEventService: CurrentEventService;
+    streamingService: StreamingService;
+}
 
 export default class InGameConsumer extends TableInGameConsumer {
     declare gameData: GameData;
@@ -11,20 +26,27 @@ export default class InGameConsumer extends TableInGameConsumer {
     currentEventService: CurrentEventService;
     streamingService: StreamingService;
 
-    constructor(
-        definition: any,
-        gameData: GameData,
-        roundQuery: any,
-        publisher: any,
-        getBalance: any,
-        gameManagementApiClientFactory: any,
-        betStatusService: BetStatusService,
-        currentEventService: CurrentEventService,
-        streamingService: StreamingService,
-    ) {
-        super(definition, gameData, roundQuery, publisher, getBalance, gameManagementApiClientFactory);
+    constructor({
+        definition,
+        gameData,
+        roundQuery,
+        publisher,
+        getBalance,
+        gameManagementApiClientFactory,
+        betStatusService,
+        currentEventService,
+        streamingService,
+    }: InGameConsumerContainer) {
+        super(
+            definition,
+            gameData,
+            roundQuery,
+            publisher,
+            getBalance,
+            gameManagementApiClientFactory,
+        );
         this.betStatusService = betStatusService;
-        this.currentEventService = currentEventService; 
+        this.currentEventService = currentEventService;
         this.streamingService = streamingService;
     }
 
@@ -36,37 +58,26 @@ export default class InGameConsumer extends TableInGameConsumer {
         const payload = await super.buildPayload(realPlayer);
         const betChoices = Object.keys(this.betStatusService.odds);
 
+
         const currentEvent = this.currentEventService.getCurrentEvent();
-        const home = currentEvent.eventNameAKey;
-        const away = currentEvent.eventNameBKey;
-        const match = { home, away };
+
+        const marblePayload: Record<string, any> = { 
+            ...this.betStatusService.payload,
+            match: { home: currentEvent.eventNameAKey, away: currentEvent.eventNameBKey },
+            playlist: this.streamingService.currentPlaylist,
+            userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
+        };
+
+        if (this.betStatusService.allowBets) {
+            marblePayload.spb = true
+        }
+        else {
+            marblePayload.ebp = true;
+        }
+
         return {
             ...payload,
-            userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
-            odds: this.betStatusService.odds,
-            points: this.betStatusService.points,
-            index: this.betStatusService.currentIndex,
-            match,
-            playlist: this.streamingService.currentPlaylist,
+            ...marblePayload,
         };
-    }
-
-    publishOddsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { odds: this.betStatusService.odds });
-    }
-
-    publishBetChoicePointsToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { points: this.betStatusService.points });
-    }
-
-    publishMatchToPlayer(UID: string): void {
-        const currentEvent = this.currentEventService.getCurrentEvent();
-        const home = currentEvent.eventNameAKey;
-        const away = currentEvent.eventNameBKey;
-        this.publisher.publishToUser(UID, { match: { home, away } });
-    }
-
-    publishCurrentIndexToPlayer(UID: string): void {
-        this.publisher.publishToUser(UID, { currentIndex: this.betStatusService.currentIndex });
     }
 }

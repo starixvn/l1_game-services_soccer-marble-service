@@ -59,7 +59,7 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
 
         this.container.register({
             userDisconnectConsumer: asClass(UserDisconnectConsumer).singleton(),
-            inGameConsumer: asClass(InGameConsumer).singleton(),
+            inGameConsumer: asClass(InGameConsumer).singleton().proxy(),
             settleGameRoundConsumer: asClass(SettleGameRoundConsumer).singleton().proxy(),
             placeBetConsumer: asClass(PlaceBetConsumer).singleton(),
             userSignInConsumer: asClass(UserSignInConsumer).singleton().proxy(),

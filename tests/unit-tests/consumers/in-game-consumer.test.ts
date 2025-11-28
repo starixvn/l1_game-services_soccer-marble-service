@@ -40,29 +40,35 @@ describe("InGameConsumer", () => {
         mockBetStatusService = stub<BetStatusService>();
         mockCurrentEventService = stub<CurrentEventService>();
         mockStreamingService = stub<StreamingService>();
-        let oddsValue: Record<string, number> = { home: 1.5, away: 2 };
+        
+        // Setup BetStatusService payload mock
+        let payloadValue: any = {
+            odds: { home: 1.5, away: 2 },
+            points: { home: 1.2, away: 2.3 },
+            index: 0,
+        };
+        Object.defineProperty(mockBetStatusService, "payload", {
+            configurable: true,
+            get: () => payloadValue,
+            set: (value: any) => {
+                payloadValue = value;
+            },
+        });
+        
+        // Setup allowBets mock
+        let allowBetsValue = true;
+        Object.defineProperty(mockBetStatusService, "allowBets", {
+            configurable: true,
+            get: () => allowBetsValue,
+            set: (value: boolean) => {
+                allowBetsValue = value;
+            },
+        });
+        
+        // Keep odds getter for backward compatibility in tests
         Object.defineProperty(mockBetStatusService, "odds", {
             configurable: true,
-            get: () => oddsValue,
-            set: (value: Record<string, number>) => {
-                oddsValue = value;
-            },
-        });
-        let pointsValue: Record<string, number> = { home: 1.2, away: 2.3 };
-        Object.defineProperty(mockBetStatusService, "points", {
-            configurable: true,
-            get: () => pointsValue,
-            set: (value: Record<string, number>) => {
-                pointsValue = value;
-            },
-        });
-        let currentIndexValue = 0;
-        Object.defineProperty(mockBetStatusService, "currentIndex", {
-            configurable: true,
-            get: () => currentIndexValue,
-            set: (value: number) => {
-                currentIndexValue = value;
-            },
+            get: () => payloadValue.odds,
         });
 
         // Setup StreamingService mock
@@ -71,18 +77,21 @@ describe("InGameConsumer", () => {
             get: () => "test-playlist",
         });
 
-        // Create the instance
-        inGameConsumer = new InGameConsumer(
-            mockDefinition,
-            mockGameData,
+        // Create container with all dependencies
+        const container = {
+            definition: mockDefinition,
+            gameData: mockGameData,
             roundQuery,
             publisher,
-            mockGetBalance,
+            getBalance: mockGetBalance,
             gameManagementApiClientFactory,
-            mockBetStatusService,
-            mockCurrentEventService,
-            mockStreamingService,
-        );
+            betStatusService: mockBetStatusService,
+            currentEventService: mockCurrentEventService,
+            streamingService: mockStreamingService,
+        };
+
+        // Create the instance
+        inGameConsumer = new InGameConsumer(container);
     });
 
     afterEach(() => {
@@ -133,14 +142,25 @@ describe("InGameConsumer", () => {
     });
 
     describe("buildPayload", () => {
-        it("should build payload with userBetPercentage (based on dynamicOdds keys) and videoResult", async () => {
+        it("should build payload with userBetPercentage, match, playlist, and spb when allowBets is true", async () => {
             // Arrange
             const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
             const mockSuperPayload = { existingProperty: "value" };
             const mockUserBetPercentage = { home: 50, away: 30, draw: 20 };
 
             mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
-            (mockBetStatusService as any).odds = { home: 1.5, away: 2 };
+            Object.defineProperty(mockBetStatusService, "payload", {
+                configurable: true,
+                get: () => ({
+                    odds: { home: 1.5, away: 2 },
+                    points: { home: 1.2, away: 2.3 },
+                    index: 0,
+                }),
+            });
+            Object.defineProperty(mockBetStatusService, "allowBets", {
+                configurable: true,
+                get: () => true,
+            });
             (mockGameData as any).roundId = 1 as any;
             
             const mockCurrentEvent = {
@@ -163,80 +183,119 @@ describe("InGameConsumer", () => {
             expect(mockedGetUserBetPercentage).toHaveBeenCalledWith(mockGameData.playerBetCount, ["home", "away"]);
             expect(result).toEqual({
                 ...mockSuperPayload,
-                userBetPercentage: mockUserBetPercentage,
                 odds: { home: 1.5, away: 2 },
                 points: { home: 1.2, away: 2.3 },
                 index: 0,
+                userBetPercentage: mockUserBetPercentage,
                 match: { home: "Team A", away: "Team B" },
                 playlist: "test-playlist",
+                spb: true,
             });
+            expect(result.ebp).toBeUndefined();
         });
-    });
 
-    describe("publishOddsToPlayer", () => {
-        it("should publish odds to the specified player", () => {
+        it("should build payload with ebp when allowBets is false", async () => {
             // Arrange
-            const testUID = DEFAULT_PLAYER_UID;
-            const mockOdds = { home: 1.5, away: 2, draw: 3     };
-            (mockBetStatusService as any).odds = mockOdds;
+            const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
+            const mockSuperPayload = { existingProperty: "value" };
+            const mockUserBetPercentage = { home: 50, away: 30 };
 
-            // Act
-            inGameConsumer.publishOddsToPlayer(testUID);
-
-            // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { odds: mockOdds });
-        });
-    });
-
-    describe("publishBetChoicePointsToPlayer", () => {
-        it("should publish points to the specified player", () => {
-            // Arrange
-            const testUID = "test-player-456";
-            const mockPoints = { home: 10, away: 20, draw: 30 };
-            (mockBetStatusService as any).points = mockPoints;
-
-            // Act
-            inGameConsumer.publishBetChoicePointsToPlayer(testUID);
-
-            // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { points: mockPoints });
-        });
-    });
-
-    describe("publishMatchToPlayer", () => {
-        it("should publish match data to the specified player", () => {
-            // Arrange
-            const testUID = "test-player-789";
+            mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
+            Object.defineProperty(mockBetStatusService, "payload", {
+                configurable: true,
+                get: () => ({
+                    odds: { home: 1.5, away: 2 },
+                    points: { home: 1.2, away: 2.3 },
+                    index: 0,
+                }),
+            });
+            Object.defineProperty(mockBetStatusService, "allowBets", {
+                configurable: true,
+                get: () => false,
+            });
+            (mockGameData as any).roundId = 1 as any;
+            
             const mockCurrentEvent = {
                 eventNameAKey: "Team A",
                 eventNameBKey: "Team B",
             };
-
             (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
+            const superBuildPayloadSpy = jest
+                .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "buildPayload")
+                .mockResolvedValue(mockSuperPayload);
+
+            mockedGetUserBetPercentage.mockReturnValue(mockUserBetPercentage);
+
             // Act
-            inGameConsumer.publishMatchToPlayer(testUID);
+            const result = await inGameConsumer.buildPayload(mockRealPlayer);
 
             // Assert
-            expect(mockCurrentEventService.getCurrentEvent).toHaveBeenCalled();
-            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, {
-                match: { home: "Team A", away: "Team B" }
+            expect(superBuildPayloadSpy).toHaveBeenCalledWith(mockRealPlayer);
+            expect(mockedGetUserBetPercentage).toHaveBeenCalledWith(mockGameData.playerBetCount, ["home", "away"]);
+            expect(result).toEqual({
+                ...mockSuperPayload,
+                odds: { home: 1.5, away: 2 },
+                points: { home: 1.2, away: 2.3 },
+                index: 0,
+                userBetPercentage: mockUserBetPercentage,
+                match: { home: "Team A", away: "Team B" },
+                playlist: "test-playlist",
+                ebp: true,
             });
+            expect(result.spb).toBeUndefined();
         });
-    });
 
-    describe("publishCurrentIndexToPlayer", () => {
-        it("should publish current index to the specified player", () => {
+        it("should include previousOdds in payload when currentIndex > 0", async () => {
             // Arrange
-            const testUID = "test-player-101";
-            const mockCurrentIndex = 2;
-            (mockBetStatusService as any).currentIndex = mockCurrentIndex;
+            const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
+            const mockSuperPayload = { existingProperty: "value" };
+            const mockUserBetPercentage = { home: 50, away: 30 };
+
+            mockGameData.playerBetCount = { home: ["player1"], away: ["player2"] };
+            Object.defineProperty(mockBetStatusService, "payload", {
+                configurable: true,
+                get: () => ({
+                    odds: { home: 1.5, away: 2 },
+                    points: { home: 1.2, away: 2.3 },
+                    index: 1,
+                    previousOdds: { home: 1.8, away: 2.2 },
+                }),
+            });
+            Object.defineProperty(mockBetStatusService, "allowBets", {
+                configurable: true,
+                get: () => true,
+            });
+            (mockGameData as any).roundId = 1 as any;
+            
+            const mockCurrentEvent = {
+                eventNameAKey: "Team A",
+                eventNameBKey: "Team B",
+            };
+            (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
+
+            const superBuildPayloadSpy = jest
+                .spyOn(Table.EventConsumers.TableInGameConsumer.prototype, "buildPayload")
+                .mockResolvedValue(mockSuperPayload);
+
+            mockedGetUserBetPercentage.mockReturnValue(mockUserBetPercentage);
 
             // Act
-            inGameConsumer.publishCurrentIndexToPlayer(testUID);
+            const result = await inGameConsumer.buildPayload(mockRealPlayer);
 
             // Assert
-            expect(publisher.publishToUser).toHaveBeenCalledWith(testUID, { currentIndex: mockCurrentIndex });
+            expect(superBuildPayloadSpy).toHaveBeenCalledWith(mockRealPlayer);
+            expect(result).toEqual({
+                ...mockSuperPayload,
+                odds: { home: 1.5, away: 2 },
+                points: { home: 1.2, away: 2.3 },
+                index: 1,
+                previousOdds: { home: 1.8, away: 2.2 },
+                userBetPercentage: mockUserBetPercentage,
+                match: { home: "Team A", away: "Team B" },
+                playlist: "test-playlist",
+                spb: true,
+            });
         });
     });
 });
