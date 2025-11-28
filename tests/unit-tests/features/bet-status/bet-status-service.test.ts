@@ -7,7 +7,7 @@ jest.mock("../../../../src/helpers/eventid", () => ({
 }));
 
 describe("BetStatusService", () => {
-    let service: BetStatusService & any;
+    let service: any;
     let oddsFeedEventSource: {
         eventOn: jest.Mock;
         eventOff: jest.Mock;
@@ -25,7 +25,7 @@ describe("BetStatusService", () => {
     let delayHandlingService: { getDelayedTime: jest.Mock };
     let scheduler: { schedule: jest.Mock };
     let hedgeBetService: { resetHedgeBetRestriction: jest.Mock; updateHedgeBetGroups: jest.Mock };
-    let gameData: { roundId: number; playerBetCount: Record<string, unknown> };
+    let gameData: { roundId: number; playerBetCount: Record<string, unknown>; gameConfigs: { margin?: Array<{ max: number; margin: number }> } };
 
     beforeEach(() => {
         oddsFeedEventSource = {
@@ -52,7 +52,13 @@ describe("BetStatusService", () => {
             resetHedgeBetRestriction: jest.fn(),
             updateHedgeBetGroups: jest.fn(),
         };
-        gameData = { roundId: 12345, playerBetCount: {} };
+        gameData = { 
+            roundId: 12345, 
+            playerBetCount: {},
+            gameConfigs: {
+                margin: []
+            }
+        };
 
         service = new BetStatusService({
             oddsFeedEventSource,
@@ -154,10 +160,11 @@ describe("BetStatusService", () => {
             expect(service.odds).toEqual({});
         });
 
-        it("should default odds to zero when price missing", () => {
+        it("should return margin-processed odds when price missing (zero odds)", () => {
             const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "home" }] }] }] } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
+            // With zero odds, margin processing should still return 0
             expect(service.odds).toEqual({ home: 0 });
         });
 
@@ -202,7 +209,7 @@ describe("BetStatusService", () => {
             service.handleEventDetailUpcoming({ event, index: 1 } as EventDetailNotification<MarbleEvent>);
 
             expect(scheduler.schedule).toHaveBeenCalled();
-            const [time, handler, options] = (scheduler.schedule as jest.Mock).mock.calls[0];
+            const [time, handler, options] = (scheduler.schedule).mock.calls[0];
             expect(time.getTime()).toBe(lockTime - 1000 + 25);
             expect(typeof handler).toBe("function");
             expect(options).toEqual({ ignorePast: true, overrideNow: now });
@@ -285,7 +292,7 @@ describe("BetStatusService", () => {
             expect(service.allowBets).toBe(true);
 
             // Now test publishBetChoiceLocked
-            const publishBetChoiceLocked = (service as any).publishBetChoiceLocked.bind(service);
+            const publishBetChoiceLocked = (service).publishBetChoiceLocked.bind(service);
             publishBetChoiceLocked();
 
             expect(service.allowBets).toBe(false);
@@ -294,7 +301,10 @@ describe("BetStatusService", () => {
     });
 
     describe("handleBetChoiceReady", () => {
-        it("should populate betting data and publish updates", () => {
+        it("should populate betting data and publish margin-processed odds to clients", () => {
+            // Set up margin config: for odds <= 5, use 0.05 margin base
+            gameData.gameConfigs.margin = [{ max: 5, margin: 0.05 }];
+            
             const event = {
                 eventID: 7,
                 eventDetails: [
@@ -312,21 +322,32 @@ describe("BetStatusService", () => {
 
             expect(service.allowBets).toBe(true);
             expect(service.currentIndex).toBe(1);
-            expect(service.odds).toEqual({ home: 2, away: 3 });
             expect(service.points).toEqual({ home: 1, away: 2 });
             expect(hedgeBetService.resetHedgeBetRestriction).toHaveBeenCalled();
             expect(hedgeBetService.updateHedgeBetGroups).toHaveBeenCalled();
             expect(gameStatusPublisher.publishStartPlacingBetStatus).toHaveBeenCalled();
-            expect(gameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
-                odds: { home: 2, away: 3 },
-                points: { home: 1, away: 2 },
-                index: 1,
-            });
+            
+            // Verify that published odds are margin-processed (not raw odds)
+            // Raw odds: home: 2, away: 3
+            // With margin processing, odds should be lower than raw odds
+            const publishedCall = gameStatusPublisher.publishToAllUsers.mock.calls[0][0];
+            expect(publishedCall.points).toEqual({ home: 1, away: 2 });
+            expect(publishedCall.index).toBe(1);
+            
+            // Odds should be margin-processed (less than raw odds)
+            expect(publishedCall.odds.home).toBeLessThan(2);
+            expect(publishedCall.odds.away).toBeLessThan(3);
+            expect(publishedCall.odds.home).toBeGreaterThan(0);
+            expect(publishedCall.odds.away).toBeGreaterThan(0);
+            
+            // Service.odds getter should return the same margin-processed odds
+            expect(service.odds).toEqual(publishedCall.odds);
         });
     });
 
     describe("derived getters", () => {
         beforeEach(() => {
+            gameData.gameConfigs.margin = [{ max: 10, margin: 0.03 }];
             const event = {
                 eventID: 7,
                 eventDetails: [{
@@ -336,8 +357,10 @@ describe("BetStatusService", () => {
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
         });
 
-        it("should expose odds for current round", () => {
-            expect(service.odds).toEqual({ home: 2 });
+        it("should expose margin-processed odds for current round", () => {
+            // Odds should be margin-processed (less than raw price of 2)
+            expect(service.odds.home).toBeLessThan(2);
+            expect(service.odds.home).toBeGreaterThan(0);
         });
 
         it("should expose points for current round", () => {
@@ -358,6 +381,83 @@ describe("BetStatusService", () => {
             } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event: emptyEvent, index: 0 } as EventDetailNotification<MarbleEvent>);
             expect(service.allowBets).toBe(false);
+        });
+    });
+
+    describe("margin processing", () => {
+        it("should apply margin to odds before publishing to clients", () => {
+            // Set up margin config with different thresholds
+            gameData.gameConfigs.margin = [
+                { max: 2, margin: 0.05 },   // For odds <= 2, use 5% margin
+                { max: 5, margin: 0.03 },  // For odds <= 5, use 3% margin
+            ];
+
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        { selections: [{ betChoice: "low", price: 1.5 }] },   // Should use 5% margin
+                        { selections: [{ betChoice: "medium", price: 3 }] },  // Should use 3% margin
+                        { selections: [{ betChoice: "high", price: 10 }] },   // Should use default margin (2%)
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // Verify published odds are margin-processed (lower than raw odds)
+            const publishedOdds = gameStatusPublisher.publishToAllUsers.mock.calls[0][0].odds;
+            expect(publishedOdds.low).toBeLessThan(1.5);
+            expect(publishedOdds.medium).toBeLessThan(3);
+            expect(publishedOdds.high).toBeLessThan(10);
+            
+            // All should be positive
+            expect(publishedOdds.low).toBeGreaterThan(0);
+            expect(publishedOdds.medium).toBeGreaterThan(0);
+            expect(publishedOdds.high).toBeGreaterThan(0);
+
+            // Service.odds should match published odds
+            expect(service.odds).toEqual(publishedOdds);
+        });
+
+        it("should use default margin when margin config is empty", () => {
+            gameData.gameConfigs.margin = [];
+
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        { selections: [{ betChoice: "home", price: 2 }] },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // Should still apply margin (default 2%)
+            const publishedOdds = gameStatusPublisher.publishToAllUsers.mock.calls[0][0].odds;
+            expect(publishedOdds.home).toBeLessThan(2);
+            expect(publishedOdds.home).toBeGreaterThan(0);
+        });
+
+        it("should use default margin when margin config is undefined", () => {
+            gameData.gameConfigs.margin = undefined;
+
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        { selections: [{ betChoice: "home", price: 2 }] },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // Should still apply margin (default 2%)
+            const publishedOdds = gameStatusPublisher.publishToAllUsers.mock.calls[0][0].odds;
+            expect(publishedOdds.home).toBeLessThan(2);
+            expect(publishedOdds.home).toBeGreaterThan(0);
         });
     });
 });

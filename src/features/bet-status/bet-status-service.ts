@@ -4,6 +4,7 @@ import { DelayHandlingService } from "../delay/delay-handling-service";
 import { HedgeBetService } from "./hedge-bet-service";
 import GameData from "../../game-data";
 import { MarbleEvent, Market } from "../shared-types";
+import { MarginConfigs, trueOddsToOddsWithMarginConfig } from "../../helpers/odds-helper";
 
 export interface BetConfig {
     delayPlaceBetMs?: number;
@@ -57,6 +58,7 @@ export class BetStatusService {
     private _dynamicOdds: Record<string, number> = {};
     private _currentOddIndex = 0;
     private _betGroups: Record<string, string[]> = {};
+    private _marginProcessedDynamicOdds: Record<string, number> = {};
 
     public get allowBets() {
         return this._betStatus && Object.keys(this._dynamicOdds ?? {}).length > 0; 
@@ -71,7 +73,7 @@ export class BetStatusService {
     }
 
     public get odds() {
-        return this._dynamicOdds;
+        return this._marginProcessedDynamicOdds;
     }
 
     public get betGroups() {
@@ -180,8 +182,10 @@ export class BetStatusService {
 
         const { odds, points, groups } = this.getBetDataFromEventDetail({ event, index });
 
-        
+        const marginConfig = this.gameData.gameConfigs.margin as MarginConfigs ?? [];
+        const processedOdds = trueOddsToOddsWithMarginConfig(odds ?? {}, marginConfig);
         this._dynamicOdds = odds ?? {};
+        this._marginProcessedDynamicOdds = processedOdds ?? {};
         this._betChoicePoints = points ?? {};
         this._betGroups = this.formatBetGroup(groups ?? {});
 
