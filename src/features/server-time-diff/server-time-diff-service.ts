@@ -1,4 +1,4 @@
-import { OddsFeedEventSource, Notification, EventNotification } from "odds-feed-client/.";
+import { OddsFeedEventSource, Notification, EventNotification } from "odds-feed-client";
 
 interface ServerTimeDiffServiceContainer {
     oddsFeedEventSource: OddsFeedEventSource;
