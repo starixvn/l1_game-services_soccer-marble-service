@@ -11,6 +11,7 @@ import { ResultService } from "./result/result-service";
 import { GameFlowService } from "./game-flow/game-flow-service";
 import { StreamingService } from "./streaming-service/streaming-service";
 import { ServerTimeDiffService } from "./server-time-diff/server-time-diff-service";
+import { UpcomingEventService } from "./upcoming-event/upcoming-event-service";
 
 
 export interface DelayHandlerContainer {
@@ -86,6 +87,13 @@ export function registerFeatures(diContainer: DiContainer) {
         value: ServerTimeDiffService,
         disposer,
     });
+
+    diContainer.register({
+        key: 'upcomingEventService',
+        registerType: 'class',
+        value: UpcomingEventService,
+        disposer,
+    });
 };
 
 export function disposer(service: any) {
@@ -107,4 +115,5 @@ export function initFeatures(container: DiContainer) {
     container.resolve<GameFlowService>('gameFlowService').init();
     container.resolve<StreamingService>('streamingService').init();
     container.resolve<ServerTimeDiffService>('serverTimeDiffService').init();
+    container.resolve<UpcomingEventService>('upcomingEventService').init();
 }

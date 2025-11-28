@@ -42,6 +42,7 @@ export class UpcomingEventService {
     }
     
     handleEventUpcoming = ({ event }: EventNotification) => {
+        console.log("handleEventUpcoming", event.eventID);
         this.upcomingEventQueue.push(event);
     };
 
