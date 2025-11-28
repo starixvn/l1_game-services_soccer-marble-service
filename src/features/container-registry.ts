@@ -10,6 +10,7 @@ import { CheckStatusService } from "./check-status/check-status-service";
 import { ResultService } from "./result/result-service";
 import { GameFlowService } from "./game-flow/game-flow-service";
 import { StreamingService } from "./streaming-service/streaming-service";
+import { ServerTimeDiffService } from "./server-time-diff/server-time-diff-service";
 
 
 export interface DelayHandlerContainer {
@@ -78,6 +79,13 @@ export function registerFeatures(diContainer: DiContainer) {
         value: StreamingService,
         disposer,
     });
+
+    diContainer.register({
+        key: 'serverTimeDiffService',
+        registerType: 'class',
+        value: ServerTimeDiffService,
+        disposer,
+    });
 };
 
 export function disposer(service: any) {
@@ -89,11 +97,14 @@ export function oddsFeedFilter(event: MarbleEvent) {
 }
 
 export function initFeatures(container: DiContainer) {
-    init(container);
+    init(container, {
+        startCurrentEvents: true
+    });
     container.resolve<CurrentEventService>('currentEventService').initEvent();
     container.resolve<BetStatusService>('betStatusService').initEvent();
     container.resolve<CheckStatusService>('checkStatusService').initEvent();
     container.resolve<ResultService>('resultService').initEvent();
     container.resolve<GameFlowService>('gameFlowService').init();
     container.resolve<StreamingService>('streamingService').init();
+    container.resolve<ServerTimeDiffService>('serverTimeDiffService').init();
 }

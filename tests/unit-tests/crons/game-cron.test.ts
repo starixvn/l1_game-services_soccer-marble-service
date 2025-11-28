@@ -5,7 +5,8 @@ jest.mock("sc-game-base", () => ({
                 constructor(container: any) {
                     Object.assign(this, container);
                 }
-                resetForNewRound() {}
+                resetForNewRound() { // EMPTY FOR A REASON
+                }
             },
         },
     },
@@ -38,7 +39,6 @@ describe("GameCron", () => {
         };
         cron.gameStatusPublisher = {
             publishDisableGameStatus: jest.fn(),
-            publishStartGame: jest.fn(),
         };
         cron.runningRoundInfoPublisher = {
             publish: jest.fn(),
@@ -53,7 +53,6 @@ describe("GameCron", () => {
         cron.oddFeedNotAvailable = jest.fn().mockReturnValue(false);
         cron.bot = { run: jest.fn().mockResolvedValue(undefined) };
         cron.bot.reset = jest.fn();
-        cron.catchAllListener = jest.fn();
         cron.eventStartListener = jest.fn();
         cron.oddsFeedEventSource = {
             on: jest.fn(),
@@ -78,7 +77,7 @@ describe("GameCron", () => {
         cron.betStatusService = { allowBets: true };
         cron.gameData.roundId = 0;
         cron.currentEventEndTime = new Date(Date.now() + 60000);
-        cron.differenceBetweenServerTime = 0;
+        cron.serverTimeDiffService = { now: Date.now() };
     });
 
     describe("start", () => {
@@ -88,19 +87,19 @@ describe("GameCron", () => {
             expect(cron.unsettledRoundConsumer.proceed).toHaveBeenCalled();
             expect(cron.gameData.proceedEvent).toBe(true);
             expect(cron.startCron).toHaveBeenCalled();
-            expect(cron.oddsFeedEventSource.on).toHaveBeenCalledWith(cron.catchAllListener);
             expect(cron.oddsFeedEventSource.eventOn).toHaveBeenCalledWith(expect.anything(), cron.eventStartListener);
         });
     });
 
     describe("constructor", () => {
-        it("should set liveStreamServer, cacheConsumer, and currentEventService from container", () => {
+        it("should set liveStreamServer, cacheConsumer, currentEventService, betStatusService, and serverTimeDiffService from container", () => {
             // Arrange
             const container = {
                 gameData: {},
                 cacheConsumer: { tag: "cache" },
                 currentEventService: { tag: "current" },
                 betStatusService: { tag: "bet" },
+                serverTimeDiffService: { tag: "serverTime" },
             } as any;
 
             // Act
@@ -110,6 +109,7 @@ describe("GameCron", () => {
             expect(instance.cacheConsumer).toBe(container.cacheConsumer);
             expect(instance.currentEventService).toBe(container.currentEventService);
             expect(instance.betStatusService).toBe(container.betStatusService);
+            expect(instance.serverTimeDiffService).toBe(container.serverTimeDiffService);
         });
     });
 
@@ -117,6 +117,8 @@ describe("GameCron", () => {
         it("should checkGameStatus and run bot when flags satisfied, then increment counter", async () => {
             cron.gameData.proceedEvent = true;
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
+            const mockNow = Date.now();
+            cron.serverTimeDiffService.now = mockNow;
             const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();
@@ -125,6 +127,9 @@ describe("GameCron", () => {
             expect(cron.checkGameStatus).toHaveBeenCalled();
             expect(cron.bot.run).toHaveBeenCalled();
             expect(cron.runningRoundInfoPublisher.publish).toHaveBeenCalled();
+            // Verify remainingTime is calculated using serverTimeDiffService.now
+            const expectedRemainingTime = Math.floor((cron.currentEventEndTime.getTime() - mockNow) / 1000);
+            expect(cron.gameData.remainingTime).toBe(expectedRemainingTime);
             logSpy.mockRestore();
         });
 
@@ -202,11 +207,10 @@ describe("GameCron", () => {
             expect(cron.oddsFeedCron.start).toHaveBeenCalled();
         });
 
-        it("should publish start game when not disabled and not previously disabled", async () => {
+        it("should reset for new round and reset bot when not disabled and not previously disabled", async () => {
             cron.gameData.disabled = false;
             cron.gameData.playerBetCount = { somePlayer: 2 };
             await cron.handleGameStatus(false);
-            expect(cron.gameStatusPublisher.publishStartGame).toHaveBeenCalled();
             expect(cron.gameData.playerBetCount).toEqual({});
             expect(cron.bot.reset).toHaveBeenCalled();
         });

@@ -19,6 +19,7 @@ describe("features/container-registry", () => {
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'checkStatusService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'resultService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'gameFlowService', registerType: 'class' }));
+            expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'serverTimeDiffService', registerType: 'class' }));
         });
     });
 
@@ -42,6 +43,7 @@ describe("features/container-registry", () => {
             const resultService = { initEvent: jest.fn() };
             const gameFlowService = { init: jest.fn() };
             const streamingService = { init: jest.fn() };
+            const serverTimeDiffService = { init: jest.fn() };
 
             const container = {
                 resolve: jest.fn((key: string) => {
@@ -52,6 +54,7 @@ describe("features/container-registry", () => {
                         case 'resultService': return resultService;
                         case 'gameFlowService': return gameFlowService;
                         case 'streamingService': return streamingService;
+                        case 'serverTimeDiffService': return serverTimeDiffService;
                         default: return undefined;
                     }
                 }),
@@ -65,6 +68,7 @@ describe("features/container-registry", () => {
             expect(resultService.initEvent).toHaveBeenCalled();
             expect(gameFlowService.init).toHaveBeenCalled();
             expect(streamingService.init).toHaveBeenCalled();
+            expect(serverTimeDiffService.init).toHaveBeenCalled();
         });
     });
 
