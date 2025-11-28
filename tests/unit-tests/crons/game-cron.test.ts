@@ -114,17 +114,20 @@ describe("GameCron", () => {
     });
 
     describe("proceed", () => {
-        it("should checkGameStatus and run bot when flags satisfied, then increment counter", async () => {
+        it("should calculate remainingTime and run bot when flags satisfied", async () => {
             cron.gameData.proceedEvent = true;
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             const mockNow = Date.now();
             cron.serverTimeDiffService.now = mockNow;
+            // Set currentEventEndTime to be in the future so remainingTime > 0
+            cron.currentEventEndTime = new Date(mockNow + 60000);
             const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();
 
-            expect(cron.gameData.proceedEvent).toBe(false);
-            expect(cron.checkGameStatus).toHaveBeenCalled();
+            expect(cron.gameData.proceedEvent).toBe(true);
+            // checkGameStatus should not be called when remainingTime > 0
+            expect(cron.checkGameStatus).not.toHaveBeenCalled();
             expect(cron.bot.run).toHaveBeenCalled();
             expect(cron.runningRoundInfoPublisher.publish).toHaveBeenCalled();
             // Verify remainingTime is calculated using serverTimeDiffService.now
@@ -143,6 +146,34 @@ describe("GameCron", () => {
             expect(cron.bot.run).not.toHaveBeenCalled();
             expect(cron.runningRoundInfoPublisher.publish).not.toHaveBeenCalled();
             logSpy.mockRestore();
+        });
+
+        it("should call checkGameStatus when remainingTime <= 0", async () => {
+            cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
+            cron.betStatusService.allowBets = false;
+            // Set currentEventEndTime to be in the past so remainingTime <= 0
+            const pastTime = Date.now() - 1000;
+            cron.currentEventEndTime = new Date(pastTime);
+            cron.serverTimeDiffService.now = Date.now();
+
+            await cron.proceed();
+
+            expect(cron.checkGameStatus).toHaveBeenCalled();
+            expect(cron.gameData.remainingTime).toBeLessThanOrEqual(0);
+        });
+
+        it("should call checkGameStatus when remainingTime is exactly 0", async () => {
+            cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
+            cron.betStatusService.allowBets = false;
+            // Set currentEventEndTime to be exactly now so remainingTime = 0
+            const now = Date.now();
+            cron.currentEventEndTime = new Date(now);
+            cron.serverTimeDiffService.now = now;
+
+            await cron.proceed();
+
+            expect(cron.checkGameStatus).toHaveBeenCalled();
+            expect(cron.gameData.remainingTime).toBe(0);
         });
     });
 

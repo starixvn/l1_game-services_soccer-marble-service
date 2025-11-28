@@ -61,8 +61,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.gameData.remainingTime = 
             Math.floor((this.currentEventEndTime.getTime() - now) / 1000);
         
-        if (this.gameData.proceedEvent) {
-            this.gameData.proceedEvent = false;
+        if (this.gameData.remainingTime <= 0) {
             await this.checkGameStatus();
         }
 

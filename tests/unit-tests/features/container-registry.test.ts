@@ -44,6 +44,7 @@ describe("features/container-registry", () => {
             const gameFlowService = { init: jest.fn() };
             const streamingService = { init: jest.fn() };
             const serverTimeDiffService = { init: jest.fn() };
+            const upcomingEventService = { init: jest.fn() };
 
             const container = {
                 resolve: jest.fn((key: string) => {
@@ -55,6 +56,7 @@ describe("features/container-registry", () => {
                         case 'gameFlowService': return gameFlowService;
                         case 'streamingService': return streamingService;
                         case 'serverTimeDiffService': return serverTimeDiffService;
+                        case 'upcomingEventService': return upcomingEventService;
                         default: return undefined;
                     }
                 }),
@@ -69,6 +71,7 @@ describe("features/container-registry", () => {
             expect(gameFlowService.init).toHaveBeenCalled();
             expect(streamingService.init).toHaveBeenCalled();
             expect(serverTimeDiffService.init).toHaveBeenCalled();
+            expect(upcomingEventService.init).toHaveBeenCalled();
         });
     });
 
