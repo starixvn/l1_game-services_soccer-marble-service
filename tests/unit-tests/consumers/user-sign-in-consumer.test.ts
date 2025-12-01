@@ -85,9 +85,8 @@ describe("UserSignInConsumer", () => {
             consumer.serverTimeDiffService.now = currentTime;
             consumer.currentEventService.eventByEventId = {
                 101: {
-                    eventDetails: [
-                        { resultsAvailableTs: new Date(eventEndTime) },
-                    ],
+                    eventDetails: [{}],
+                    scheduleEndTs: new Date(eventEndTime).toISOString(),
                 },
             };
 
@@ -108,9 +107,8 @@ describe("UserSignInConsumer", () => {
             consumer.serverTimeDiffService.now = currentTime;
             consumer.currentEventService.eventByEventId = {
                 102: {
-                    eventDetails: [
-                        { resultsAvailableTs: new Date(eventEndTime) },
-                    ],
+                    eventDetails: [{}],
+                    scheduleEndTs: new Date(eventEndTime).toISOString(),
                 },
             };
             const superConsumeSpy = jest.spyOn(TableUserSignInConsumer.prototype as any, "consume").mockResolvedValue(undefined as any);
@@ -123,21 +121,18 @@ describe("UserSignInConsumer", () => {
             expect(consumer.userSignInPublisher.publishUmNotice).not.toHaveBeenCalled();
         });
 
-        it("should call super.consume when event has multiple eventDetails and uses the last one", async () => {
+        it("should call super.consume when event has multiple eventDetails and event is still running", async () => {
             // Arrange
             const baseTime = Date.now();
-            const firstEventEndTime = baseTime - 1000; // First event ended
-            const lastEventEndTime = baseTime + 60 * 1000; // Last event ends in 60 seconds
-            const currentTime = baseTime; // Current time is before last event end time
+            const eventEndTime = baseTime + 60 * 1000; // Event ends in 60 seconds
+            const currentTime = baseTime; // Current time is before event end time
 
             consumer.gameData.roundId = 103;
             consumer.serverTimeDiffService.now = currentTime;
             consumer.currentEventService.eventByEventId = {
                 103: {
-                    eventDetails: [
-                        { resultsAvailableTs: new Date(firstEventEndTime) },
-                        { resultsAvailableTs: new Date(lastEventEndTime) },
-                    ],
+                    eventDetails: [{}, {}],
+                    scheduleEndTs: new Date(eventEndTime).toISOString(),
                 },
             };
             const superConsumeSpy = jest.spyOn(TableUserSignInConsumer.prototype as any, "consume").mockResolvedValue(undefined as any);
@@ -150,21 +145,18 @@ describe("UserSignInConsumer", () => {
             expect(consumer.userSignInPublisher.publishUmNotice).not.toHaveBeenCalled();
         });
 
-        it("should publish UM notice when event has multiple eventDetails and the last one has ended", async () => {
+        it("should publish UM notice when event has multiple eventDetails and event has ended", async () => {
             // Arrange
             const baseTime = Date.now();
-            const firstEventEndTime = baseTime + 60 * 1000; // First event ends in 60 seconds
-            const lastEventEndTime = baseTime - 1000; // Last event ended 1 second ago
-            const currentTime = baseTime; // Current time is after last event end time
+            const eventEndTime = baseTime - 1000; // Event ended 1 second ago
+            const currentTime = baseTime; // Current time is after event end time
 
             consumer.gameData.roundId = 104;
             consumer.serverTimeDiffService.now = currentTime;
             consumer.currentEventService.eventByEventId = {
                 104: {
-                    eventDetails: [
-                        { resultsAvailableTs: new Date(firstEventEndTime) },
-                        { resultsAvailableTs: new Date(lastEventEndTime) },
-                    ],
+                    eventDetails: [{}, {}],
+                    scheduleEndTs: new Date(eventEndTime).toISOString(),
                 },
             };
 
