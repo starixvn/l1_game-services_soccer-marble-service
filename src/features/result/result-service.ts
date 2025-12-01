@@ -50,7 +50,7 @@ export class ResultService {
         });
 
         this.scheduler.schedule(timeToSettle, this.getResultAndSettle.bind(this, { event, index }), {
-            overrideNow: event.now,
+            overrideNow: event.eventDetails[index].resultsAvailableTs,
         });
     }
 

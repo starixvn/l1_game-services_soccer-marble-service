@@ -71,7 +71,7 @@ export class GameFlowService {
                 oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
             });
         this.scheduler.schedule(timeResult, this.handleResult.bind(this, { event, index }), {
-            overrideNow: event.now,
+            overrideNow: event.eventDetails[index].resultsAvailableTs,
         });
     }
 
