@@ -33,9 +33,7 @@ export class DelayHandlingService {
         const globalDelayInMillisecond = config.globalDelayMs ?? 0;
         const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config }, { oddFeedEventType });
         const totalDelay = globalDelayInMillisecond + eventTypeDelayMilliseconds;
-        const resultTime = new Date(time.getTime() + totalDelay);
-        
-        return resultTime;
+        return new Date(time.getTime() + totalDelay);
     }
 
     public getDelayedTimeWithVideoDelay({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
