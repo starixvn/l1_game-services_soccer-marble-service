@@ -57,24 +57,17 @@ describe("CurrentEventService", () => {
     });
 
     describe("handleEventStart", () => {
-        it("should schedule and on callback reset current event and publish match", () => {
+        it("should directly reset current event and publish match", () => {
             const scheduleStartTs = Date.parse("2025-01-01T00:00:00Z");
             const event = { eventID: 123, scheduleStartTs, eventDetails: [{}] } as any;
 
             service.handleEventStart({ event });
 
-            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledTimes(1);
-            const [delayArgs, delayOptions] = (delayHandlingService.getDelayedTime as jest.Mock).mock.calls[0];
-            expect(delayArgs.event).toBe(event);
-            expect(delayArgs.time.getTime()).toBe(scheduleStartTs);
-            expect(delayOptions).toEqual({ oddFeedEventType: OddsFeedEventName.EventStart });
+            // handleEventStart now directly calls handleEventIndexReset, no scheduling
+            expect(scheduler.schedule).not.toHaveBeenCalled();
+            expect(delayHandlingService.getDelayedTime).not.toHaveBeenCalled();
 
-            expect(scheduler.schedule).toHaveBeenCalledTimes(1);
-            const [when, cb] = (scheduler.schedule as jest.Mock).mock.calls[0];
-            expect(when.getTime()).toBe(scheduleStartTs + 123);
-
-            (cb as Function)();
-
+            // Verify handleEventIndexReset was called directly
             expect(service._currentEventDetailIndexByGameId["7"]).toBe(0);
             expect(service.eventByEventId[123]).toBe(event);
             expect(service._currentEventByGameId["7"]).toBe(123);

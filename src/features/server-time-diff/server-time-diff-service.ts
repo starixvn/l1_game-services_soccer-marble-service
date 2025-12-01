@@ -1,4 +1,4 @@
-import { OddsFeedEventSource, Notification, EventNotification } from "odds-feed-client";
+import { OddsFeedEventSource, Notification, EventNotification, OddsFeedEventName } from "odds-feed-client";
 
 interface ServerTimeDiffServiceContainer {
     oddsFeedEventSource: OddsFeedEventSource;
@@ -14,25 +14,21 @@ export class ServerTimeDiffService {
     }
     
     init() {
-        this.oddsFeedEventSource.on(this.handleAllEvent);
+        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventUpcoming, this.handleEventUpcoming);
     }
 
     dispose() {
-        this.oddsFeedEventSource.off(this.handleAllEvent);
+        this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventUpcoming, this.handleEventUpcoming);
     }
 
-    handleAllEvent = (_: any, notification: Notification) => {
-        const { event } = notification as EventNotification;
-        if (!event) {
-            return;
-        }
-
+    handleEventUpcoming = ({ event }: EventNotification) => {
         const serviceNow = Date.now();
         const serverNow = event.now ? new Date(event.now).getTime() : serviceNow;
         this.delay = serverNow - serviceNow;
     }
 
     get now() {
+        console.log("delay", this.delay);
         return Date.now() + this.delay;
     }
 }

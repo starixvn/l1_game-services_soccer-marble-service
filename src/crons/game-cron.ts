@@ -7,11 +7,13 @@ import RunningRoundInfoPublisher from "../publishers/running-round-info-publishe
 import { getOrDefault, post } from "sc-game-base/src/core/game-management-api";
 import { CurrentEventService } from "../features/current-event/current-event-service";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
-import { EventNotification, OddsFeedEventName, OddsFeedEventSource, EventListener, OddsFeedCron } from "odds-feed-client";
+import { OddsFeedEventName, OddsFeedEventSource, OddsFeedCron, EventDetailListener, EventDetailNotification, Scheduler } from "odds-feed-client";
 import { MarbleEvent } from "../features/shared-types";
 import Bot from "./bot";
 import { ServerTimeDiffService } from "../features/server-time-diff/server-time-diff-service";
 import { isEventEnded } from "../helpers/timing-helper";
+import { DelayHandlingService } from "../features/delay/delay-handling-service";
+import { UpcomingEventService } from "../features/upcoming-event/upcoming-event-service";
 
 
 export default class GameCron extends Table.Crons.TableGameCron {
@@ -26,13 +28,16 @@ export default class GameCron extends Table.Crons.TableGameCron {
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     currentEventService: CurrentEventService;
     betStatusService: BetStatusService;
+    delayHandlingService: DelayHandlingService;
 
     serverTimeDiffService: ServerTimeDiffService;
-    eventStartListener: EventListener<MarbleEvent>;
-
+    scheduler: Scheduler;
+    upcomingEventService: UpcomingEventService;
     currentEventEndTime: Date = new Date();
 
     count = 0;
+
+    private readonly resultAvailableListener: EventDetailListener<MarbleEvent>;
 
     constructor(container: any) {
         super(container);
@@ -40,37 +45,54 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.betStatusService = container.betStatusService;
         this.oddsFeedEventSource = container.oddsFeedEventSource;
         this.oddsFeedCron = container.oddsFeedCron;
-        this.eventStartListener = this.handleEventStart.bind(this);
         this.serverTimeDiffService = container.serverTimeDiffService;
+        this.delayHandlingService = container.delayHandlingService;
+        this.scheduler = container.scheduler;
+        this.upcomingEventService = container.upcomingEventService;
+        this.resultAvailableListener = this.handleEventDetailResultAvailable.bind(this);
     }
 
-    handleEventStart({event}: EventNotification<MarbleEvent>) : void {
-        this.currentEventEndTime = new Date(event.scheduleEndTs);
-    }
 
     public override async start() {
-        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.eventStartListener);
+        this.oddsFeedEventSource.eventDetailOn(OddsFeedEventName.EventDetailResultsAvailable, this.resultAvailableListener);
         await this.updateExchangeRates();
         await this.unsettledRoundConsumer.proceed();
-        this.gameData.proceedEvent = true;
         this.startCron();
     }
 
+    get timeToEventEnd() {
+        return this.delayHandlingService.getDelayedTime({ event: this.upcomingEventService.nextEvent, time: new Date(this.upcomingEventService.nextEvent.scheduleStartTs) }, {
+            oddFeedEventType: OddsFeedEventName.EventStart,
+        });
+
+    }
     async proceed() {
-        const now = this.serverTimeDiffService.now;
-        // respect remaining time since bot bet depends on it for bet calculation
+
         this.gameData.remainingTime = 
-            Math.floor((this.currentEventEndTime.getTime() - now) / 1000);
-        
-        if (this.gameData.remainingTime <= 0) {
-            await this.checkGameStatus();
-        }
+            Math.floor((this.timeToEventEnd.getTime() - this.serverTimeDiffService.now) / 1000);
+        console.log("timeToEventEnd", this.timeToEventEnd);
+        console.log("server time", new Date(this.serverTimeDiffService.now));
+        console.log("remaining time ", this.gameData.remainingTime);
+        console.log("Current event ID", this.gameData.roundId);
+        console.log("Next event ID", this.upcomingEventService.nextEvent.eventID);
 
         if (this.isBetTime()) {
             await this.bot?.run();
             this.runningRoundInfoPublisher.publish();
         }
+    }
 
+    handleEventDetailResultAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
+        if (index !== event.eventDetails.length - 1) {
+            return;
+        }
+        
+        const timeToEventEnd = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
+            oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
+        });
+        this.scheduler.schedule(timeToEventEnd, () => this.checkGameStatus(), {
+            overrideNow: event.now,
+        });
     }
 
     override async checkGameStatus() {
@@ -141,14 +163,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
 
     private oddFeedAvailable() {
-
-        const currentEventId = this.gameData.roundId;
-
-        if (!currentEventId) {
-            return false;
-        }
-
-        const currentEvent = this.currentEventService.eventByEventId[currentEventId];
+        const currentEvent = this.currentEventService.getCurrentEvent();
         if (!currentEvent) {
             return false;
         }

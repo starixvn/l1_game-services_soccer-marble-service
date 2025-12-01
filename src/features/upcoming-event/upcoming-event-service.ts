@@ -18,7 +18,7 @@ export class UpcomingEventService {
     private readonly scheduler: Scheduler;
     private readonly serverTimeDiffService: ServerTimeDiffService;
 
-    private readonly upcomingEventQueue: Array<Event> = [];
+    private upcomingEventQueue: Array<Event> = [];
     
     
     constructor(container: UpcomingEventServiceContainer) {
@@ -40,6 +40,12 @@ export class UpcomingEventService {
         
         return this.getTimeToStartEvent({ event: nextEvent }).getTime() - this.serverTimeDiffService.now;
     }
+
+    get nextEvent() {
+        return this.upcomingEventQueue.reduce((min, cur) => {
+            return cur.eventID < min.eventID ? cur : min
+        }, this.upcomingEventQueue[0]);
+    }
     
     handleEventUpcoming = ({ event }: EventNotification) => {
         console.log("handleEventUpcoming", event.eventID);
@@ -47,18 +53,18 @@ export class UpcomingEventService {
     };
 
     handleEventStart = ({ event }: EventNotification) => {
-        const timeToStartEvent = this.getTimeToStartEvent({ event });
-        this.scheduler.schedule(timeToStartEvent, this.dequeueEvent.bind(this, { eventID: event.eventID }), {
-            overrideNow: event.now,
-        });
+
+        this.dequeueEvent({ eventID: event.eventID});
     };
 
     init() {
         this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventUpcoming, this.handleEventUpcoming);
+        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.handleEventStart);
     }
 
     dispose() {
         this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventUpcoming, this.handleEventUpcoming);
+        this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventStart, this.handleEventStart);
     }
 
     private getTimeToStartEvent({ event }: EventNotification) {
@@ -68,6 +74,7 @@ export class UpcomingEventService {
     }
 
     private dequeueEvent(_: SystemNotification) {
-        this.upcomingEventQueue.shift();
+        console.log("dequeueEvent", this.upcomingEventQueue[0].eventID);
+        this.upcomingEventQueue = this.upcomingEventQueue.filter(event => event.eventID !== _.eventID);
     }
 }

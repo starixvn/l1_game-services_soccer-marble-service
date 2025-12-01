@@ -2,7 +2,7 @@ import GameData from "../../game-data";
 import { extractGameId } from "../../helpers/eventid";
 import { GameStatusPublisher } from "../../publishers";
 import { DelayHandlingService } from "../delay/delay-handling-service";
-import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, SystemNotification, Scheduler, Event } from "odds-feed-client";
+import { EventDetailNotification, EventNotification, OddsFeedEventName, OddsFeedEventSource, SystemNotification, Scheduler } from "odds-feed-client";
 import { MarbleEvent } from "../shared-types";
 
 interface CurrentEventServiceContainer {
@@ -26,7 +26,7 @@ export class CurrentEventService {
     private readonly boundHandleEventCleanup: (notification: SystemNotification) => void;
     private readonly boundHandleEventDetailOddAvailable: (notification: EventDetailNotification) => void;
     
-    public readonly eventByEventId: Record<number, Event> = {};
+    public readonly eventByEventId: Record<number, MarbleEvent> = {};
 
     constructor(container: CurrentEventServiceContainer) {
         this.oddsFeedEventSource = container.oddsFeedEventSource;
@@ -94,12 +94,7 @@ export class CurrentEventService {
     }
 
     public handleEventStart({ event }: EventNotification<MarbleEvent>) {
-        const whenToSetCurrentEvent = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
-            oddFeedEventType: OddsFeedEventName.EventStart,
-        });
-        this.scheduler.schedule(whenToSetCurrentEvent, this.handleEventIndexReset.bind(this, { event }), {
-            overrideNow: event.now,
-        });
+        this.handleEventIndexReset({ event });
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification) {
@@ -112,6 +107,7 @@ export class CurrentEventService {
         });
         this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }), {
             overrideNow: event.now,
+            ignorePast: false,
         });
     }
 

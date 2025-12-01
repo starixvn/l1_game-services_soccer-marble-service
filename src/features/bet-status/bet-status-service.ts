@@ -140,7 +140,7 @@ export class BetStatusService {
             ?? 0;
 
         const timePlaceBet = 
-            new Date(rawPlaceBetTime + delayPlaceBet);
+            new Date(new Date(rawPlaceBetTime).getTime() + delayPlaceBet);
 
         return this.delayHandlingService.getDelayedTime({ event, time: timePlaceBet }, {
             oddFeedEventType,

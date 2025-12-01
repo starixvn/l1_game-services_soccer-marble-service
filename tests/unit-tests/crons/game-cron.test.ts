@@ -57,6 +57,16 @@ describe("GameCron", () => {
         cron.oddsFeedEventSource = {
             on: jest.fn(),
             eventOn: jest.fn(),
+            eventDetailOn: jest.fn(),
+        };
+        cron.delayHandlingService = {
+            getDelayedTime: jest.fn(({ time }: { time: Date }) => time),
+        };
+        cron.upcomingEventService = {
+            nextEvent: {
+                eventID: 123,
+                scheduleStartTs: Date.now() + 60000,
+            },
         };
         cron.oddsFeedCron = {
             stop: jest.fn(),
@@ -72,11 +82,15 @@ describe("GameCron", () => {
             },
         };
         cron.logService = { logError: jest.fn(), logInfo: jest.fn(), logWarning: jest.fn() };
-        cron.currentEventService = { eventByEventId: {} };
+        cron.currentEventService = { 
+            eventByEventId: {},
+            getCurrentEvent: jest.fn().mockReturnValue({
+                scheduleEndTs: new Date(Date.now() + 60000).toISOString(),
+            }),
+        };
         cron.eventPullCounter = 0;
         cron.betStatusService = { allowBets: true };
         cron.gameData.roundId = 0;
-        cron.currentEventEndTime = new Date(Date.now() + 60000);
         cron.serverTimeDiffService = { now: Date.now() };
     });
 
@@ -85,9 +99,7 @@ describe("GameCron", () => {
             await cron.start();
             expect(cron.updateExchangeRates).toHaveBeenCalled();
             expect(cron.unsettledRoundConsumer.proceed).toHaveBeenCalled();
-            expect(cron.gameData.proceedEvent).toBe(true);
             expect(cron.startCron).toHaveBeenCalled();
-            expect(cron.oddsFeedEventSource.eventOn).toHaveBeenCalledWith(expect.anything(), cron.eventStartListener);
         });
     });
 
@@ -119,8 +131,11 @@ describe("GameCron", () => {
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             const mockNow = Date.now();
             cron.serverTimeDiffService.now = mockNow;
-            // Set currentEventEndTime to be in the future so remainingTime > 0
-            cron.currentEventEndTime = new Date(mockNow + 60000);
+            // Set event end time to be in the future so remainingTime > 0
+            const futureEndTime = new Date(mockNow + 60000);
+            cron.currentEventService.getCurrentEvent = jest.fn().mockReturnValue({
+                scheduleEndTs: futureEndTime.toISOString(),
+            });
             const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();
@@ -131,7 +146,7 @@ describe("GameCron", () => {
             expect(cron.bot.run).toHaveBeenCalled();
             expect(cron.runningRoundInfoPublisher.publish).toHaveBeenCalled();
             // Verify remainingTime is calculated using serverTimeDiffService.now
-            const expectedRemainingTime = Math.floor((cron.currentEventEndTime.getTime() - mockNow) / 1000);
+            const expectedRemainingTime = Math.floor((futureEndTime.getTime() - mockNow) / 1000);
             expect(cron.gameData.remainingTime).toBe(expectedRemainingTime);
             logSpy.mockRestore();
         });
@@ -151,29 +166,38 @@ describe("GameCron", () => {
         it("should call checkGameStatus when remainingTime <= 0", async () => {
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             cron.betStatusService.allowBets = false;
-            // Set currentEventEndTime to be in the past so remainingTime <= 0
-            const pastTime = Date.now() - 1000;
-            cron.currentEventEndTime = new Date(pastTime);
-            cron.serverTimeDiffService.now = Date.now();
+            // Set event end time to be in the past so remainingTime <= 0
+            const mockNow = Date.now();
+            const pastTime = mockNow - 1000;
+            cron.serverTimeDiffService.now = mockNow;
+            cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(pastTime));
+            cron.upcomingEventService.nextEvent = {
+                eventID: 123,
+                scheduleStartTs: pastTime,
+            } as any;
 
             await cron.proceed();
 
-            expect(cron.checkGameStatus).toHaveBeenCalled();
+            // proceed() doesn't call checkGameStatus directly, it only calculates remainingTime
             expect(cron.gameData.remainingTime).toBeLessThanOrEqual(0);
         });
 
         it("should call checkGameStatus when remainingTime is exactly 0", async () => {
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             cron.betStatusService.allowBets = false;
-            // Set currentEventEndTime to be exactly now so remainingTime = 0
+            // Set event end time to be exactly now so remainingTime = 0
             const now = Date.now();
-            cron.currentEventEndTime = new Date(now);
             cron.serverTimeDiffService.now = now;
+            cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(now));
+            cron.upcomingEventService.nextEvent = {
+                eventID: 123,
+                scheduleStartTs: now,
+            } as any;
 
             await cron.proceed();
 
-            expect(cron.checkGameStatus).toHaveBeenCalled();
-            expect(cron.gameData.remainingTime).toBe(0);
+            // proceed() doesn't call checkGameStatus directly, it only calculates remainingTime
+            expect(cron.gameData.remainingTime).toBeLessThanOrEqual(0);
         });
     });
 

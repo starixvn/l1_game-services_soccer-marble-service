@@ -10,6 +10,8 @@ describe("ServerTimeDiffService", () => {
         oddsFeedEventSource = {
             on: jest.fn(),
             off: jest.fn(),
+            eventOn: jest.fn(),
+            eventOff: jest.fn(),
         };
         service = new ServerTimeDiffService({ oddsFeedEventSource }) as any;
         originalDateNow = Date.now;
@@ -21,27 +23,29 @@ describe("ServerTimeDiffService", () => {
     });
 
     describe("init", () => {
-        it("should register handleAllEvent listener", () => {
+        it("should register handleEventUpcoming listener", () => {
             service.init();
-            expect(oddsFeedEventSource.on).toHaveBeenCalledWith(service.handleAllEvent);
+            expect(oddsFeedEventSource.eventOn).toHaveBeenCalled();
         });
     });
 
     describe("dispose", () => {
-        it("should unregister handleAllEvent listener", () => {
+        it("should unregister handleEventUpcoming listener", () => {
             service.dispose();
-            expect(oddsFeedEventSource.off).toHaveBeenCalledWith(service.handleAllEvent);
+            expect(oddsFeedEventSource.eventOff).toHaveBeenCalled();
         });
     });
 
-    describe("handleAllEvent", () => {
+    describe("handleEventUpcoming", () => {
         it("do nothing on no event", () => {
-            const notification = {} as EventNotification;
+            const notification = { event: {} } as EventNotification;
             const initialDelay = service.delay;
+            const mockServiceNow = 1000000;
+            Date.now = jest.fn(() => mockServiceNow);
 
-            service.handleAllEvent(null, notification);
+            service.handleEventUpcoming(notification);
 
-            expect(service.delay).toBe(initialDelay);
+            expect(service.delay).toBe(0);
         });
 
         it("on no event now, just use service now", () => {
@@ -52,7 +56,7 @@ describe("ServerTimeDiffService", () => {
                 event: {}
             } as EventNotification;
 
-            service.handleAllEvent(null, notification);
+            service.handleEventUpcoming(notification);
 
             expect(service.delay).toBe(0);
         });
@@ -68,7 +72,7 @@ describe("ServerTimeDiffService", () => {
                 }
             } as EventNotification;
 
-            service.handleAllEvent(null, notification);
+            service.handleEventUpcoming(notification);
 
             expect(service.delay).toBe(500);
         });

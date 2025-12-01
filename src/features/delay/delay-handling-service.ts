@@ -24,12 +24,18 @@ export class DelayHandlingService {
 
     public getDelayedTime({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
         const config = (event as MarbleEventWithDelayConfig).config?.delay;
+        
+        
         if (!config) {
             return time;
         }
+        
         const globalDelayInMillisecond = config.globalDelayMs ?? 0;
         const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config }, { oddFeedEventType });
-        return new Date(time.getTime() + globalDelayInMillisecond + eventTypeDelayMilliseconds);
+        const totalDelay = globalDelayInMillisecond + eventTypeDelayMilliseconds;
+        const resultTime = new Date(time.getTime() + totalDelay);
+        
+        return resultTime;
     }
 
     public getDelayedTimeWithVideoDelay({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
@@ -42,22 +48,28 @@ export class DelayHandlingService {
     }
 
     private getDelayConfigByEventType({ config }: { config: DelayConfig }, { oddFeedEventType }: DelayOptions): number {
-
         if (!oddFeedEventType) {
             return 0;
         }
 
+        let delay: number;
         switch (oddFeedEventType) {
             case OddsFeedEventName.EventStart:
-                return config.eventScheduleStartDelayMs ?? 0;
+                delay = config.eventScheduleStartDelayMs ?? 0;
+                break;
             case OddsFeedEventName.EventDetailStart:
-                return config.eventDetailScheduleStartDelayMs ?? 0;
+                delay = config.eventDetailScheduleStartDelayMs ?? 0;
+                break;
             case OddsFeedEventName.EventDetailResultsAvailable:
-                return config.eventDetailResultAvailableMs ?? 0;
+                delay = config.eventDetailResultAvailableMs ?? 0;
+                break;
             case OddsFeedEventName.EventDetailOddsAvailable:
-                return config.eventDetailOddsAvailableMs ?? 0;
+                delay = config.eventDetailOddsAvailableMs ?? 0;
+                break;
             default:
-                return 0;
+                delay = 0;
         }
+        
+        return delay;
     }
 }
