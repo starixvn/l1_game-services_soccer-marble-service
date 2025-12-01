@@ -22,6 +22,7 @@ jest.mock("sc-game-base/src/core/game-management-api", () => ({
 
 describe("GameCron", () => {
     let cron: any;
+    const FIXED_TIMESTAMP = 1700000000000; // Fixed timestamp: 2023-11-14T22:13:20.000Z
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -65,7 +66,7 @@ describe("GameCron", () => {
         cron.upcomingEventService = {
             nextEvent: {
                 eventID: 123,
-                scheduleStartTs: Date.now() + 60000,
+                scheduleStartTs: FIXED_TIMESTAMP + 60000,
             },
         };
         cron.oddsFeedCron = {
@@ -85,13 +86,13 @@ describe("GameCron", () => {
         cron.currentEventService = { 
             eventByEventId: {},
             getCurrentEvent: jest.fn().mockReturnValue({
-                scheduleEndTs: new Date(Date.now() + 60000).toISOString(),
+                scheduleEndTs: new Date(FIXED_TIMESTAMP + 60000).toISOString(),
             }),
         };
         cron.eventPullCounter = 0;
         cron.betStatusService = { allowBets: true };
         cron.gameData.roundId = 0;
-        cron.serverTimeDiffService = { now: Date.now() };
+        cron.serverTimeDiffService = { now: FIXED_TIMESTAMP };
     });
 
     describe("start", () => {
@@ -129,13 +130,15 @@ describe("GameCron", () => {
         it("should calculate remainingTime and run bot when flags satisfied", async () => {
             cron.gameData.proceedEvent = true;
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
-            const mockNow = Date.now();
+            const mockNow = FIXED_TIMESTAMP;
             cron.serverTimeDiffService.now = mockNow;
             // Set event end time to be in the future so remainingTime > 0
-            const futureEndTime = new Date(mockNow + 60000);
-            cron.currentEventService.getCurrentEvent = jest.fn().mockReturnValue({
-                scheduleEndTs: futureEndTime.toISOString(),
-            });
+            const futureEventStartTs = mockNow + 60000;
+            cron.upcomingEventService.nextEvent = {
+                eventID: 123,
+                scheduleStartTs: futureEventStartTs,
+            } as any;
+            cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(futureEventStartTs));
             const logSpy = jest.spyOn(console, "log").mockImplementation();
 
             await cron.proceed();
@@ -146,7 +149,7 @@ describe("GameCron", () => {
             expect(cron.bot.run).toHaveBeenCalled();
             expect(cron.runningRoundInfoPublisher.publish).toHaveBeenCalled();
             // Verify remainingTime is calculated using serverTimeDiffService.now
-            const expectedRemainingTime = Math.floor((futureEndTime.getTime() - mockNow) / 1000);
+            const expectedRemainingTime = Math.floor((futureEventStartTs - mockNow) / 1000);
             expect(cron.gameData.remainingTime).toBe(expectedRemainingTime);
             logSpy.mockRestore();
         });
@@ -167,7 +170,7 @@ describe("GameCron", () => {
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             cron.betStatusService.allowBets = false;
             // Set event end time to be in the past so remainingTime <= 0
-            const mockNow = Date.now();
+            const mockNow = FIXED_TIMESTAMP;
             const pastTime = mockNow - 1000;
             cron.serverTimeDiffService.now = mockNow;
             cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(pastTime));
@@ -186,12 +189,12 @@ describe("GameCron", () => {
             cron.checkGameStatus = jest.fn().mockResolvedValue(undefined);
             cron.betStatusService.allowBets = false;
             // Set event end time to be exactly now so remainingTime = 0
-            const now = Date.now();
-            cron.serverTimeDiffService.now = now;
-            cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(now));
+            const mockNow = FIXED_TIMESTAMP;
+            cron.serverTimeDiffService.now = mockNow;
+            cron.delayHandlingService.getDelayedTime = jest.fn(() => new Date(mockNow));
             cron.upcomingEventService.nextEvent = {
                 eventID: 123,
-                scheduleStartTs: now,
+                scheduleStartTs: mockNow,
             } as any;
 
             await cron.proceed();
