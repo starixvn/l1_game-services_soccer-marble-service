@@ -11,6 +11,7 @@ import { EventNotification, OddsFeedEventName, OddsFeedEventSource, EventListene
 import { MarbleEvent } from "../features/shared-types";
 import Bot from "./bot";
 import { ServerTimeDiffService } from "../features/server-time-diff/server-time-diff-service";
+import { isEventEnded } from "../helpers/timing-helper";
 
 
 export default class GameCron extends Table.Crons.TableGameCron {
@@ -93,7 +94,12 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
         this.assignNewGameConfigs(newGameConfigs);
 
-        this.gameData.disabled = configuredlyDisabled || this.gameData.delayStartTime > 0 || this.oddFeedNotAvailable();
+        const shouldDisableGame = configuredlyDisabled || this.gameData.delayStartTime > 0 || !this.oddFeedAvailable();
+        console.log("configuredlyDisabled", configuredlyDisabled);
+        console.log("odds feed available", this.oddFeedAvailable());
+        console.log("shouldDisableGame", shouldDisableGame);
+
+        this.gameData.disabled = shouldDisableGame;
 
         await this.getSettingForNewRound();
 
@@ -134,23 +140,23 @@ export default class GameCron extends Table.Crons.TableGameCron {
     }
 
 
-    private oddFeedNotAvailable() {
+    private oddFeedAvailable() {
 
         const currentEventId = this.gameData.roundId;
 
         if (!currentEventId) {
-            return true;
+            return false;
         }
 
         const currentEvent = this.currentEventService.eventByEventId[currentEventId];
         if (!currentEvent) {
-            return true;
+            return false;
         }
 
-        const timeNow = Date.now();
-        const lastIndex = currentEvent.eventDetails.length - 1;
-        const currEventEndTime = new Date(currentEvent?.eventDetails[lastIndex].resultsAvailableTs).getTime();
-        return timeNow > currEventEndTime;
+        return !isEventEnded({
+            event: currentEvent,
+            now: this.serverTimeDiffService.now,
+        })
     }
 
     private isBetTime() {

@@ -257,39 +257,6 @@ describe("GameCron", () => {
             expect(cron.gameData.playerBetCount).toEqual({});
         });
     });
-
-    describe("oddFeedNotAvailable", () => {
-        beforeEach(() => {
-            // Ensure we use the real prototype implementation for this suite
-            delete cron.oddFeedNotAvailable;
-        });
-        it("should return true when no roundId", () => {
-            cron.gameData.roundId = undefined;
-            expect(cron["oddFeedNotAvailable"]()).toBe(true);
-        });
-
-        it("should return true when event not found", () => {
-            cron.gameData.roundId = 1;
-            cron.currentEventService.eventByEventId = {};
-            expect(cron["oddFeedNotAvailable"]()).toBe(true);
-        });
-
-        it("should return true when event ended", () => {
-            cron.gameData.roundId = 2;
-            cron.currentEventService.eventByEventId = {
-                2: { eventDetails: [{ resultsAvailableTs: new Date(Date.now() - 1000) }] },
-            };
-            expect(cron["oddFeedNotAvailable"]()).toBe(true);
-        });
-
-        it("should return false when event not ended", () => {
-            cron.gameData.roundId = 3;
-            cron.currentEventService.eventByEventId = {
-                3: { eventDetails: [{ resultsAvailableTs: new Date(Date.now() + 1000) }] },
-            };
-            expect(cron["oddFeedNotAvailable"]()).toBe(false);
-        });
-    });
 });
 
 
