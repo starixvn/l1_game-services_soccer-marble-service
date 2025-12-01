@@ -3,7 +3,6 @@ import { MarbleEvent } from "../shared-types";
 
 type DelayConfig = {
     globalDelayMs?: number;
-    videoDelayMs?: number;
     eventScheduleStartDelayMs?: number;
     eventDetailScheduleStartDelayMs?: number;
     eventDetailResultAvailableMs?: number;
@@ -24,8 +23,6 @@ export class DelayHandlingService {
 
     public getDelayedTime({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
         const config = (event as MarbleEventWithDelayConfig).config?.delay;
-        
-        
         if (!config) {
             return time;
         }
@@ -34,15 +31,6 @@ export class DelayHandlingService {
         const eventTypeDelayMilliseconds = this.getDelayConfigByEventType({ config }, { oddFeedEventType });
         const totalDelay = globalDelayInMillisecond + eventTypeDelayMilliseconds;
         return new Date(time.getTime() + totalDelay);
-    }
-
-    public getDelayedTimeWithVideoDelay({ event, time }: { event: Event, time: Date }, { oddFeedEventType }: DelayOptions = {}): Date {
-        const config = (event as MarbleEventWithDelayConfig).config?.delay;
-        if (!config) {
-            return time;
-        }
-        const videoDelayInMillisecond = config.videoDelayMs ?? 0;
-        return new Date(this.getDelayedTime({ event, time }, { oddFeedEventType }).getTime() + videoDelayInMillisecond);
     }
 
     private getDelayConfigByEventType({ config }: { config: DelayConfig }, { oddFeedEventType }: DelayOptions): number {

@@ -87,52 +87,6 @@ describe("DelayHandlingService", () => {
             expect(result.getTime()).toBe(time.getTime() + 500);
         });
     });
-
-    describe("getDelayedTimeWithVideoDelay", () => {
-        it("should add video delay in addition to calculated delay", () => {
-            const time = createBaseTime();
-            const event = {
-                eventID: 5,
-                config: {
-                    delay: {
-                        globalDelayMs: 300,
-                        videoDelayMs: 200,
-                        eventDetailResultAvailableMs: 250,
-                    },
-                },
-            } as Partial<Event> as Event;
-
-            const result = service.getDelayedTimeWithVideoDelay({ event, time }, { oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable });
-
-            expect(result.getTime()).toBe(time.getTime() + 750);
-        });
-
-        it("should return original time when video delay and config missing", () => {
-            const time = createBaseTime();
-            const event = { eventID: 6 } as Partial<Event> as Event;
-
-            const result = service.getDelayedTimeWithVideoDelay({ event, time });
-
-            expect(result.getTime()).toBe(time.getTime());
-        });
-
-        it("should treat missing video delay as zero", () => {
-            const time = createBaseTime();
-            const event = {
-                eventID: 7,
-                config: {
-                    delay: {
-                        globalDelayMs: 150,
-                        eventScheduleStartDelayMs: 50,
-                    },
-                },
-            } as Partial<Event> as Event;
-
-            const result = service.getDelayedTimeWithVideoDelay({ event, time }, { oddFeedEventType: OddsFeedEventName.EventStart });
-
-            expect(result.getTime()).toBe(time.getTime() + 200);
-        });
-    });
 });
 
 
