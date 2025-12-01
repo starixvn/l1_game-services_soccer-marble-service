@@ -105,9 +105,7 @@ export function oddsFeedFilter(event: MarbleEvent) {
 }
 
 export function initFeatures(container: DiContainer) {
-    init(container, {
-        startCurrentEvents: true
-    });
+    init(container);
     container.resolve<CurrentEventService>('currentEventService').initEvent();
     container.resolve<BetStatusService>('betStatusService').initEvent();
     container.resolve<CheckStatusService>('checkStatusService').initEvent();
