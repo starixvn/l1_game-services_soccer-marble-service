@@ -94,7 +94,14 @@ export class CurrentEventService {
     }
 
     public handleEventStart({ event }: EventNotification<MarbleEvent>) {
-        this.handleEventIndexReset({ event });
+        const timeToResetIndex = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
+            oddFeedEventType: OddsFeedEventName.EventStart,
+        });
+
+        this.scheduler.schedule(timeToResetIndex, this.handleEventIndexReset.bind(this, { event }), {
+            overrideNow: event.scheduleStartTs,
+            ignorePast: false
+        });
     }
 
     public handleEventDetailOddAvailable({ event, index }: EventDetailNotification) {
@@ -106,7 +113,7 @@ export class CurrentEventService {
             oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable,
         });
         this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }), {
-            overrideNow: event.now,
+            overrideNow: event.eventDetails[index].oddsAvailableTs,
             ignorePast: false,
         });
     }

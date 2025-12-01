@@ -118,6 +118,8 @@ export class BetStatusService {
         if (index === 0) {
             return;
         }
+        console.log("odds available time ", event.eventDetails[index].oddsAvailableTs);
+        console.log("now", event.now);
 
         this.schedulePlaceBet({ event, index });
     }
@@ -167,9 +169,12 @@ export class BetStatusService {
 
     private schedulePlaceBet({ event, index }: EventDetailNotification<MarbleEvent>) {
         const timeToPlaceBet = this.getTimeToPlaceBet({ event, index });
+        const now = index === 0 ? 
+            event.scheduleStartTs : 
+            event.eventDetails[index].oddsAvailableTs;
 
         this.scheduler.schedule(timeToPlaceBet, this.handleBetChoiceReady.bind(this, { event, index }), {
-            overrideNow: event.now,
+            overrideNow: now,
             ignorePast: true
         });
     }
@@ -178,7 +183,6 @@ export class BetStatusService {
         const timeToLockBet = this.getTimeToLockBet({ event, index });
 
         this.scheduler.schedule(timeToLockBet, this.publishBetChoiceLocked.bind(this), {
-            ignorePast: true,
             overrideNow: event.now
         });
     }
@@ -189,6 +193,7 @@ export class BetStatusService {
     }
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
+        console.log("bet choice ready index", index);
         this._betStatus = true;
         this._currentOddIndex = index;
 

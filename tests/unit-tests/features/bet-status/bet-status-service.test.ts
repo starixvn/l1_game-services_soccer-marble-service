@@ -112,7 +112,7 @@ describe("BetStatusService", () => {
 
             expect(service.allowBets).toBe(false);
             expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
-                overrideNow: now,
+                overrideNow: scheduleStart,
                 ignorePast: true,
             });
         });
@@ -146,7 +146,7 @@ describe("BetStatusService", () => {
             service.handleEventDetailOddAvailable({ event, index: 2 } as EventDetailNotification<MarbleEvent>);
 
             expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
-                overrideNow: now,
+                overrideNow: base + 4000,
                 ignorePast: true,
             });
         });
@@ -212,7 +212,7 @@ describe("BetStatusService", () => {
             const [time, handler, options] = (scheduler.schedule).mock.calls[0];
             expect(time.getTime()).toBe(lockTime - 1000 + 25);
             expect(typeof handler).toBe("function");
-            expect(options).toEqual({ ignorePast: true, overrideNow: now });
+            expect(options).toEqual({ overrideNow: now });
         });
     });
 

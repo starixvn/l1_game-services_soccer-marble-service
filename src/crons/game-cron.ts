@@ -37,8 +37,6 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
     count = 0;
 
-    private readonly resultAvailableListener: EventDetailListener<MarbleEvent>;
-
     constructor(container: any) {
         super(container);
         this.currentEventService = container.currentEventService;
@@ -49,12 +47,10 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.delayHandlingService = container.delayHandlingService;
         this.scheduler = container.scheduler;
         this.upcomingEventService = container.upcomingEventService;
-        this.resultAvailableListener = this.handleEventDetailResultAvailable.bind(this);
     }
 
 
     public override async start() {
-        this.oddsFeedEventSource.eventDetailOn(OddsFeedEventName.EventDetailResultsAvailable, this.resultAvailableListener);
         await this.updateExchangeRates();
         await this.unsettledRoundConsumer.proceed();
         this.startCron();
@@ -70,29 +66,14 @@ export default class GameCron extends Table.Crons.TableGameCron {
 
         this.gameData.remainingTime = 
             Math.floor((this.timeToEventEnd.getTime() - this.serverTimeDiffService.now) / 1000);
-        console.log("timeToEventEnd", this.timeToEventEnd);
-        console.log("server time", new Date(this.serverTimeDiffService.now));
-        console.log("remaining time ", this.gameData.remainingTime);
-        console.log("Current event ID", this.gameData.roundId);
-        console.log("Next event ID", this.upcomingEventService.nextEvent.eventID);
+        if (this.gameData.remainingTime <= 0 || this.gameData.disabled) {
+            await this.checkGameStatus();
+        }
 
         if (this.isBetTime()) {
             await this.bot?.run();
             this.runningRoundInfoPublisher.publish();
         }
-    }
-
-    handleEventDetailResultAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
-        if (index !== event.eventDetails.length - 1) {
-            return;
-        }
-        
-        const timeToEventEnd = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
-            oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
-        });
-        this.scheduler.schedule(timeToEventEnd, () => this.checkGameStatus(), {
-            overrideNow: event.now,
-        });
     }
 
     override async checkGameStatus() {
@@ -117,8 +98,7 @@ export default class GameCron extends Table.Crons.TableGameCron {
         this.assignNewGameConfigs(newGameConfigs);
 
         const shouldDisableGame = configuredlyDisabled || this.gameData.delayStartTime > 0 || !this.oddFeedAvailable();
-        console.log("configuredlyDisabled", configuredlyDisabled);
-        console.log("odds feed available", this.oddFeedAvailable());
+
         console.log("shouldDisableGame", shouldDisableGame);
 
         this.gameData.disabled = shouldDisableGame;

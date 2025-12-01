@@ -28,7 +28,6 @@ export class ServerTimeDiffService {
     }
 
     get now() {
-        console.log("delay", this.delay);
         return Date.now() + this.delay;
     }
 }

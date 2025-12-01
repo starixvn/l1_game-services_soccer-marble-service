@@ -57,17 +57,29 @@ describe("CurrentEventService", () => {
     });
 
     describe("handleEventStart", () => {
-        it("should directly reset current event and publish match", () => {
+        it("should schedule event index reset with timestamp-based overrideNow", () => {
             const scheduleStartTs = Date.parse("2025-01-01T00:00:00Z");
-            const event = { eventID: 123, scheduleStartTs, eventDetails: [{}] } as any;
+            const event = { eventID: 123, scheduleStartTs, eventDetails: [{}], now: new Date(scheduleStartTs) } as any;
+            const expectedTime = new Date(scheduleStartTs + 123); // delayHandlingService adds 123ms
 
             service.handleEventStart({ event });
 
-            // handleEventStart now directly calls handleEventIndexReset, no scheduling
-            expect(scheduler.schedule).not.toHaveBeenCalled();
-            expect(delayHandlingService.getDelayedTime).not.toHaveBeenCalled();
+            expect(delayHandlingService.getDelayedTime).toHaveBeenCalledWith(
+                { event, time: new Date(scheduleStartTs) },
+                { oddFeedEventType: OddsFeedEventName.EventStart }
+            );
+            expect(scheduler.schedule).toHaveBeenCalledWith(
+                expectedTime,
+                expect.any(Function),
+                {
+                    overrideNow: scheduleStartTs,
+                    ignorePast: false
+                }
+            );
 
-            // Verify handleEventIndexReset was called directly
+            // Verify callback sets the event
+            const [, callback] = (scheduler.schedule as jest.Mock).mock.calls[0];
+            callback();
             expect(service._currentEventDetailIndexByGameId["7"]).toBe(0);
             expect(service.eventByEventId[123]).toBe(event);
             expect(service._currentEventByGameId["7"]).toBe(123);
@@ -86,7 +98,9 @@ describe("CurrentEventService", () => {
 
         it("should schedule index change when index > 0 and update on callback", () => {
             const oddsAvailableTs = Date.parse("2025-01-01T00:05:00Z");
-            const event = { eventID: 1, eventDetails: [{}, { oddsAvailableTs }] } as any;
+            const now = new Date(oddsAvailableTs);
+            const event = { eventID: 1, eventDetails: [{}, { oddsAvailableTs }], now } as any;
+            const expectedTime = new Date(oddsAvailableTs + 123); // delayHandlingService adds 123ms
 
             service.handleEventDetailOddAvailable({ event, index: 1 });
 
@@ -97,7 +111,15 @@ describe("CurrentEventService", () => {
             expect(delayOptions).toEqual({ oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable });
 
             expect(scheduler.schedule).toHaveBeenCalledTimes(1);
-            const [, cb] = (scheduler.schedule as jest.Mock).mock.calls.pop();
+            expect(scheduler.schedule).toHaveBeenCalledWith(
+                expectedTime,
+                expect.any(Function),
+                {
+                    overrideNow: oddsAvailableTs,
+                    ignorePast: false
+                }
+            );
+            const [, cb] = (scheduler.schedule as jest.Mock).mock.calls[0];
             (cb as Function)();
             expect(service._currentEventDetailIndexByGameId["7"]).toBe(1);
         });

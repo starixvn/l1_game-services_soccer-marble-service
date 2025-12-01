@@ -48,13 +48,17 @@ export class UpcomingEventService {
     }
     
     handleEventUpcoming = ({ event }: EventNotification) => {
-        console.log("handleEventUpcoming", event.eventID);
         this.upcomingEventQueue.push(event);
     };
 
     handleEventStart = ({ event }: EventNotification) => {
-
-        this.dequeueEvent({ eventID: event.eventID});
+        const timeToStart = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.scheduleStartTs) }, {
+            oddFeedEventType: OddsFeedEventName.EventStart,
+        });
+        this.scheduler.schedule(timeToStart, this.dequeueEvent.bind(this, { eventID: event.eventID }), {
+            overrideNow: event.scheduleStartTs,
+            ignorePast: false
+        });
     };
 
     init() {
@@ -74,7 +78,6 @@ export class UpcomingEventService {
     }
 
     private dequeueEvent(_: SystemNotification) {
-        console.log("dequeueEvent", this.upcomingEventQueue[0].eventID);
         this.upcomingEventQueue = this.upcomingEventQueue.filter(event => event.eventID !== _.eventID);
     }
 }

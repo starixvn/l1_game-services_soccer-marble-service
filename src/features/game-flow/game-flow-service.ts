@@ -58,7 +58,7 @@ export class GameFlowService {
                 oddFeedEventType: OddsFeedEventName.EventStart,
             });
         this.scheduler.schedule(timeStart, this.handleStartGame.bind(this, { event }), {
-            overrideNow: event.now,
+            overrideNow: event.scheduleStartTs,
         });
     }
     
