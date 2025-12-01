@@ -18,8 +18,9 @@ function makeCradle(overrides: Record<string, unknown> = {}) {
 			setServerSeedHash: jest.fn(),
 		},
 		gameManagementApiClientFactory: { instance: jest.fn().mockReturnValue({ gameConfigs: {} }) },
-		// Our subclass dep
+		// Our subclass deps
 		oddsFeedCron: { scheduleEvent: jest.fn(), start: jest.fn(), schedule: jest.fn() },
+		currentEventService: { getCurrentEvent: jest.fn().mockReturnValue(null) },
 		...overrides,
 	};
 }
@@ -97,6 +98,108 @@ describe("UnsettledRoundConsumer", () => {
 				.mock.calls.map(([arg]: [{ eventID: number }]) => arg.eventID)
 				.sort((a: number, b: number) => a - b);
 			expect(scheduledEventIds).toEqual([1, 2, 3]);
+		});
+
+		it("should not schedule settlement for running round", async () => {
+			// Arrange
+			const runningRoundId = 10;
+			const playerExec = jest.fn().mockResolvedValue([
+				{ roundId: runningRoundId, paid: false },
+				{ roundId: 11, paid: false },
+				{ roundId: 12, paid: false },
+			]);
+			const playerLean = jest.fn().mockReturnValue({ exec: playerExec });
+			const playerFind = jest.fn().mockReturnValue({ lean: playerLean });
+
+			const currentEventService = {
+				getCurrentEvent: jest.fn().mockReturnValue({ eventID: runningRoundId }),
+			};
+
+			const consumer = new UnsettledRoundConsumer(
+				makeCradle({
+					betsRepository: { find: playerFind },
+					oddsFeedCron,
+					currentEventService,
+				})
+			);
+
+			// Act
+			await consumer.proceed();
+
+			// Assert
+			expect(currentEventService.getCurrentEvent).toHaveBeenCalledTimes(3);
+			const scheduledEventIds = oddsFeedCron.scheduleEvent
+				.mock.calls.map(([arg]: [{ eventID: number }]) => arg.eventID)
+				.sort((a: number, b: number) => a - b);
+			// Running round (10) should be excluded
+			expect(scheduledEventIds).toEqual([11, 12]);
+		});
+
+		it("should schedule all rounds when no current event is running", async () => {
+			// Arrange
+			const playerExec = jest.fn().mockResolvedValue([
+				{ roundId: 1, paid: false },
+				{ roundId: 2, paid: false },
+			]);
+			const playerLean = jest.fn().mockReturnValue({ exec: playerExec });
+			const playerFind = jest.fn().mockReturnValue({ lean: playerLean });
+
+			const currentEventService = {
+				getCurrentEvent: jest.fn().mockReturnValue(null),
+			};
+
+			const consumer = new UnsettledRoundConsumer(
+				makeCradle({
+					betsRepository: { find: playerFind },
+					oddsFeedCron,
+					currentEventService,
+				})
+			);
+
+			// Act
+			await consumer.proceed();
+
+			// Assert
+			expect(currentEventService.getCurrentEvent).toHaveBeenCalledTimes(2);
+			const scheduledEventIds = oddsFeedCron.scheduleEvent
+				.mock.calls.map(([arg]: [{ eventID: number }]) => arg.eventID)
+				.sort((a: number, b: number) => a - b);
+			// All rounds should be scheduled when no current event
+			expect(scheduledEventIds).toEqual([1, 2]);
+		});
+
+		it("should schedule all rounds when current event has different eventID", async () => {
+			// Arrange
+			const runningRoundId = 99;
+			const playerExec = jest.fn().mockResolvedValue([
+				{ roundId: 1, paid: false },
+				{ roundId: 2, paid: false },
+			]);
+			const playerLean = jest.fn().mockReturnValue({ exec: playerExec });
+			const playerFind = jest.fn().mockReturnValue({ lean: playerLean });
+
+			const currentEventService = {
+				getCurrentEvent: jest.fn().mockReturnValue({ eventID: runningRoundId }),
+			};
+
+			const consumer = new UnsettledRoundConsumer(
+				makeCradle({
+					betsRepository: { find: playerFind },
+					oddsFeedCron,
+					currentEventService,
+				})
+			);
+
+			// Act
+			await consumer.proceed();
+
+			// Assert
+			expect(currentEventService.getCurrentEvent).toHaveBeenCalledTimes(2);
+			const scheduledEventIds = oddsFeedCron.scheduleEvent
+				.mock.calls.map(([arg]: [{ eventID: number }]) => arg.eventID)
+				.sort((a: number, b: number) => a - b);
+			// All rounds should be scheduled when current event ID doesn't match
+			expect(scheduledEventIds).toEqual([1, 2]);
 		});
 	});
 });

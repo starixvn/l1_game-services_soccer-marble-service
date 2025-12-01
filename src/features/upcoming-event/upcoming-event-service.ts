@@ -52,7 +52,7 @@ export class UpcomingEventService {
         this.upcomingEventQueue.push(event);
     };
 
-handleEventStart = ({ event }: EventNotification) => {
+    handleEventStart = ({ event }: EventNotification) => {
 
         this.dequeueEvent({ eventID: event.eventID});
     };
