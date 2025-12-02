@@ -191,10 +191,10 @@ describe("InGameConsumer", () => {
                 playlist: "test-playlist",
                 spb: true,
             });
-            expect(result.ebp).toBeUndefined();
+            expect(result.epb).toBeUndefined();
         });
 
-        it("should build payload with ebp when allowBets is false", async () => {
+        it("should build payload with epb when allowBets is false", async () => {
             // Arrange
             const mockRealPlayer = { UID: DEFAULT_PLAYER_UID };
             const mockSuperPayload = { existingProperty: "value" };
@@ -241,7 +241,7 @@ describe("InGameConsumer", () => {
                 userBetPercentage: mockUserBetPercentage,
                 match: { home: "Team A", away: "Team B" },
                 playlist: "test-playlist",
-                ebp: true,
+                epb: true,
             });
             expect(result.spb).toBeUndefined();
         });

@@ -72,7 +72,7 @@ export default class InGameConsumer extends TableInGameConsumer {
             marblePayload.spb = true
         }
         else {
-            marblePayload.ebp = true;
+            marblePayload.epb = true;
         }
 
         return {
