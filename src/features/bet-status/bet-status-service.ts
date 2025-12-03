@@ -169,12 +169,9 @@ export class BetStatusService {
 
     private schedulePlaceBet({ event, index }: EventDetailNotification<MarbleEvent>) {
         const timeToPlaceBet = this.getTimeToPlaceBet({ event, index });
-        const now = index === 0 ? 
-            event.scheduleStartTs : 
-            event.eventDetails[index].oddsAvailableTs;
 
         this.scheduler.schedule(timeToPlaceBet, this.handleBetChoiceReady.bind(this, { event, index }), {
-            overrideNow: now,
+            overrideNow: event.now,
             ignorePast: true
         });
     }

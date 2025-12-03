@@ -6,7 +6,7 @@ jest.mock("../../../../src/helpers/eventid", () => ({
 }));
 
 describe("CurrentEventService", () => {
-    let service: CurrentEventService & any;
+    let service: CurrentEventService;
     let oddsFeedEventSource: any;
     let delayHandlingService: any;
     let scheduler: any;
@@ -57,7 +57,7 @@ describe("CurrentEventService", () => {
     });
 
     describe("handleEventStart", () => {
-        it("should schedule event index reset with timestamp-based overrideNow", () => {
+        it("should schedule event index reset with event.now overrideNow", () => {
             const scheduleStartTs = Date.parse("2025-01-01T00:00:00Z");
             const event = { eventID: 123, scheduleStartTs, eventDetails: [{}], now: new Date(scheduleStartTs) } as any;
             const expectedTime = new Date(scheduleStartTs + 123); // delayHandlingService adds 123ms
@@ -71,18 +71,18 @@ describe("CurrentEventService", () => {
             expect(scheduler.schedule).toHaveBeenCalledWith(
                 expectedTime,
                 expect.any(Function),
-                {
-                    overrideNow: scheduleStartTs,
+                expect.objectContaining({
+                    overrideNow: event.now,
                     ignorePast: false
-                }
+                })
             );
 
             // Verify callback sets the event
             const [, callback] = (scheduler.schedule as jest.Mock).mock.calls[0];
             callback();
-            expect(service._currentEventDetailIndexByGameId["7"]).toBe(0);
+            expect((service as any)._currentEventDetailIndexByGameId["7"]).toBe(0);
             expect(service.eventByEventId[123]).toBe(event);
-            expect(service._currentEventByGameId["7"]).toBe(123);
+            expect((service as any)._currentEventByGameId["7"]).toBe(123);
             expect(gameData.roundId).toBe(123);
             expect(gameStatusPublisher.publishMatch).toHaveBeenCalledWith(event);
         });
@@ -114,14 +114,14 @@ describe("CurrentEventService", () => {
             expect(scheduler.schedule).toHaveBeenCalledWith(
                 expectedTime,
                 expect.any(Function),
-                {
-                    overrideNow: oddsAvailableTs,
+                expect.objectContaining({
+                    overrideNow: event.now,
                     ignorePast: false
-                }
+                })
             );
             const [, cb] = (scheduler.schedule as jest.Mock).mock.calls[0];
             (cb as Function)();
-            expect(service._currentEventDetailIndexByGameId["7"]).toBe(1);
+            expect((service as any)._currentEventDetailIndexByGameId["7"]).toBe(1);
         });
     });
 
@@ -135,8 +135,8 @@ describe("CurrentEventService", () => {
 
     describe("getters", () => {
         it("should return current event id, detail index and phase", () => {
-            service._currentEventByGameId["7"] = 99;
-            service._currentEventDetailIndexByGameId["7"] = 2;
+            (service as any)._currentEventByGameId["7"] = 99;
+            (service as any)._currentEventDetailIndexByGameId["7"] = 2;
             service.eventByEventId[99] = { eventDetails: [{}, { phase: "p1" }, { phase: "p2" }] } as any;
 
             expect(service.getCurrentEventByGameId("7")).toBe(99);
@@ -153,8 +153,8 @@ describe("CurrentEventService", () => {
 
         it("getCurrentEvent should return current event for current game id", () => {
             // extractGameId mocked to 7; set roundId arbitrary
-            service.gameData.roundId = 123456;
-            service._currentEventByGameId["7"] = 55;
+            (service as any).gameData.roundId = 123456;
+            (service as any)._currentEventByGameId["7"] = 55;
             const event = { eventID: 55, eventDetails: [] } as any;
             service.eventByEventId[55] = event;
 
@@ -163,9 +163,9 @@ describe("CurrentEventService", () => {
         });
 
         it("getCurrentEvent should return undefined when not mapped", () => {
-            service.gameData.roundId = 999999;
+            (service as any).gameData.roundId = 999999;
             // No _currentEventByGameId mapping for "7" or no eventByEventId entry
-            delete service._currentEventByGameId["7"];
+            delete (service as any)._currentEventByGameId["7"];
             const res = service.getCurrentEvent();
             expect(res).toBeUndefined();
         });

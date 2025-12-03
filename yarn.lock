@@ -6060,10 +6060,10 @@ object-assign@^4:
   resolved "http://npm.lumigame.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
   integrity sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM=
 
-odds-feed-client@3.7.0:
-  version "3.7.0"
-  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.7.0.tgz#ad0d302d5d0560da69edfee83681b391b65d11fe"
-  integrity sha512-AV++ezdc63KnfNCBnE2BRTkl9OzDVT4oIh/wv9xd59JlHopfdLSHA+AojWEM2Xjd0oxih2blb9i8jwEgJS9mBA==
+odds-feed-client@3.7.1:
+  version "3.7.1"
+  resolved "http://npm.lumigame.com/odds-feed-client/-/odds-feed-client-3.7.1.tgz#7b1b924559d04a8d35ae5e7649c03583af3a8110"
+  integrity sha512-5Hn/2hPorBSGWLZ29BuoR8du3bdqt/THhsVLTxh7dTYrbM0eAAZveRjeHoHxIFUhkMVPMOhiJBM9shpmfYj4oA==
   dependencies:
     awilix "12.0.5"
     cron "4.3.3"

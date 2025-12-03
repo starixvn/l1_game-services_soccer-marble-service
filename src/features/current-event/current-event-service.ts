@@ -99,7 +99,7 @@ export class CurrentEventService {
         });
 
         this.scheduler.schedule(timeToResetIndex, this.handleEventIndexReset.bind(this, { event }), {
-            overrideNow: event.scheduleStartTs,
+            overrideNow: event.now,
             ignorePast: false
         });
     }
@@ -113,7 +113,7 @@ export class CurrentEventService {
             oddFeedEventType: OddsFeedEventName.EventDetailOddsAvailable,
         });
         this.scheduler.schedule(delayedTime, this.handleEventIndexChange.bind(this, { event, index }), {
-            overrideNow: event.eventDetails[index].oddsAvailableTs,
+            overrideNow: event.now,
             ignorePast: false,
         });
     }

@@ -111,10 +111,10 @@ describe("BetStatusService", () => {
             service.handleEventStart({ event } as EventNotification<MarbleEvent>);
 
             expect(service.allowBets).toBe(false);
-            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
-                overrideNow: scheduleStart,
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), expect.objectContaining({
+                overrideNow: now,
                 ignorePast: true,
-            });
+            }));
         });
     });
 
@@ -145,10 +145,10 @@ describe("BetStatusService", () => {
 
             service.handleEventDetailOddAvailable({ event, index: 2 } as EventDetailNotification<MarbleEvent>);
 
-            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), {
-                overrideNow: base + 4000,
+            expect(scheduler.schedule).toHaveBeenCalledWith(expected, expect.any(Function), expect.objectContaining({
+                overrideNow: now,
                 ignorePast: true,
-            });
+            }));
         });
     });
 

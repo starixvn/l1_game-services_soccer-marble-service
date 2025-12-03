@@ -58,7 +58,7 @@ export class GameFlowService {
                 oddFeedEventType: OddsFeedEventName.EventStart,
             });
         this.scheduler.schedule(timeStart, this.handleStartGame.bind(this, { event }), {
-            overrideNow: event.scheduleStartTs,
+            overrideNow: event.now,
         });
     }
     
@@ -71,7 +71,7 @@ export class GameFlowService {
                 oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
             });
         this.scheduler.schedule(timeResult, this.handleResult.bind(this, { event, index }), {
-            overrideNow: event.eventDetails[index].resultsAvailableTs,
+            overrideNow: event.now,
         });
     }
 

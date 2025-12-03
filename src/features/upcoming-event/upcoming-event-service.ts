@@ -56,7 +56,7 @@ export class UpcomingEventService {
             oddFeedEventType: OddsFeedEventName.EventStart,
         });
         this.scheduler.schedule(timeToStart, this.dequeueEvent.bind(this, { eventID: event.eventID }), {
-            overrideNow: event.scheduleStartTs,
+            overrideNow: event.now,
             ignorePast: false
         });
     };
