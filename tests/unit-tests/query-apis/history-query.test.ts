@@ -11,7 +11,7 @@ describe(HistoryQuery.name, () => {
     };
     const mockRound = {
         result: { 1: { phase: 1, result: "1:0" }, 2: { phase: 2, result: "1:1" } },
-        match: "Team A vs Team B",
+        match: { home: "Team A", away: "Team B" },
         settlementResult: { 1: { home: false, away: true, draw: false }, 2: { home: true, away: false, draw: false } },
     };
     const mockBetLogDetails = [
@@ -111,7 +111,7 @@ describe(HistoryQuery.name, () => {
                             {
                                 convertedBet: true,
                                 phien: mockBet.roundId,
-                                result: "2:1", // combineFinalResult(round.result)
+                                result: { result: "2:1", match: mockRound.match }, // combineFinalResult(round.result)
                                 settlementResult: { home: true, away: false, draw: false }, // getLastSettlementResult(round.settlementResult)
                                 betLogDetails: ["converted log 1", "converted log 2"],
                             },

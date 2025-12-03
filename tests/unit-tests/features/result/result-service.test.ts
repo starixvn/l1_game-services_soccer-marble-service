@@ -32,9 +32,15 @@ describe("ResultService", () => {
     describe("initEvent/dispose", () => {
         it("should subscribe and unsubscribe to EventDetailResultsAvailable", () => {
             service.initEvent();
-            expect(oddsFeedEventSource.eventDetailOn).toHaveBeenCalledWith(OddsFeedEventName.EventDetailResultsAvailable, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOn).toHaveBeenCalledWith(
+                OddsFeedEventName.EventDetailResultsAvailable,
+                expect.any(Function)
+            );
             service.dispose();
-            expect(oddsFeedEventSource.eventDetailOff).toHaveBeenCalledWith(OddsFeedEventName.EventDetailResultsAvailable, expect.any(Function));
+            expect(oddsFeedEventSource.eventDetailOff).toHaveBeenCalledWith(
+                OddsFeedEventName.EventDetailResultsAvailable,
+                expect.any(Function)
+            );
         });
     });
 
@@ -54,6 +60,8 @@ describe("ResultService", () => {
         it("should build minimal result and settlementResult snapshots and call settleSpecificRound", () => {
             const event = {
                 eventID: 99,
+                eventNameAKey: "Team Alpha",
+                eventNameBKey: "Team Beta",
                 eventDetails: [
                     {
                         phase: 1,
@@ -72,9 +80,7 @@ describe("ResultService", () => {
                         result: "2-1",
                         markets: [
                             {
-                                selections: [
-                                    { betChoice: "away", settlementStatus: "L" },
-                                ],
+                                selections: [{ betChoice: "away", settlementStatus: "L" }],
                             },
                         ],
                     },
@@ -97,9 +103,8 @@ describe("ResultService", () => {
                 roundId: 99,
                 result: service.resultByEventId[99].result,
                 settlementResult: service.resultByEventId[99].settlementResult,
+                match: { home: "Team Alpha", away: "Team Beta" },
             });
         });
     });
 });
-
-

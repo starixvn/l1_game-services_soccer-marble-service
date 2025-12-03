@@ -3,33 +3,38 @@ import { MODEL_NAME_PREFIX } from "../constants";
 
 export type EventDetailSettlementResult = {
     [key: string]: boolean;
-}
+};
 
 export type EventDetailResult = {
     phase: number;
     result: string;
 };
 
+export type Match = {
+    home: string;
+    away: string;
+};
 export type Result = Record<number, EventDetailResult>;
 export type SettlementResult = Record<number, EventDetailSettlementResult>;
 
 export type ResultAndSettlementResult = {
     result: Result;
     settlementResult: SettlementResult;
-}
+};
 
 const eventDetailResultSchema = new mongoose.Schema<EventDetailResult>(
     {
         phase: { type: Number },
         result: { type: String },
     },
-    { _id: false },
+    { _id: false }
 );
 
 export interface IRound {
     id: number;
     result: Result;
     settlementResult: SettlementResult;
+    match: Match;
     time: Date;
     exchangeRateId: number;
 }
@@ -38,6 +43,7 @@ const RoundSchema = new mongoose.Schema<IRound>({
     id: { type: Number, required: true },
     result: { type: Map, of: eventDetailResultSchema },
     settlementResult: { type: Map, of: mongoose.Schema.Types.Mixed },
+    match: { type: mongoose.Schema.Types.Mixed, required: true },
     time: { type: Date, default: () => new Date() },
     exchangeRateId: { type: Number, required: true },
 });

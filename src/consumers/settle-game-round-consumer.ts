@@ -1,24 +1,26 @@
 import { Table } from "sc-game-base";
 import GameData from "../game-data";
-import { Result, SettlementResult } from "../models/rounds";
+import { Match, Result, SettlementResult } from "../models/rounds";
 import { combineFinalResult, getLastSettlementResult } from "../helpers/result-helper";
 
 type SettleArg = {
     roundId: number;
     result: Result;
     settlementResult: SettlementResult;
+    match: Match;
 };
 
 export default class SettleGameRoundConsumer extends Table.EventConsumers.TableSettleGameRoundConsumer {
     declare gameData: GameData;
 
-    async settleSpecificRound({ roundId, result, settlementResult }: SettleArg) {
+    async settleSpecificRound({ roundId, result, settlementResult, match }: SettleArg) {
         const { exchangeRates } = this.gameData;
 
         const newRound = await this.roundsRepository.create({
             id: roundId,
             result,
             settlementResult,
+            match,
             time: new Date(),
             exchangeRateId: exchangeRates.exId,
         });

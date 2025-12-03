@@ -38,17 +38,19 @@ describe("SettleGameRoundConsumer", () => {
                 1: { home: false, away: true, draw: false },
                 2: { home: true, away: false, draw: false },
             } as any;
+            const match = { home: "Team A", away: "Team B" };
             const created = { id: roundId, time: new Date() };
             consumer.roundsRepository.create.mockResolvedValue(created);
 
             // Act
-            await consumer.settleSpecificRound({ roundId, result, settlementResult });
+            await consumer.settleSpecificRound({ roundId, result, settlementResult, match });
 
             // Assert
             expect(consumer.roundsRepository.create).toHaveBeenCalledWith({
                 id: roundId,
                 result,
                 settlementResult,
+                match,
                 time: expect.any(Date),
                 exchangeRateId: 789,
             });
@@ -75,10 +77,11 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 1: { home: false, away: false, draw: true },
             } as any;
+            const match = { home: "Team C", away: "Team D" };
             consumer.roundsRepository.create.mockResolvedValue(null);
 
             // Act
-            await consumer.settleSpecificRound({ roundId, result, settlementResult });
+            await consumer.settleSpecificRound({ roundId, result, settlementResult, match });
 
             // Assert
             expect(consumer.roundsRepository.create).toHaveBeenCalled();
@@ -100,11 +103,12 @@ describe("SettleGameRoundConsumer", () => {
                 2: { home: true, away: false, draw: false },
                 3: { home: false, away: true, draw: false },
             } as any;
+            const match = { home: "Team E", away: "Team F" };
             const created = { id: roundId, time: new Date() };
             consumer.roundsRepository.create.mockResolvedValue(created);
 
             // Act
-            await consumer.settleSpecificRound({ roundId, result, settlementResult });
+            await consumer.settleSpecificRound({ roundId, result, settlementResult, match });
 
             // Assert
             expect(consumer.roundResultPublisher.publishRoundResult).toHaveBeenCalledWith({

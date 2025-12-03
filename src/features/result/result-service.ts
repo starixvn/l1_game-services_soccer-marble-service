@@ -4,15 +4,12 @@ import { DelayHandlingService } from "../delay/delay-handling-service";
 import { EventDetailSettlementResult, ResultAndSettlementResult } from "../../models/rounds";
 import { MarbleEvent, MarbleEventDetail, Market } from "../shared-types";
 
-
 type ResultServiceContainer = {
     oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
     settleGameRoundConsumer: SettleGameRoundConsumer;
     scheduler: Scheduler;
     delayHandlingService: DelayHandlingService;
-}
-
-
+};
 
 export class ResultService {
     private readonly oddsFeedEventSource: OddsFeedEventSource<MarbleEvent>;
@@ -21,7 +18,7 @@ export class ResultService {
     private readonly delayHandlingService: DelayHandlingService;
 
     private readonly boundHandleEventResultAvailable: (notification: EventDetailNotification<MarbleEvent>) => void;
-    
+
     constructor(container: ResultServiceContainer) {
         this.oddsFeedEventSource = container.oddsFeedEventSource;
         this.settleGameRoundConsumer = container.settleGameRoundConsumer;
@@ -44,10 +41,13 @@ export class ResultService {
         if (index !== event.eventDetails.length - 1) {
             return;
         }
-        
-        const timeToSettle = this.delayHandlingService.getDelayedTime({ event, time: new Date(event.eventDetails[index].resultsAvailableTs) }, {
-            oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
-        });
+
+        const timeToSettle = this.delayHandlingService.getDelayedTime(
+            { event, time: new Date(event.eventDetails[index].resultsAvailableTs) },
+            {
+                oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
+            }
+        );
 
         this.scheduler.schedule(timeToSettle, this.getResultAndSettle.bind(this, { event, index }), {
             overrideNow: event.eventDetails[index].resultsAvailableTs,
@@ -74,6 +74,7 @@ export class ResultService {
             roundId: event.eventID,
             result: result.result,
             settlementResult: result.settlementResult,
+            match: { home: event.eventNameAKey, away: event.eventNameBKey },
         });
     }
 

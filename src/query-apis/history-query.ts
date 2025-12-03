@@ -31,7 +31,7 @@ export default class HistoryQuery extends Core.QueryApis.HistoryQuery {
                     return {
                         ...this.convertBet(bet),
                         phien: bet.roundId,
-                        result: combineFinalResult(round.result),
+                        result: { result: combineFinalResult(round.result), match: round.match },
                         settlementResult: getLastSettlementResult(round.settlementResult),
                         betLogDetails: this.convertBetLogs(betLogDetails),
                     };

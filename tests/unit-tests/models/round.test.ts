@@ -37,7 +37,7 @@ describe("Round", () => {
 
             // Assert
             expect(error?.message).toBe(
-                `${GAME_NAME}_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., id: Path \`id\` is required.`,
+                `${GAME_NAME}_rounds validation failed: exchangeRateId: Path \`exchangeRateId\` is required., match: Path \`match\` is required., id: Path \`id\` is required.`
             );
         });
     });
