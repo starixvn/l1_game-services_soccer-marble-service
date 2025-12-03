@@ -1,16 +1,11 @@
 import { asClass, asValue, AwilixContainer } from "awilix";
 import { Table } from "sc-game-base";
-import {
-    InGameConsumer,
-    UserDisconnectConsumer,
-    SettleGameRoundConsumer,
-    UnsettledRoundConsumer,
-} from "./consumers";
+import { InGameConsumer, UserDisconnectConsumer, SettleGameRoundConsumer, UnsettledRoundConsumer } from "./consumers";
 
 import { Bot, GameCron, ProcessBetQueue } from "./crons";
 import { betLogs, bets, results, rounds, tmpBets } from "./models";
 import { RunningRoundInfoPublisher } from "./publishers";
-import { HistoryQuery } from "./query-apis";
+import { HistoryQuery, RoundQuery } from "./query-apis";
 import PlaceBetConsumer from "./consumers/place-bet-consumer";
 import GameStatusPublisher from "./publishers/game-status-publisher";
 import { UserSignInConsumer } from "./consumers/user-sign-in-consumer";
@@ -19,7 +14,6 @@ import { AwilixDIContainer } from "odds-feed-client/awilix";
 import { initFeatures, registerFeatures } from "./features/container-registry";
 
 export default class ContainerRegistry extends Table.TableContainerRegistry {
-
     private readonly oddFeedDiContainer: DiContainer;
     constructor() {
         super();
@@ -81,6 +75,7 @@ export default class ContainerRegistry extends Table.TableContainerRegistry {
 
         this.container.register({
             historyQuery: asClass(HistoryQuery).singleton(),
+            roundQuery: asClass(RoundQuery).singleton(),
         });
     }
 

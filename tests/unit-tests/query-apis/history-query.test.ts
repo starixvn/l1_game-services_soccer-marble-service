@@ -10,9 +10,9 @@ describe(HistoryQuery.name, () => {
         paid: true,
     };
     const mockRound = {
-        result: { 0: { phase: 2, result: "2-1" } },
+        result: { 1: { phase: 1, result: "1:0" }, 2: { phase: 2, result: "1:1" } },
         match: "Team A vs Team B",
-        settlementResult: { 0: { home: true } },
+        settlementResult: { 1: { home: false, away: true, draw: false }, 2: { home: true, away: false, draw: false } },
     };
     const mockBetLogDetails = [
         { id: 1, details: "bet detail 1" },
@@ -89,7 +89,7 @@ describe(HistoryQuery.name, () => {
                 expect(historyQuery.betsRepository.find).toHaveBeenCalledWith(
                     { uid: mockPlayer.UID, paid: true },
                     { projection: true },
-                    { sort: { _id: -1 }, skip: 10, limit: 10 },
+                    { sort: { _id: -1 }, skip: 10, limit: 10 }
                 );
             });
 
@@ -111,11 +111,8 @@ describe(HistoryQuery.name, () => {
                             {
                                 convertedBet: true,
                                 phien: mockBet.roundId,
-                                result: {
-                                    0: { phase: 2, result: "2-1" },
-                                    teamName: "Team A vs Team B",
-                                },
-                                settlementResult: { 0: { home: true } },
+                                result: "2:1", // combineFinalResult(round.result)
+                                settlementResult: { home: true, away: false, draw: false }, // getLastSettlementResult(round.settlementResult)
                                 betLogDetails: ["converted log 1", "converted log 2"],
                             },
                         ],

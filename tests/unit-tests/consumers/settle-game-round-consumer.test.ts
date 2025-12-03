@@ -30,8 +30,14 @@ describe("SettleGameRoundConsumer", () => {
         it("should create round, publish results, settle bets, and publish winners when creation succeeds", async () => {
             // Arrange
             const roundId = 123;
-            const result = { home: 2, away: 1 } as any;
-            const settlementResult = { 0: { home: true, away: false } } as any;
+            const result = {
+                1: { phase: 1, result: "1:0" },
+                2: { phase: 2, result: "1:1" },
+            } as any;
+            const settlementResult = {
+                1: { home: false, away: true, draw: false },
+                2: { home: true, away: false, draw: false },
+            } as any;
             const created = { id: roundId, time: new Date() };
             consumer.roundsRepository.create.mockResolvedValue(created);
 
@@ -47,8 +53,8 @@ describe("SettleGameRoundConsumer", () => {
                 exchangeRateId: 789,
             });
             expect(consumer.roundResultPublisher.publishRoundResult).toHaveBeenCalledWith({
-                result,
-                settlementResult,
+                result: "2:1", // combineFinalResult(result)
+                settlementResult: { home: true, away: false, draw: false }, // getLastSettlementResult(settlementResult)
                 roundId,
             });
             expect(consumer.settleBets).toHaveBeenCalledWith({
@@ -63,16 +69,49 @@ describe("SettleGameRoundConsumer", () => {
         it("should do nothing after creation when repository returns null", async () => {
             // Arrange
             const roundId = 456;
+            const result = {
+                1: { phase: 1, result: "0:0" },
+            } as any;
+            const settlementResult = {
+                1: { home: false, away: false, draw: true },
+            } as any;
             consumer.roundsRepository.create.mockResolvedValue(null);
 
             // Act
-            await consumer.settleSpecificRound({ roundId, result: {} as any, settlementResult: {} as any });
+            await consumer.settleSpecificRound({ roundId, result, settlementResult });
 
             // Assert
             expect(consumer.roundsRepository.create).toHaveBeenCalled();
             expect(consumer.roundResultPublisher.publishRoundResult).not.toHaveBeenCalled();
             expect(consumer.settleBets).not.toHaveBeenCalled();
             expect(consumer.roundResultPublisher.publishWinners).not.toHaveBeenCalled();
+        });
+
+        it("should correctly combine results from multiple phases", async () => {
+            // Arrange
+            const roundId = 789;
+            const result = {
+                1: { phase: 1, result: "2:1" },
+                2: { phase: 2, result: "1:0" },
+                3: { phase: 3, result: "0:2" },
+            } as any;
+            const settlementResult = {
+                1: { home: true, away: false, draw: false },
+                2: { home: true, away: false, draw: false },
+                3: { home: false, away: true, draw: false },
+            } as any;
+            const created = { id: roundId, time: new Date() };
+            consumer.roundsRepository.create.mockResolvedValue(created);
+
+            // Act
+            await consumer.settleSpecificRound({ roundId, result, settlementResult });
+
+            // Assert
+            expect(consumer.roundResultPublisher.publishRoundResult).toHaveBeenCalledWith({
+                result: "3:3", // combineFinalResult: (2+1+0):(1+0+2)
+                settlementResult: { home: false, away: true, draw: false }, // getLastSettlementResult (phase 3)
+                roundId,
+            });
         });
     });
 
@@ -156,7 +195,7 @@ describe("SettleGameRoundConsumer", () => {
             expect(result.netWin).toBe(0);
             expect(result.totalLost).toBe(0);
         });
-        
+
         it("should compute all zeros when all selections lose", () => {
             // Arrange
             const settlementResult = {
@@ -183,5 +222,3 @@ describe("SettleGameRoundConsumer", () => {
         });
     });
 });
-
-

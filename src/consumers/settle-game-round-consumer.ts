@@ -1,14 +1,13 @@
 import { Table } from "sc-game-base";
 import GameData from "../game-data";
 import { Result, SettlementResult } from "../models/rounds";
-
+import { combineFinalResult, getLastSettlementResult } from "../helpers/result-helper";
 
 type SettleArg = {
     roundId: number;
     result: Result;
     settlementResult: SettlementResult;
-}
-
+};
 
 export default class SettleGameRoundConsumer extends Table.EventConsumers.TableSettleGameRoundConsumer {
     declare gameData: GameData;
@@ -16,28 +15,26 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
     async settleSpecificRound({ roundId, result, settlementResult }: SettleArg) {
         const { exchangeRates } = this.gameData;
 
+        const newRound = await this.roundsRepository.create({
+            id: roundId,
+            result,
+            settlementResult,
+            time: new Date(),
+            exchangeRateId: exchangeRates.exId,
+        });
 
-        const newRound = await 
-            this.roundsRepository.create({
-                id: roundId,
-                result,
-                settlementResult,
-                time: new Date(),
-                exchangeRateId: exchangeRates.exId
-            });
-        
         if (newRound) {
             this.roundResultPublisher.publishRoundResult({
-                result,
-                settlementResult,
-                roundId
+                result: combineFinalResult(result),
+                settlementResult: getLastSettlementResult(settlementResult),
+                roundId,
             });
-            
+
             const finish = {
                 settlementResult,
                 result,
                 roundId: newRound.id,
-                time: newRound.time
+                time: newRound.time,
             };
 
             await this.settleBets(finish);
@@ -70,14 +67,14 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
                 netWin: 0,
                 totalLost: 0,
                 winningByChoices: {},
-            },
+            }
         );
         betResult.totalWin = parseFloat(betResult.totalWin.toFixed(2));
         betResult.netWin = parseFloat(betResult.netWin.toFixed(2));
         return betResult;
     }
 
-    override async settleBets({ settlementResult, roundId, time }: { settlementResult: any; roundId: number; time: Date; }): Promise<void> {
+    override async settleBets({ settlementResult, roundId, time }: { settlementResult: any; roundId: number; time: Date }): Promise<void> {
         const bets = await this.queryBets(roundId);
 
         if (bets && bets.length) {

@@ -1,4 +1,6 @@
 import { Core } from "sc-game-base";
+import { IRound } from "../models/rounds";
+import { combineFinalResult, getLastSettlementResult } from "../helpers/result-helper";
 
 export default class HistoryQuery extends Core.QueryApis.HistoryQuery {
     declare getBetProjection: () => any;
@@ -23,20 +25,17 @@ export default class HistoryQuery extends Core.QueryApis.HistoryQuery {
         if (bets && bets.length > 0) {
             betLogs = await Promise.all(
                 bets.map(async (bet: any) => {
-                    const round = await this.roundQuery.getOne(bet.roundId, { _id: false });
+                    const round: IRound = await this.roundQuery.getOne(bet.roundId, { _id: false });
                     const betLogDetails = this.betLogsRepository ? await this.getBetLogDetails(player, bet.roundId) : [];
 
                     return {
                         ...this.convertBet(bet),
                         phien: bet.roundId,
-                        result: {
-                            ...round.result,
-                            teamName: round.match,
-                        },
-                        settlementResult: round.settlementResult,
+                        result: combineFinalResult(round.result),
+                        settlementResult: getLastSettlementResult(round.settlementResult),
                         betLogDetails: this.convertBetLogs(betLogDetails),
                     };
-                }),
+                })
             );
         }
 
