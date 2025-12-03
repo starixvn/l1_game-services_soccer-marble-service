@@ -9,6 +9,7 @@ import { MarginConfigs, trueOddsToOddsWithMarginConfig } from "../../helpers/odd
 export interface BetConfig {
     delayPlaceBetMs?: number;
     soonLockBetMs?: number;
+    startRoundWaitingMs?: number;
 }
 
 interface BetStatusServiceContainer {
@@ -130,6 +131,10 @@ export class BetStatusService {
             ? eventWithBetConfig.scheduleStartTs
             : eventWithBetConfig.eventDetails[index].oddsAvailableTs;
 
+        const firstBlockPlaceBetDelay = index === 0
+            ? eventWithBetConfig.config?.bet?.startRoundWaitingMs ?? 0
+            : 0;
+
         const oddFeedEventType = index === 0 
             ? OddsFeedEventName.EventStart 
             : OddsFeedEventName.EventDetailOddsAvailable;
@@ -142,7 +147,7 @@ export class BetStatusService {
             ?? 0;
 
         const timePlaceBet = 
-            new Date(new Date(rawPlaceBetTime).getTime() + delayPlaceBet);
+            new Date(new Date(rawPlaceBetTime).getTime() + delayPlaceBet + firstBlockPlaceBetDelay);
 
         return this.delayHandlingService.getDelayedTime({ event, time: timePlaceBet }, {
             oddFeedEventType,
@@ -172,7 +177,6 @@ export class BetStatusService {
 
         this.scheduler.schedule(timeToPlaceBet, this.handleBetChoiceReady.bind(this, { event, index }), {
             overrideNow: event.now,
-            ignorePast: true
         });
     }
 

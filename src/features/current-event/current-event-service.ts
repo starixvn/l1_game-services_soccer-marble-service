@@ -124,6 +124,7 @@ export class CurrentEventService {
         this.eventByEventId[event.eventID] = event;
         this._currentEventByGameId[gameId] = event.eventID;
         this.gameData.roundId = event.eventID;
+        this.gameStatusPublisher.publishStartGame();
         this.gameStatusPublisher.publishMatch(event);
     }
 

@@ -27,7 +27,10 @@ describe("CurrentEventService", () => {
         };
         scheduler = { schedule: jest.fn() };
         gameData = { roundId: undefined };
-        gameStatusPublisher = { publishMatch: jest.fn() };
+        gameStatusPublisher = { 
+            publishMatch: jest.fn(),
+            publishStartGame: jest.fn(),
+        };
 
         service = new CurrentEventService({
             oddsFeedEventSource,
@@ -84,6 +87,7 @@ describe("CurrentEventService", () => {
             expect(service.eventByEventId[123]).toBe(event);
             expect((service as any)._currentEventByGameId["7"]).toBe(123);
             expect(gameData.roundId).toBe(123);
+            expect(gameStatusPublisher.publishStartGame).toHaveBeenCalled();
             expect(gameStatusPublisher.publishMatch).toHaveBeenCalledWith(event);
         });
     });
