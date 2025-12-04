@@ -3,6 +3,7 @@ import GameData from "../game-data";
 import { helpers } from "sc-common";
 import GameDefinition from "../game-definition";
 import { BetStatusService } from "../features/bet-status/bet-status-service";
+import { ResultService } from "../features/result/result-service";
 
 type BetPayload = {
     amount: number;
@@ -18,10 +19,12 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     declare gameData: GameData;
     declare definition: GameDefinition;
     betStatusService: BetStatusService;
+    resultService: ResultService;
 
     constructor(container: any) {
         super(container);
         this.betStatusService = container.betStatusService;
+        this.resultService = container.resultService;
     }
 
     override async proceedBet(player: any, payload: BetPayload): Promise<void> {
@@ -106,6 +109,10 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     override async insertBetLog(player: any, roundId: number, bet: any, rate: number): Promise<void> {
+        const liveScore = this.resultService.currentLiveScore[bet.index] ?? { home: 0, away: 0 };
+
+        const formattedLiveScore = `${liveScore.home}:${liveScore.away}`;
+
         const newBetLog: Record<string, any> = {
             uid: player.UID,
             name: player.profile.name,
@@ -116,6 +123,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
             receivedTime: bet.receivedTime,
             roundId,
             index: bet.index,
+            liveScore: formattedLiveScore,
         };
 
         if (player.session) {

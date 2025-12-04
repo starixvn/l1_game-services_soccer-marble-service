@@ -17,6 +17,7 @@ const Schema = new mongoose.Schema({
     operatorId: { type: String, required: true },
     roundId: { type: Number, default: 0, required: true },
     index: { type: Number },
+    liveScore: {type: String }
 });
 
 const modelName = `${MODEL_NAME_PREFIX}_betlogs`;

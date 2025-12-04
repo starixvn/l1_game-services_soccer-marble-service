@@ -20,7 +20,11 @@ describe("ProcessBetQueue", () => {
             odds: { home: 2, away: 3 },
             points: { home: 1, away: 2 },
         };
+        cron.resultService = {
+            currentLiveScore: {},
+        };
         cron.betsRepository = { updateOne: jest.fn().mockResolvedValue(undefined) };
+        cron.betLogsRepository = { create: jest.fn().mockResolvedValue(undefined) };
     });
 
     afterEach(() => {
@@ -42,10 +46,16 @@ describe("ProcessBetQueue", () => {
     });
 
     describe("constructor", () => {
-        it("should set betStatusService from container", () => {
-            const container = { betStatusService: { tag: "betsvc" }, gameData: {}, definition: {} } as any;
+        it("should set betStatusService and resultService from container", () => {
+            const container = {
+                betStatusService: { tag: "betsvc" },
+                resultService: { tag: "resultsvc" },
+                gameData: {},
+                definition: {},
+            } as any;
             const instance = new ProcessBetQueue(container) as any;
             expect(instance.betStatusService).toBe(container.betStatusService);
+            expect(instance.resultService).toBe(container.resultService);
         });
     });
 
@@ -153,6 +163,120 @@ describe("ProcessBetQueue", () => {
                     $set: {},
                 },
                 { upsert: true, setDefaultsOnInsert: true },
+            );
+        });
+    });
+
+    describe("insertBetLog", () => {
+        it("should insert bet log with live score when available", async () => {
+            cron.resultService.currentLiveScore = {
+                0: { home: 1, away: 0 },
+            };
+            const player = {
+                UID: "u5",
+                profile: { name: "testPlayer" },
+                session: {
+                    siteId: "s1",
+                    currencyName: "USD",
+                    operatorId: "op1",
+                    playerId: "p1",
+                    system: "web",
+                    siteName: "TestSite",
+                },
+            };
+            const bet = {
+                betChoice: "home",
+                amount: 200,
+                clientSentTime: new Date("2023-01-01T10:00:00Z"),
+                receivedTime: new Date("2023-01-01T10:00:01Z"),
+                index: 0,
+            };
+            const rate = 1.5;
+
+            await cron.insertBetLog(player, 10, bet, rate);
+
+            expect(cron.betLogsRepository.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    uid: "u5",
+                    name: "testPlayer",
+                    choice: "home",
+                    amount: 200,
+                    clientSentTime: bet.clientSentTime,
+                    receivedTime: bet.receivedTime,
+                    roundId: 10,
+                    index: 0,
+                    liveScore: "1:0",
+                    siteId: "s1",
+                    currency: "USD",
+                    rate: 1.5,
+                    operatorId: "op1",
+                    playerId: "p1",
+                    appType: "web",
+                    siteName: "TestSite",
+                })
+            );
+        });
+
+        it("should insert bet log with default live score when not available", async () => {
+            cron.resultService.currentLiveScore = {};
+            const player = {
+                UID: "u6",
+                profile: { name: "testPlayer2" },
+                session: null,
+            };
+            const bet = {
+                betChoice: "away",
+                amount: 150,
+                clientSentTime: new Date("2023-01-01T10:00:00Z"),
+                receivedTime: new Date("2023-01-01T10:00:01Z"),
+                index: 1,
+            };
+            const rate = 1;
+
+            await cron.insertBetLog(player, 10, bet, rate);
+
+            expect(cron.betLogsRepository.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    uid: "u6",
+                    name: "testPlayer2",
+                    choice: "away",
+                    amount: 150,
+                    clientSentTime: bet.clientSentTime,
+                    receivedTime: bet.receivedTime,
+                    roundId: 10,
+                    index: 1,
+                    liveScore: "0:0",
+                })
+            );
+        });
+
+        it("should insert bet log with live score for different indices", async () => {
+            cron.resultService.currentLiveScore = {
+                0: { home: 0, away: 0 },
+                1: { home: 2, away: 1 },
+                2: { home: 3, away: 2 },
+            };
+            const player = {
+                UID: "u7",
+                profile: { name: "testPlayer3" },
+                session: null,
+            };
+            const bet = {
+                betChoice: "draw",
+                amount: 75,
+                clientSentTime: new Date("2023-01-01T10:00:00Z"),
+                receivedTime: new Date("2023-01-01T10:00:01Z"),
+                index: 2,
+            };
+            const rate = 1;
+
+            await cron.insertBetLog(player, 10, bet, rate);
+
+            expect(cron.betLogsRepository.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    liveScore: "3:2",
+                    index: 2,
+                })
             );
         });
     });

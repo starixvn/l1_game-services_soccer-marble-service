@@ -118,8 +118,6 @@ export class BetStatusService {
         if (index === 0) {
             return;
         }
-        console.log("odds available time ", event.eventDetails[index].oddsAvailableTs);
-        console.log("now", event.now);
 
         this.schedulePlaceBet({ event, index });
     }
@@ -193,7 +191,6 @@ export class BetStatusService {
     }
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
-        console.log("bet choice ready index", index);
         this._previousOdds = this._marginProcessedDynamicOdds;
         this._betStatus = true;
         this._currentOddIndex = index;
@@ -221,8 +218,6 @@ export class BetStatusService {
     
     private publishBetChoiceReady() {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
-        console.log("index", this.currentIndex);
-        console.log("payload", this.payload);
         this.gameStatusPublisher.publishToAllUsers(this.payload);
     }
 
@@ -303,10 +298,8 @@ export class BetStatusService {
 
     private getDisabledBetChoices(markets: Record<string, string[]>, odds: Record<string, number>) {
         const disabledOdds: Record<string, boolean> = {};
-        console.log("init odds ", odds);
         Object.entries(markets).forEach(([market, choices]) => {
             if (choices.some((choice) => odds[choice] <= 1)) {
-                console.log(`market ${market} has disabled choices ${choices.join(", ")}`);
                 choices.forEach((choice) => {
                     disabledOdds[choice] = true;
                 });

@@ -45,14 +45,67 @@ describe("ResultService", () => {
     });
 
     describe("handleEventDetailResultsAvailable", () => {
+        it("should initialize live score to 0-0 when index is 0", () => {
+            const event = { eventID: 10, eventDetails: [{}] } as any;
+            service.handleEventDetailResultsAvailable({ event, index: 0 });
+            expect(service.currentLiveScore[0]).toEqual({ home: 0, away: 0 });
+            expect(scheduler.schedule).not.toHaveBeenCalled();
+        });
+
+        it("should calculate cumulative live score for index > 0", () => {
+            const event = {
+                eventID: 10,
+                eventDetails: [
+                    { result: "1:0" },
+                    { result: "2:1" },
+                    { result: "0:1" },
+                    { resultsAvailableTs: new Date() },
+                ],
+            } as any;
+
+            // Index 1: sum of index 0 = 1:0
+            service.handleEventDetailResultsAvailable({ event, index: 1 });
+            expect(service.currentLiveScore[1]).toEqual({ home: 1, away: 0 });
+
+            // Index 2: sum of index 0 and 1 = (1+2):(0+1) = 3:1
+            service.handleEventDetailResultsAvailable({ event, index: 2 });
+            expect(service.currentLiveScore[2]).toEqual({ home: 3, away: 1 });
+
+            // Index 3: sum of index 0, 1, and 2 = (1+2+0):(0+1+1) = 3:2
+            service.handleEventDetailResultsAvailable({ event, index: 3 });
+            expect(service.currentLiveScore[3]).toEqual({ home: 3, away: 2 });
+        });
+
         it("should schedule settlement only for last event detail index", () => {
-            const event = { eventID: 10, eventDetails: [{}, { resultsAvailableTs: new Date() }] } as any;
+            const event = {
+                eventID: 10,
+                eventDetails: [
+                    { result: "1:0" },
+                    { result: "2:1", resultsAvailableTs: new Date() },
+                ],
+            } as any;
             service.handleEventDetailResultsAvailable({ event, index: 0 });
             expect(scheduler.schedule).not.toHaveBeenCalled();
 
             service.handleEventDetailResultsAvailable({ event, index: 1 });
+            expect(service.currentLiveScore[1]).toEqual({ home: 1, away: 0 });
             expect(delayHandlingService.getDelayedTime).toHaveBeenCalled();
             expect(scheduler.schedule).toHaveBeenCalled();
+        });
+
+        it("should not schedule settlement when index is not the last", () => {
+            const event = {
+                eventID: 10,
+                eventDetails: [
+                    { result: "1:0" },
+                    { result: "2:1" },
+                    { resultsAvailableTs: new Date() },
+                ],
+            } as any;
+
+            service.handleEventDetailResultsAvailable({ event, index: 1 });
+            expect(scheduler.schedule).not.toHaveBeenCalled();
+            expect(service.currentLiveScore[1]).toEqual({ home: 1, away: 0 });
         });
     });
 
