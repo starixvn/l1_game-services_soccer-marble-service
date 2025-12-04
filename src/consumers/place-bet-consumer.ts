@@ -145,7 +145,7 @@ export default class PlaceBetConsumer extends Core.BaseEventConsumers.PlaceBetCo
 
             this.adjustBetTracks(player.profile.name, payload);
             this.gameData.ingame[name].betQueue.push({ player, payload })
-        } catch (error) {
+        } catch {
             return;
         }
         

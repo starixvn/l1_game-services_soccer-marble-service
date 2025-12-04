@@ -8,6 +8,7 @@ export interface MarbleEvent extends Event {
 export interface Market {
     selections: Selection[];
     hedgeBetExclusion?: string[];
+    marketNameKey: string;
 }
 
 interface Selection {

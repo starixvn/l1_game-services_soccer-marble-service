@@ -183,12 +183,13 @@ describe("BetStatusService", () => {
             expect(service.odds).toEqual({});
         });
 
-        it("should return margin-processed odds when price missing (zero odds)", () => {
-            const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "home" }] }] }] } as unknown as MarbleEvent;
+        it("should filter out all odds in a market when price is missing (zero odds)", () => {
+            const event = { eventDetails: [{ markets: [{ marketNameKey: "market1", selections: [{ betChoice: "home" }] }] }] } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
-            // With zero odds, margin processing should still return 0
-            expect(service.odds).toEqual({ home: 0 });
+            // With zero odds, the entire market should be disabled (filtered out)
+            expect(service.odds).toEqual({});
+            expect(service.points).toEqual({});
         });
 
         it("should return empty points when event detail missing", () => {
@@ -199,10 +200,11 @@ describe("BetStatusService", () => {
         });
 
         it("should default points to zero when value missing", () => {
-            const event = { eventDetails: [{ markets: [{ selections: [{ betChoice: "away" }] }] }] } as unknown as MarbleEvent;
+            const event = { eventDetails: [{ markets: [{ marketNameKey: "market1", selections: [{ betChoice: "away" }] }] }] } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
 
-            expect(service.points).toEqual({ away: 0 });
+            // With missing price (zero odds), the market should be disabled
+            expect(service.points).toEqual({});
         });
 
         it("should return empty hedge bet groups when event detail missing", () => {
@@ -350,7 +352,7 @@ describe("BetStatusService", () => {
             const event = {
                 eventID: 7,
                 eventDetails: [{
-                    markets: [{ selections: [{ betChoice: "home", price: 2, point: 1 }] }],
+                    markets: [{ marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }] }],
                 }],
             } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
@@ -376,8 +378,8 @@ describe("BetStatusService", () => {
                     {},
                     {
                         markets: [
-                            { selections: [{ betChoice: "home", price: 2, point: 1 }], hedgeBetExclusion: [] },
-                            { selections: [{ betChoice: "away", price: 3, point: 2 }] },
+                            { marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }], hedgeBetExclusion: [] },
+                            { marketNameKey: "market2", selections: [{ betChoice: "away", price: 3, point: 2 }] },
                         ],
                     },
                 ],
@@ -417,7 +419,7 @@ describe("BetStatusService", () => {
                 eventID: 7,
                 eventDetails: [{
                     markets: [
-                        { selections: [{ betChoice: "home", price: 2, point: 1 }] },
+                        { marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }] },
                     ],
                 }],
             } as unknown as MarbleEvent;
@@ -433,12 +435,12 @@ describe("BetStatusService", () => {
                 eventDetails: [
                     {
                         markets: [
-                            { selections: [{ betChoice: "home", price: 2, point: 1 }] },
+                            { marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }] },
                         ],
                     },
                     {
                         markets: [
-                            { selections: [{ betChoice: "away", price: 3, point: 2 }] },
+                            { marketNameKey: "market2", selections: [{ betChoice: "away", price: 3, point: 2 }] },
                         ],
                     },
                 ],
@@ -458,7 +460,7 @@ describe("BetStatusService", () => {
             const event = {
                 eventID: 7,
                 eventDetails: [{
-                    markets: [{ selections: [{ betChoice: "home", price: 2, point: 1 }] }],
+                    markets: [{ marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }] }],
                 }],
             } as unknown as MarbleEvent;
             service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
@@ -503,10 +505,10 @@ describe("BetStatusService", () => {
                 eventID: 7,
                 eventDetails: [
                     {
-                        markets: [{ selections: [{ betChoice: "home", price: 2, point: 1 }] }],
+                        markets: [{ marketNameKey: "market1", selections: [{ betChoice: "home", price: 2, point: 1 }] }],
                     },
                     {
-                        markets: [{ selections: [{ betChoice: "away", price: 3, point: 2 }] }],
+                        markets: [{ marketNameKey: "market2", selections: [{ betChoice: "away", price: 3, point: 2 }] }],
                     },
                 ],
             } as unknown as MarbleEvent;
@@ -529,9 +531,9 @@ describe("BetStatusService", () => {
                 eventID: 7,
                 eventDetails: [{
                     markets: [
-                        { selections: [{ betChoice: "low", price: 1.5 }] },   // Should use 5% margin
-                        { selections: [{ betChoice: "medium", price: 3 }] },  // Should use 3% margin
-                        { selections: [{ betChoice: "high", price: 10 }] },   // Should use default margin (2%)
+                        { marketNameKey: "market1", selections: [{ betChoice: "low", price: 1.5 }] },   // Should use 5% margin
+                        { marketNameKey: "market2", selections: [{ betChoice: "medium", price: 3 }] },  // Should use 3% margin
+                        { marketNameKey: "market3", selections: [{ betChoice: "high", price: 10 }] },   // Should use default margin (2%)
                     ],
                 }],
             } as unknown as MarbleEvent;
@@ -580,7 +582,7 @@ describe("BetStatusService", () => {
                 eventID: 7,
                 eventDetails: [{
                     markets: [
-                        { selections: [{ betChoice: "home", price: 2 }] },
+                        { marketNameKey: "market1", selections: [{ betChoice: "home", price: 2 }] },
                     ],
                 }],
             } as unknown as MarbleEvent;
@@ -591,6 +593,205 @@ describe("BetStatusService", () => {
             const publishedOdds = gameStatusPublisher.publishToAllUsers.mock.calls[0][0].odds;
             expect(publishedOdds.home).toBeLessThan(2);
             expect(publishedOdds.home).toBeGreaterThan(0);
+        });
+    });
+
+    describe("zero odds market disabling", () => {
+        beforeEach(() => {
+            gameData.gameConfigs.margin = [{ max: 10, margin: 0.03 }];
+        });
+
+        it("should disable all odds in a market when any choice has zero odds", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 0, point: 1 },
+                                { betChoice: "away", price: 2.5, point: 2 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // All choices in the market should be disabled (filtered out)
+            expect(service.odds).toEqual({});
+            expect(service.points).toEqual({});
+            expect(service.allowBets).toBe(false);
+        });
+
+        it("should disable all odds in a market when any choice has odds <= 1", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 1, point: 1 },
+                                { betChoice: "away", price: 3, point: 2 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // All choices in the market should be disabled
+            expect(service.odds).toEqual({});
+            expect(service.points).toEqual({});
+        });
+
+        it("should disable all odds in a market when any choice has negative odds", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 0.5, point: 1 },
+                                { betChoice: "away", price: 2.5, point: 2 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // All choices in the market should be disabled
+            expect(service.odds).toEqual({});
+            expect(service.points).toEqual({});
+        });
+
+        it("should only disable odds in the market with zero odds, not other markets", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 0, point: 1 },
+                                { betChoice: "away", price: 2.5, point: 2 },
+                            ],
+                        },
+                        {
+                            marketNameKey: "market2",
+                            selections: [
+                                { betChoice: "draw", price: 3.5, point: 0 },
+                                { betChoice: "over", price: 2, point: 1 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // Market1 should be disabled, but market2 should still be available
+            expect(service.odds).not.toHaveProperty("home");
+            expect(service.odds).not.toHaveProperty("away");
+            expect(service.odds.draw).toBeDefined();
+            expect(service.odds.over).toBeDefined();
+            expect(service.points.draw).toBe(0);
+            expect(service.points.over).toBe(1);
+        });
+
+        it("should keep all odds when all markets have valid odds (> 1)", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 2.5, point: 1 },
+                                { betChoice: "away", price: 3, point: 2 },
+                            ],
+                        },
+                        {
+                            marketNameKey: "market2",
+                            selections: [
+                                { betChoice: "draw", price: 3.5, point: 0 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // All odds should be available
+            expect(service.odds.home).toBeDefined();
+            expect(service.odds.away).toBeDefined();
+            expect(service.odds.draw).toBeDefined();
+            expect(service.allowBets).toBe(true);
+        });
+
+        it("should disable market when price is undefined (treated as 0)", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", point: 1 }, // price is undefined
+                                { betChoice: "away", price: 2.5, point: 2 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            // All choices in the market should be disabled
+            expect(service.odds).toEqual({});
+            expect(service.points).toEqual({});
+        });
+
+        it("should filter out disabled choices from published payload", () => {
+            const event = {
+                eventID: 7,
+                eventDetails: [{
+                    markets: [
+                        {
+                            marketNameKey: "market1",
+                            selections: [
+                                { betChoice: "home", price: 0, point: 1 },
+                                { betChoice: "away", price: 2.5, point: 2 },
+                            ],
+                        },
+                        {
+                            marketNameKey: "market2",
+                            selections: [
+                                { betChoice: "draw", price: 3.5, point: 0 },
+                            ],
+                        },
+                    ],
+                }],
+            } as unknown as MarbleEvent;
+
+            service.handleBetChoiceReady({ event, index: 0 } as EventDetailNotification<MarbleEvent>);
+
+            const publishedPayload = gameStatusPublisher.publishToAllUsers.mock.calls[0][0];
+            
+            // Market1 should be filtered out, only market2 should remain
+            expect(publishedPayload.odds).not.toHaveProperty("home");
+            expect(publishedPayload.odds).not.toHaveProperty("away");
+            expect(publishedPayload.odds.draw).toBeDefined();
+            expect(publishedPayload.points).not.toHaveProperty("home");
+            expect(publishedPayload.points).not.toHaveProperty("away");
+            expect(publishedPayload.points.draw).toBe(0);
         });
     });
 });

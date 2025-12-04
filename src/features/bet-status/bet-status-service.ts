@@ -56,14 +56,13 @@ export class BetStatusService {
 
     private _betStatus = false;
     private _betChoicePoints: Record<string, number> = {};
-    private _dynamicOdds: Record<string, number> = {};
     private _currentOddIndex = 0;
     private _betGroups: Record<string, string[]> = {};
     private _marginProcessedDynamicOdds: Record<string, number> = {};
     private _previousOdds: Record<string, number> = {};
 
     public get allowBets() {
-        return this._betStatus && Object.keys(this._dynamicOdds ?? {}).length > 0; 
+        return this._betStatus && Object.keys(this._marginProcessedDynamicOdds ?? {}).length > 0; 
     }
 
     public get currentIndex() {
@@ -195,19 +194,25 @@ export class BetStatusService {
 
     private handleBetChoiceReady({ event, index }: EventDetailNotification<MarbleEvent>) {
         console.log("bet choice ready index", index);
+        this._previousOdds = this._marginProcessedDynamicOdds;
         this._betStatus = true;
         this._currentOddIndex = index;
 
-        const { odds, points, groups } = this.getBetDataFromEventDetail({ event, index });
+        const { odds, points, groups, markets } = this.getBetDataFromEventDetail({ event, index });
 
         const marginConfig = this.gameData.gameConfigs.margin as MarginConfigs ?? [];
         const processedOdds = trueOddsToOddsWithMarginConfig(odds ?? {}, marginConfig);
-        this._dynamicOdds = odds ?? {};
-        this._previousOdds = { ...this._marginProcessedDynamicOdds };
-        this._marginProcessedDynamicOdds = processedOdds ?? {};
-        this._betChoicePoints = points ?? {};
-        this._betGroups = this.formatBetGroup(groups ?? {});
 
+        const { odds: filteredOdds, points: filteredPoints, groups: filteredGroups } = 
+            this.filterDisabledMarkets({ 
+                markets, 
+                odds: processedOdds, 
+                points, 
+                groups });
+
+        this._marginProcessedDynamicOdds = filteredOdds;
+        this._betChoicePoints = filteredPoints;
+        this._betGroups = this.formatBetGroup(filteredGroups);
 
         this.hedgeBetService.resetHedgeBetRestriction();
         this.hedgeBetService.updateHedgeBetGroups(this.getHedgeBetGroups({ event, index }));
@@ -216,11 +221,11 @@ export class BetStatusService {
     
     private publishBetChoiceReady() {
         this.gameStatusPublisher.publishStartPlacingBetStatus();
+        console.log("index", this.currentIndex);
+        console.log("payload", this.payload);
         this.gameStatusPublisher.publishToAllUsers(this.payload);
     }
 
-    // f: <string, string> -> <string, array<string>>
-    // example { "home": "side", "away": "side" } -> { "side": ["home", "away"] }
     private formatBetGroup(unformattedGroups: Record<string, string>): Record<string, string[]> {
         return Object.entries(unformattedGroups).reduce((acc, [choice, group]) => {
             acc[group] = [...(acc[group] ?? []), choice];
@@ -231,21 +236,28 @@ export class BetStatusService {
     private getBetDataFromEventDetail({ event, index }: EventDetailNotification<MarbleEvent>) {
         const eventDetail = event.eventDetails[index];
         if (!eventDetail) {
-            return {};
+            return {
+                points: {},
+                odds: {},
+                groups: {},
+                markets: {},
+            };
         }
 
         const points: Record<string, number> = {};
-        const odds: Record<string, number> = {};
+        let odds: Record<string, number> = {};
         const groups: Record<string, string> = {};
-
+        const markets: Record<string, string[]> = {};
         for (const market of eventDetail.markets) {
             for (const selection of market.selections) {
                 points[selection.betChoice] = selection.point ?? 0;
                 odds[selection.betChoice] = selection.price ?? 0;
                 groups[selection.betChoice] = selection.group ?? "side";
+                markets[market.marketNameKey] = [...(markets[market.marketNameKey] ?? []), selection.betChoice];
             }
         }
-        return { points, odds, groups };
+
+        return { points, odds, groups, markets };
     }
 
     private getHedgeBetGroups({ event, index }: EventDetailNotification<MarbleEvent>): Set<string>[] {
@@ -259,5 +271,47 @@ export class BetStatusService {
                 market.selections.map((selection) => selection.betChoice).filter((choice) => !market.hedgeBetExclusion?.includes(choice))
             )
         );
+    }
+
+    private filterDisabledMarkets({
+        markets,
+        odds,
+        points,
+        groups,
+    }: {
+        markets: Record<string, string[]>;
+        odds: Record<string, number>;
+        points: Record<string, number>;
+        groups: Record<string, string>;
+    }) {
+        const disabledBetChoices = this.getDisabledBetChoices(markets, odds);
+
+
+        return Object.entries(odds).reduce((acc, [choice, _]) => {
+            if (!disabledBetChoices[choice]) {
+               acc.odds[choice] = odds[choice];
+               acc.points[choice] = points[choice];
+               acc.groups[choice] = groups[choice];
+            }
+            return acc;
+        }, {
+            points: {} as Record<string, number>,
+            groups: {} as Record<string, string>,
+            odds: {} as Record<string, number>,
+        });
+    }
+
+    private getDisabledBetChoices(markets: Record<string, string[]>, odds: Record<string, number>) {
+        const disabledOdds: Record<string, boolean> = {};
+        console.log("init odds ", odds);
+        Object.entries(markets).forEach(([market, choices]) => {
+            if (choices.some((choice) => odds[choice] <= 1)) {
+                console.log(`market ${market} has disabled choices ${choices.join(", ")}`);
+                choices.forEach((choice) => {
+                    disabledOdds[choice] = true;
+                });
+            }
+        });
+        return disabledOdds;
     }
 }
