@@ -68,7 +68,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
         };
         const existingBetFilter = { uid: player.UID, roundId, freeBet: bet.freeBet };
         const existingBetIncrement = {
-            [`${bet.index}.${bet.betChoice}`]: bet.amount,
+            [`betAmount.${bet.index}.${bet.betChoice}`]: bet.amount,
             totalAmount: bet.amount,
         };
 

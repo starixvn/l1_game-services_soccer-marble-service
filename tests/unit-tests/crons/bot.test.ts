@@ -417,7 +417,7 @@ describe("Bot", () => {
                 { uid: "bot123", roundId: 123 },
                 {
                     $set: {
-                        "0.home": 100,
+                        "betAmount.0.home": 100,
                             "odds.0.home": { price: 1.5, point: 1 },
                             "odds.0.away": { price: 2, point: 2 },
                             "odds.0.draw": { price: 3, point: 3 },
@@ -462,7 +462,7 @@ describe("Bot", () => {
                 { uid: "bot123", roundId: 123 },
                 {
                     $set: {
-                        "0.home": 150,
+                        "betAmount.0.home": 150,
                         "odds.0.home": { price: 1.5, point: 1 },
                         "odds.0.away": { price: 2, point: 2 },
                         "odds.0.draw": { price: 3, point: 3 },

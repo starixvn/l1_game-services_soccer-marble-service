@@ -130,7 +130,7 @@ export default class Bot extends TableGameConfigBot {
             }, {} as Record<string, any>) : {};
 
         const currentAmount = currentBet ? currentBet[`${currentIndex}`]?.[choice] ?? 0 : 0;
-        const update = { [`${currentIndex}.${choice}`]: amount + currentAmount, ...oddsUpdate };
+        const update = { [`betAmount.${currentIndex}.${choice}`]: amount + currentAmount, ...oddsUpdate };
         const create = {
             uid: bot.id,
             name: bot.name,

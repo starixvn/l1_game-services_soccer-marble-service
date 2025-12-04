@@ -111,7 +111,7 @@ describe("ProcessBetQueue", () => {
             expect(cron.betsRepository.updateOne).toHaveBeenCalledWith(
                 { uid: "u3", roundId: 10, freeBet: false },
                 {
-                    $inc: { "0.home": 100, totalAmount: 100 },
+                    $inc: { "betAmount.0.home": 100, totalAmount: 100 },
                     $setOnInsert: expect.objectContaining({
                         uid: "u3",
                         name: "foo",
@@ -143,7 +143,7 @@ describe("ProcessBetQueue", () => {
             expect(cron.betsRepository.updateOne).toHaveBeenCalledWith(
                 { uid: "u4", roundId: 10, freeBet: undefined },
                 {
-                    $inc: { "1.away": 50, totalAmount: 50 },
+                    $inc: { "betAmount.1.away": 50, totalAmount: 50 },
                     $setOnInsert: expect.objectContaining({
                         uid: "u4",
                         name: "bar",
