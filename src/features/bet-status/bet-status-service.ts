@@ -245,7 +245,7 @@ export class BetStatusService {
         }
 
         const points: Record<string, number> = {};
-        let odds: Record<string, number> = {};
+        const odds: Record<string, number> = {};
         const groups: Record<string, string> = {};
         const markets: Record<string, string[]> = {};
         for (const market of eventDetail.markets) {
