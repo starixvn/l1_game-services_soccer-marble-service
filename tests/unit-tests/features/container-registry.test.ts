@@ -18,7 +18,6 @@ describe("features/container-registry", () => {
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'hedgeBetService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'checkStatusService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'resultService', registerType: 'class' }));
-            expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'gameFlowService', registerType: 'class' }));
             expect(di.register).toHaveBeenCalledWith(expect.objectContaining({ key: 'serverTimeDiffService', registerType: 'class' }));
         });
     });
@@ -41,7 +40,6 @@ describe("features/container-registry", () => {
             const betStatusService = { initEvent: jest.fn() };
             const checkStatusService = { initEvent: jest.fn() };
             const resultService = { initEvent: jest.fn() };
-            const gameFlowService = { init: jest.fn() };
             const streamingService = { init: jest.fn() };
             const serverTimeDiffService = { init: jest.fn() };
             const upcomingEventService = { init: jest.fn() };
@@ -53,7 +51,6 @@ describe("features/container-registry", () => {
                         case 'betStatusService': return betStatusService;
                         case 'checkStatusService': return checkStatusService;
                         case 'resultService': return resultService;
-                        case 'gameFlowService': return gameFlowService;
                         case 'streamingService': return streamingService;
                         case 'serverTimeDiffService': return serverTimeDiffService;
                         case 'upcomingEventService': return upcomingEventService;
@@ -68,7 +65,6 @@ describe("features/container-registry", () => {
             expect(betStatusService.initEvent).toHaveBeenCalled();
             expect(checkStatusService.initEvent).toHaveBeenCalled();
             expect(resultService.initEvent).toHaveBeenCalled();
-            expect(gameFlowService.init).toHaveBeenCalled();
             expect(streamingService.init).toHaveBeenCalled();
             expect(serverTimeDiffService.init).toHaveBeenCalled();
             expect(upcomingEventService.init).toHaveBeenCalled();

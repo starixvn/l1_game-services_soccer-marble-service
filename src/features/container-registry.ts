@@ -8,7 +8,6 @@ import { BetStatusService } from "./bet-status/bet-status-service";
 import { HedgeBetService } from "./bet-status/hedge-bet-service";
 import { CheckStatusService } from "./check-status/check-status-service";
 import { ResultService } from "./result/result-service";
-import { GameFlowService } from "./game-flow/game-flow-service";
 import { StreamingService } from "./streaming-service/streaming-service";
 import { ServerTimeDiffService } from "./server-time-diff/server-time-diff-service";
 import { UpcomingEventService } from "./upcoming-event/upcoming-event-service";
@@ -68,13 +67,6 @@ export function registerFeatures(diContainer: DiContainer) {
         disposer,
     });
     diContainer.register({
-        key: 'gameFlowService',
-        registerType: 'class',
-        value: GameFlowService,
-        disposer,
-    });
-
-    diContainer.register({
         key: 'streamingService',
         registerType: 'class',
         value: StreamingService,
@@ -112,7 +104,6 @@ export function initFeatures(container: DiContainer) {
     container.resolve<BetStatusService>('betStatusService').initEvent();
     container.resolve<CheckStatusService>('checkStatusService').initEvent();
     container.resolve<ResultService>('resultService').initEvent();
-    container.resolve<GameFlowService>('gameFlowService').init();
     container.resolve<StreamingService>('streamingService').init();
     container.resolve<ServerTimeDiffService>('serverTimeDiffService').init();
     container.resolve<UpcomingEventService>('upcomingEventService').init();
