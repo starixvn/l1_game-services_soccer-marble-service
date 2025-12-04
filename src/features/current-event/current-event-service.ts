@@ -126,6 +126,9 @@ export class CurrentEventService {
         this.gameData.roundId = event.eventID;
         this.gameStatusPublisher.publishStartGame();
         this.gameStatusPublisher.publishMatch(event);
+        this.gameStatusPublisher.publishToAllUsers({
+            lastIndex: event.eventDetails.length - 1,
+        })
     }
 
     public handleEventIndexChange({ event, index }: EventDetailNotification) {

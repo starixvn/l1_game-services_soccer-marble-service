@@ -30,6 +30,7 @@ describe("CurrentEventService", () => {
         gameStatusPublisher = { 
             publishMatch: jest.fn(),
             publishStartGame: jest.fn(),
+            publishToAllUsers: jest.fn(),
         };
 
         service = new CurrentEventService({
@@ -89,6 +90,9 @@ describe("CurrentEventService", () => {
             expect(gameData.roundId).toBe(123);
             expect(gameStatusPublisher.publishStartGame).toHaveBeenCalled();
             expect(gameStatusPublisher.publishMatch).toHaveBeenCalledWith(event);
+            expect(gameStatusPublisher.publishToAllUsers).toHaveBeenCalledWith({
+                lastIndex: event.eventDetails.length - 1,
+            });
         });
     });
 
