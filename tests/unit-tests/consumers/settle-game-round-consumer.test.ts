@@ -125,7 +125,7 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true, away: false },
             } as any;
-            const bet = { 0: { home: 100, away: 50 }, freeBet: false } as any;
+            const bet = { betAmount: { 0: { home: 100, away: 50 } }, freeBet: false } as any;
             const odds = {
                 0: {
                     home: { price: 2 },
@@ -150,7 +150,7 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true },
             } as any;
-            const bet = { _doc: { 0: { home: 100 }, freeBet: true } } as any;
+            const bet = { _doc: { betAmount: { 0: { home: 100 } }, freeBet: true } } as any;
             const odds = { 0: { home: { price: 2 } } } as Record<string, any>;
 
             // Act
@@ -169,7 +169,7 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { draw: true },
             } as any;
-            const bet = { 0: {}, freeBet: false } as any; // no draw amount provided, defaults to 0
+            const bet = { betAmount: { 0: {} }, freeBet: false } as any; // no draw amount provided, defaults to 0
             const odds = {} as Record<string, any>; // missing odds default to 1
 
             // Act
@@ -188,7 +188,7 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: true },
             } as any;
-            const bet = { 0: { home: 33.3333 }, freeBet: false } as any;
+            const bet = { betAmount: { 0: { home: 33.3333 } }, freeBet: false } as any;
             const odds = { 0: { home: { price: 3.3333 } } } as Record<string, any>;
 
             // Act
@@ -205,7 +205,7 @@ describe("SettleGameRoundConsumer", () => {
             const settlementResult = {
                 0: { home: false, away: false },
             } as any;
-            const bet = { 0: { home: 40, away: 60 }, freeBet: false } as any;
+            const bet = { betAmount: { 0: { home: 40, away: 60 } }, freeBet: false } as any;
             const odds = {
                 0: {
                     home: { price: 2 },

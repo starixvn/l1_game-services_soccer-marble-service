@@ -46,10 +46,11 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
 
     override calculateBetResult(settlementResult: SettlementResult, bet: any, odds: Record<string, any>) {
         const betData = bet._doc ?? bet;
+       
         const betResult = Object.entries(settlementResult).reduce(
             (result, [index, isWinByChoices]) => {
                 Object.entries(isWinByChoices).forEach(([choice, win]) => {
-                    const betAmount = betData[`${index}`]?.[choice] ?? 0;
+                    const betAmount = betData.betAmount[`${index}`]?.[choice] ?? 0;
                     const originalOdds = odds[`${index}`]?.[choice]?.price ?? 1;
                     const effectiveOdds = betData.freeBet ? originalOdds - 1 : originalOdds;
                     const winAmount = win ? betAmount * effectiveOdds : 0;
@@ -79,7 +80,7 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
     override async settleBets({ settlementResult, roundId, time }: { settlementResult: any; roundId: number; time: Date }): Promise<void> {
         const bets = await this.queryBets(roundId);
 
-        if (bets && bets.length) {
+        if (bets?.length) {
             await Promise.all(
                 bets.map(async (bet: any) => {
                     const odds = bet.odds ?? {};
