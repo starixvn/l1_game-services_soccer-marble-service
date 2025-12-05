@@ -11,7 +11,7 @@ const bet = {
     betWin: { type: Number, default: 0 },
     time: { type: Date },
     totalAmount: { type: Number, default: 0 },
-    odds: { type: Object },
+    marbleOdds: { type: Object },
     siteId: { type: String },
     freeBet: { type: Boolean, default: false },
     playerId: { type: String },

@@ -134,8 +134,8 @@ describe("ProcessBetQueue", () => {
                         roundId: 10,
                     }),
                     $set: {
-                        "odds.0.home": { price: 2, point: 1 },
-                        "odds.0.away": { price: 3, point: 2 },
+                        "marbleOdds.0.home": { price: 2, point: 1 },
+                        "marbleOdds.0.away": { price: 3, point: 2 },
                     },
                 },
                 { upsert: true, setDefaultsOnInsert: true },

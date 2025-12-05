@@ -28,9 +28,11 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     override async proceedBet(player: any, payload: BetPayload): Promise<void> {
-        return super.proceedBet(player, payload).catch((reason) => {
+        console.time("proceedBet");
+        await super.proceedBet(player, payload).catch((reason) => {
             return Promise.reject(reason);
         });
+        console.timeEnd("proceedBet");
     }
 
     adjustTotalBets(player: any, bet: BetPayload, rate: number) {
@@ -88,7 +90,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
 
         const oddsUpdate = odds ? 
             Object.entries(odds).reduce((acc, [key, value]) => {
-                acc[`odds.${bet.index}.${key}`] = {
+                acc[`marbleOdds.${bet.index}.${key}`] = {
                     price: value,
                     point: points[key] ?? 0,
                 };
