@@ -166,6 +166,7 @@ describe("InGameConsumer", () => {
             const mockCurrentEvent = {
                 eventNameAKey: "Team A",
                 eventNameBKey: "Team B",
+                eventDetails: [{}, {}, {}], // 3 items, lastIndex = 2
             };
             (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
@@ -189,6 +190,7 @@ describe("InGameConsumer", () => {
                 userBetPercentage: mockUserBetPercentage,
                 match: { home: "Team A", away: "Team B" },
                 playlist: "test-playlist",
+                lastIndex: 2,
                 spb: true,
             });
             expect(result.epb).toBeUndefined();
@@ -218,6 +220,7 @@ describe("InGameConsumer", () => {
             const mockCurrentEvent = {
                 eventNameAKey: "Team A",
                 eventNameBKey: "Team B",
+                eventDetails: [{}, {}], // 2 items, lastIndex = 1
             };
             (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
@@ -241,6 +244,7 @@ describe("InGameConsumer", () => {
                 userBetPercentage: mockUserBetPercentage,
                 match: { home: "Team A", away: "Team B" },
                 playlist: "test-playlist",
+                lastIndex: 1,
                 epb: true,
             });
             expect(result.spb).toBeUndefined();
@@ -271,6 +275,7 @@ describe("InGameConsumer", () => {
             const mockCurrentEvent = {
                 eventNameAKey: "Team A",
                 eventNameBKey: "Team B",
+                eventDetails: [{}, {}, {}, {}], // 4 items, lastIndex = 3
             };
             (mockCurrentEventService.getCurrentEvent as jest.Mock).mockReturnValue(mockCurrentEvent);
 
@@ -294,6 +299,7 @@ describe("InGameConsumer", () => {
                 userBetPercentage: mockUserBetPercentage,
                 match: { home: "Team A", away: "Team B" },
                 playlist: "test-playlist",
+                lastIndex: 3,
                 spb: true,
             });
         });

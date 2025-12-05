@@ -66,6 +66,7 @@ export default class InGameConsumer extends TableInGameConsumer {
             match: { home: currentEvent.eventNameAKey, away: currentEvent.eventNameBKey },
             playlist: this.streamingService.currentPlaylist,
             userBetPercentage: getUserBetPercentage(this.gameData.playerBetCount, betChoices),
+            lastIndex: currentEvent.eventDetails.length - 1,
         };
 
         if (this.betStatusService.allowBets) {
