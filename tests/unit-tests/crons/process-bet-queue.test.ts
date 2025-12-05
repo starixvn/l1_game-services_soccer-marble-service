@@ -4,7 +4,7 @@ jest.mock("sc-game-base/src/table/crons", () => ({
             Object.assign(this, container);
         }
         adjustTotalBets() {}
-    }
+    },
 }));
 import ProcessBetQueue from "../../../src/crons/process-bet-queue";
 
@@ -138,7 +138,7 @@ describe("ProcessBetQueue", () => {
                         "marbleOdds.0.away": { price: 3, point: 2 },
                     },
                 },
-                { upsert: true, setDefaultsOnInsert: true },
+                { upsert: true, setDefaultsOnInsert: true }
             );
             expect(time).toBeInstanceOf(Date);
         });
@@ -162,7 +162,7 @@ describe("ProcessBetQueue", () => {
                     }),
                     $set: {},
                 },
-                { upsert: true, setDefaultsOnInsert: true },
+                { upsert: true, setDefaultsOnInsert: true }
             );
         });
     });
@@ -205,7 +205,7 @@ describe("ProcessBetQueue", () => {
                     receivedTime: bet.receivedTime,
                     roundId: 10,
                     index: 0,
-                    liveScore: "1:0",
+                    liveScore: "0:0",
                     siteId: "s1",
                     currency: "USD",
                     rate: 1.5,
@@ -274,12 +274,10 @@ describe("ProcessBetQueue", () => {
 
             expect(cron.betLogsRepository.create).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    liveScore: "3:2",
+                    liveScore: "2:1",
                     index: 2,
                 })
             );
         });
     });
 });
-
-

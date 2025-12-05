@@ -41,7 +41,6 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     adjustPlayerBetCount(player: any, betChoice: string) {
-        
         if (!this.gameData.playerBetCount[betChoice]) {
             this.gameData.playerBetCount[betChoice] = [];
         }
@@ -49,7 +48,6 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     composeBettingTimeValidationCriteria(roundId: number): { failure: boolean; notice: { errorCode: string } }[] {
-
         return [
             {
                 failure: roundId !== this.gameData.roundId,
@@ -87,15 +85,15 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
         const odds = this.betStatusService.odds;
         const points = this.betStatusService.points;
 
-
-        const oddsUpdate = odds ? 
-            Object.entries(odds).reduce((acc, [key, value]) => {
-                acc[`marbleOdds.${bet.index}.${key}`] = {
-                    price: value,
-                    point: points[key] ?? 0,
-                };
-                return acc;
-            }, {} as Record<string, any>) : {};
+        const oddsUpdate = odds
+            ? Object.entries(odds).reduce((acc, [key, value]) => {
+                  acc[`marbleOdds.${bet.index}.${key}`] = {
+                      price: value,
+                      point: points[key] ?? 0,
+                  };
+                  return acc;
+              }, {} as Record<string, any>)
+            : {};
 
         await this.betsRepository.updateOne(
             existingBetFilter,
@@ -104,14 +102,14 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
                 $setOnInsert: newBet,
                 $set: oddsUpdate,
             },
-            { upsert: true, setDefaultsOnInsert: true },
+            { upsert: true, setDefaultsOnInsert: true }
         );
 
         return newBet.time;
     }
 
     override async insertBetLog(player: any, roundId: number, bet: any, rate: number): Promise<void> {
-        const liveScore = this.resultService.currentLiveScore[bet.index] ?? { home: 0, away: 0 };
+        const liveScore = this.resultService.currentLiveScore[bet.index - 1] ?? { home: 0, away: 0 };
 
         const formattedLiveScore = `${liveScore.home}:${liveScore.away}`;
 
