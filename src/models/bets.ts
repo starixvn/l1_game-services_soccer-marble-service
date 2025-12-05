@@ -8,7 +8,7 @@ const bet = {
     roundId: { type: Number, required: true },
     uid: { type: String, required: true },
     name: { type: String, required: true },
-    betWin: { type: Number, default: 0 },
+    betwin: { type: Number, default: 0 },
     time: { type: Date },
     totalAmount: { type: Number, default: 0 },
     marbleOdds: { type: Object },
@@ -24,11 +24,14 @@ const bet = {
 
 const bets = mongoose.model(
     modelName,
-    new mongoose.Schema({
-        ...bet,
-        currency: { type: String },
-        rate: { type: Number, required: true },
-    }, { strict: false }),
+    new mongoose.Schema(
+        {
+            ...bet,
+            currency: { type: String },
+            rate: { type: Number, required: true },
+        },
+        { strict: false }
+    )
 );
 
 const tmpBets = mongoose.model(tmpModelName, new mongoose.Schema(bet, { strict: false }));

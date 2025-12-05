@@ -46,7 +46,7 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
 
     override calculateBetResult(settlementResult: SettlementResult, bet: any, odds: Record<string, any>) {
         const betData = bet._doc ?? bet;
-       
+
         const betResult = Object.entries(settlementResult).reduce(
             (result, [index, isWinByChoices]) => {
                 Object.entries(isWinByChoices).forEach(([choice, win]) => {
@@ -87,7 +87,7 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
 
                     const betResult = this.calculateBetResult(settlementResult, bet, odds);
 
-                    bet.betWin = betResult.totalWin;
+                    bet.betwin = betResult.totalWin;
                     bet.paid = true;
 
                     await bet.save();

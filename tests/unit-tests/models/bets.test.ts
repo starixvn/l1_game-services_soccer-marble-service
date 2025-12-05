@@ -10,7 +10,7 @@ describe("Bets", () => {
 
             const expected = {
                 _id: mockId,
-                betWin: 0,
+                betwin: 0,
                 freeBet: false,
                 paid: false,
                 totalAmount: 0,
@@ -32,7 +32,7 @@ describe("Bets", () => {
 
             // Assert
             expect(error.message).toBe(
-                `${GAME_NAME}_bets validation failed: rate: Path \`rate\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required., roundId: Path \`roundId\` is required.`,
+                `${GAME_NAME}_bets validation failed: rate: Path \`rate\` is required., name: Path \`name\` is required., uid: Path \`uid\` is required., roundId: Path \`roundId\` is required.`
             );
         });
     });
