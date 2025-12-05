@@ -83,7 +83,7 @@ export default class SettleGameRoundConsumer extends Table.EventConsumers.TableS
         if (bets?.length) {
             await Promise.all(
                 bets.map(async (bet: any) => {
-                    const odds = bet.odds ?? {};
+                    const odds = bet.marbleOdds ?? {};
 
                     const betResult = this.calculateBetResult(settlementResult, bet, odds);
 
