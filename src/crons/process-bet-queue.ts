@@ -109,7 +109,7 @@ export default class ProcessBetQueue extends TableProcessBetQueue {
     }
 
     override async insertBetLog(player: any, roundId: number, bet: any, rate: number): Promise<void> {
-        const liveScore = this.resultService.currentLiveScore[bet.index - 1] ?? { home: 0, away: 0 };
+        const liveScore = this.resultService.currentLiveScore ?? { home: 0, away: 0 };
 
         const formattedLiveScore = `${liveScore.home}:${liveScore.away}`;
 

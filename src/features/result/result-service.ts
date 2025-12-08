@@ -1,4 +1,4 @@
-import { Scheduler, OddsFeedEventSource, EventDetailNotification, OddsFeedEventName } from "odds-feed-client";
+import { Scheduler, OddsFeedEventSource, EventDetailNotification, OddsFeedEventName, EventNotification } from "odds-feed-client";
 import SettleGameRoundConsumer from "../../consumers/settle-game-round-consumer";
 import { DelayHandlingService } from "../delay/delay-handling-service";
 import { EventDetailSettlementResult, ResultAndSettlementResult } from "../../models/rounds";
@@ -20,46 +20,55 @@ export class ResultService {
     private readonly delayHandlingService: DelayHandlingService;
     
     private readonly boundHandleEventResultAvailable: (notification: EventDetailNotification<MarbleEvent>) => void;
-    
+    private readonly boundHandleEventStart: (notification: EventNotification<MarbleEvent>) => void;
+
     constructor(container: ResultServiceContainer) {
         this.oddsFeedEventSource = container.oddsFeedEventSource;
         this.settleGameRoundConsumer = container.settleGameRoundConsumer;
         this.boundHandleEventResultAvailable = this.handleEventDetailResultsAvailable.bind(this);
         this.scheduler = container.scheduler;
         this.delayHandlingService = container.delayHandlingService;
+        this.boundHandleEventStart = this.handleEventStart.bind(this);
     }
     
-    public readonly currentLiveScore: Record<number, {
-        home: number;
-        away: number;
-    }> = {};
+    public currentLiveScore: { home: number; away: number } = { home: 0, away: 0 };
+
     public readonly resultByEventId: Record<number, ResultAndSettlementResult> = {};
 
     initEvent() {
+        this.oddsFeedEventSource.eventOn(OddsFeedEventName.EventStart, this.boundHandleEventStart);
         this.oddsFeedEventSource.eventDetailOn(OddsFeedEventName.EventDetailResultsAvailable, this.boundHandleEventResultAvailable);
     }
 
     dispose() {
+        this.oddsFeedEventSource.eventOff(OddsFeedEventName.EventStart, this.boundHandleEventStart);
         this.oddsFeedEventSource.eventDetailOff(OddsFeedEventName.EventDetailResultsAvailable, this.boundHandleEventResultAvailable);
     }
 
+    handleEventStart({ event }: EventNotification<MarbleEvent>) {
+        const timeToResetLiveScore = this.delayHandlingService.getDelayedTime(
+            { event, time: new Date(event.scheduleStartTs) },
+            {
+                oddFeedEventType: OddsFeedEventName.EventStart,
+            }
+        );
+        this.scheduler.schedule(timeToResetLiveScore, this.resetLiveScore.bind(this), {
+            overrideNow: event.now,
+        });
+    }
+
     handleEventDetailResultsAvailable({ event, index }: EventDetailNotification<MarbleEvent>) {
-        if (index === 0) {
-            this.currentLiveScore[index] = { home: 0, away: 0 };
-            return;
-        }
+        
+        const timeToUpdateLiveScore = this.delayHandlingService.getDelayedTime(
+            { event, time: new Date(event.eventDetails[index].resultsAvailableTs) },
+            {
+                oddFeedEventType: OddsFeedEventName.EventDetailResultsAvailable,
+            }
+        );
 
-        let home  = 0;
-        let away = 0;
-
-        for (let i = 0; i < index; i++) {
-            const result = event.eventDetails[i].result;
-            const splitResult = result.split(SCORE_SPLITTER);
-            home += Number(splitResult[0]);
-            away += Number(splitResult[1]);
-        }
-
-        this.currentLiveScore[index] = { home, away };
+        this.scheduler.schedule(timeToUpdateLiveScore, this.updateLiveScore.bind(this, { event, index }), {
+            overrideNow: event.now,
+        });
 
         if (index !== event.eventDetails.length - 1) {
             return;
@@ -99,6 +108,22 @@ export class ResultService {
             settlementResult: result.settlementResult,
             match: { home: event.eventNameAKey, away: event.eventNameBKey },
         });
+    }
+
+    resetLiveScore() {
+        this.currentLiveScore = { home: 0, away: 0 };
+    }
+
+    updateLiveScore({ event, index }: EventDetailNotification<MarbleEvent>) {
+        let home = this.currentLiveScore.home;
+        let away = this.currentLiveScore.away;
+
+        const result = event.eventDetails[index].result;
+        const splitResult = result.split(SCORE_SPLITTER);
+        home += Number(splitResult[0]);
+        away += Number(splitResult[1]);
+
+        this.currentLiveScore = { home, away };
     }
 
     private getSettlementResultFromEventDetail(eventDetail: MarbleEventDetail) {

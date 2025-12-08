@@ -21,7 +21,7 @@ describe("ProcessBetQueue", () => {
             points: { home: 1, away: 2 },
         };
         cron.resultService = {
-            currentLiveScore: {},
+            currentLiveScore: { home: 0, away: 0 },
         };
         cron.betsRepository = { updateOne: jest.fn().mockResolvedValue(undefined) };
         cron.betLogsRepository = { create: jest.fn().mockResolvedValue(undefined) };
@@ -170,7 +170,8 @@ describe("ProcessBetQueue", () => {
     describe("insertBetLog", () => {
         it("should insert bet log with live score when available", async () => {
             cron.resultService.currentLiveScore = {
-                0: { home: 1, away: 0 },
+                home: 2,
+                away: 1,
             };
             const player = {
                 UID: "u5",
@@ -205,7 +206,7 @@ describe("ProcessBetQueue", () => {
                     receivedTime: bet.receivedTime,
                     roundId: 10,
                     index: 0,
-                    liveScore: "0:0",
+                    liveScore: "2:1",
                     siteId: "s1",
                     currency: "USD",
                     rate: 1.5,
@@ -218,7 +219,7 @@ describe("ProcessBetQueue", () => {
         });
 
         it("should insert bet log with default live score when not available", async () => {
-            cron.resultService.currentLiveScore = {};
+            cron.resultService.currentLiveScore = null;
             const player = {
                 UID: "u6",
                 profile: { name: "testPlayer2" },
@@ -250,11 +251,10 @@ describe("ProcessBetQueue", () => {
             );
         });
 
-        it("should insert bet log with live score for different indices", async () => {
+        it("should insert bet log with live score formatted correctly", async () => {
             cron.resultService.currentLiveScore = {
-                0: { home: 0, away: 0 },
-                1: { home: 2, away: 1 },
-                2: { home: 3, away: 2 },
+                home: 3,
+                away: 2,
             };
             const player = {
                 UID: "u7",
@@ -274,7 +274,7 @@ describe("ProcessBetQueue", () => {
 
             expect(cron.betLogsRepository.create).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    liveScore: "2:1",
+                    liveScore: "3:2",
                     index: 2,
                 })
             );

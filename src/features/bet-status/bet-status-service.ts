@@ -186,6 +186,7 @@ export class BetStatusService {
     }
 
     private publishBetChoiceLocked() {
+        console.log("publishBetChoiceLocked");
         this._betStatus = false;
         this.gameStatusPublisher.publishEndPlacingBetStatus();
     }
@@ -217,6 +218,7 @@ export class BetStatusService {
     }
     
     private publishBetChoiceReady() {
+        console.log("publishBetChoiceReady");
         this.gameStatusPublisher.publishStartPlacingBetStatus();
         this.gameStatusPublisher.publishToAllUsers(this.payload);
     }
