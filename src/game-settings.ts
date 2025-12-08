@@ -15,7 +15,7 @@ export default {
         ["h1_1x2_home", "h1_1x2_away"],
     ],
     provablyFair: false,
-    historyPageSize: 8,
+    historyPageSize: 12,
     defaultBetTracks: {},
     botSettings: {
         ratio: { main: 80, side: 20 },
